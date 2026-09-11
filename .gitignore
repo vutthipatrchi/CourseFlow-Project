@@ -1,0 +1,12 @@
+node_modules/
+dist/
+target/
+coverage/
+.env
+.env.*
+!.env.example
+.idea/
+*.iml
+.DS_Store
+*.log
+.tools/
