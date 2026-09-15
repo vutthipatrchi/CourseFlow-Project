@@ -28,6 +28,10 @@
   --color-gray-800: #383d48;
   --color-gray-900: #1d2029;
 
+  /* Dark Blue (separate from the Blue scale; 500 measured from the "Our Courses"
+     nav text in the reference export) */
+  --color-darkblue-500: #191c77;
+
   /* Orange (500 anchored to the real hero-triangle asset #FBAA1C) */
   --color-orange-100: #fdecd8;
   --color-orange-500: #fbaa1c;
