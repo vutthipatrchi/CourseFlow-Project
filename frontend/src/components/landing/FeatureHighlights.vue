@@ -2,6 +2,8 @@
 import featureSecure from '@/assets/landing/feature-secure.svg'
 import featureHeart from '@/assets/landing/feature-heart.svg'
 import featurePeople from '@/assets/landing/feature-people.svg'
+import featurePhotoSecure from '@/assets/landing/feature-photo-secure.svg'
+import featurePhotoCollab from '@/assets/landing/feature-photo-collab.svg'
 
 interface Feature {
   title: string
@@ -44,13 +46,11 @@ const collabFeatures: Feature[] = [
   <section class="mx-auto max-w-6xl space-y-24 px-6 py-20">
     <!-- block 1: image left, text right -->
     <div class="grid grid-cols-1 items-center gap-12 md:grid-cols-2">
-      <div class="flex aspect-4/3 w-full items-center justify-center rounded-2xl bg-blue-100 shadow-lg">
-        <svg viewBox="0 0 64 64" class="h-20 w-20 text-blue-400">
-          <rect x="8" y="14" width="48" height="30" rx="3" fill="none" stroke="currentColor" stroke-width="2" />
-          <path d="M4 48h56l-4 6H8l-4-6Z" fill="none" stroke="currentColor" stroke-width="2" />
-          <path d="M20 26l8 8 16-14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </div>
+      <img
+        :src="featurePhotoSecure"
+        alt="Student working on code across two screens"
+        class="w-full shadow-lg"
+      />
       <div>
         <h2 class="text-2xl font-bold text-gray-900 md:text-3xl">
           Learning experience has been enhanced with new technologies
@@ -83,16 +83,11 @@ const collabFeatures: Feature[] = [
           </li>
         </ul>
       </div>
-      <div
-        class="flex aspect-4/3 w-full items-center justify-center rounded-2xl bg-blue-100 shadow-lg md:order-2"
-      >
-        <svg viewBox="0 0 64 64" class="h-20 w-20 text-blue-400">
-          <circle cx="24" cy="20" r="8" fill="none" stroke="currentColor" stroke-width="2" />
-          <path d="M10 46c0-8 6-14 14-14s14 6 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <circle cx="46" cy="16" r="6" fill="none" stroke="currentColor" stroke-width="2" />
-          <path d="M36 40c1-6 5-10 10-10s9 4 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-        </svg>
-      </div>
+      <img
+        :src="featurePhotoCollab"
+        alt="Tutor's laptop screen showing a course website mockup"
+        class="w-full shadow-lg md:order-2"
+      />
     </div>
   </section>
 </template>
