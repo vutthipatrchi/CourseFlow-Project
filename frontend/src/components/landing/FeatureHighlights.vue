@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import featureSecure from '@/assets/landing/feature-secure.svg'
+import featureHeart from '@/assets/landing/feature-heart.svg'
+import featurePeople from '@/assets/landing/feature-people.svg'
+
 interface Feature {
   title: string
   description: string
+  icon: string
 }
 
 const secureFeatures: Feature[] = [
@@ -9,11 +14,13 @@ const secureFeatures: Feature[] = [
     title: 'Secure & Easy',
     description:
       'Duis aute irure dolor in reprehenderit in voluptate velit es se cillum dolore eu fugiat nulla pariatur. Excepteur sint.',
+    icon: featureSecure,
   },
   {
     title: 'Supports All Students',
     description:
       'Duis aute irure dolor in reprehenderit in voluptate velit es se cillum dolore eu fugiat nulla pariatur. Excepteur sint.',
+    icon: featureHeart,
   },
 ]
 
@@ -22,11 +29,13 @@ const collabFeatures: Feature[] = [
     title: 'Purely Collaborative',
     description:
       'Duis aute irure dolor in reprehenderit in voluptate velit es se cillum dolore eu fugiat nulla pariatur. Excepteur sint.',
+    icon: featurePeople,
   },
   {
     title: 'Supports All Students',
     description:
       'Duis aute irure dolor in reprehenderit in voluptate velit es se cillum dolore eu fugiat nulla pariatur. Excepteur sint.',
+    icon: featureHeart,
   },
 ]
 </script>
@@ -48,17 +57,7 @@ const collabFeatures: Feature[] = [
         </h2>
         <ul class="mt-8 space-y-6">
           <li v-for="feature in secureFeatures" :key="feature.title" class="flex gap-4">
-            <span
-              class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-blue-300 text-blue-600"
-            >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none">
-                <path
-                  d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                />
-              </svg>
-            </span>
+            <img :src="feature.icon" alt="" aria-hidden="true" class="mt-1 h-9 w-9 shrink-0" />
             <div>
               <h3 class="font-semibold text-gray-900">{{ feature.title }}</h3>
               <p class="mt-1 text-sm text-gray-500">{{ feature.description }}</p>
@@ -76,13 +75,7 @@ const collabFeatures: Feature[] = [
         </h2>
         <ul class="mt-8 space-y-6">
           <li v-for="feature in collabFeatures" :key="feature.title" class="flex gap-4">
-            <span
-              class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-blue-300 text-blue-600"
-            >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none">
-                <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6" />
-              </svg>
-            </span>
+            <img :src="feature.icon" alt="" aria-hidden="true" class="mt-1 h-9 w-9 shrink-0" />
             <div>
               <h3 class="font-semibold text-gray-900">{{ feature.title }}</h3>
               <p class="mt-1 text-sm text-gray-500">{{ feature.description }}</p>

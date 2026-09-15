@@ -1,10 +1,12 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import logo from '@/assets/landing/logo.svg'
+</script>
 
 <template>
   <header class="w-full bg-white">
     <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-      <a href="/" class="text-xl font-bold text-gray-900">
-        Course<span class="text-blue-600">Flow</span>
+      <a href="/">
+        <img :src="logo" alt="CourseFlow" class="h-4" />
       </a>
 
       <div class="flex items-center gap-4 sm:gap-8">

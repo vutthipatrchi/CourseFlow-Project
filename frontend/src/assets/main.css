@@ -3,13 +3,15 @@
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
-  /* Blue */
-  --color-blue-100: #eaf1fb;
-  --color-blue-200: #c7dbf5;
-  --color-blue-300: #9fc1ec;
-  --color-blue-400: #6fa0e0;
-  --color-blue-500: #4c84d6;
-  --color-blue-600: #3568be;
+  /* Blue (anchored to the real exported brand assets: dot-small #C6DCFF,
+     hero gradient light stop #95BEFF, feature icon stroke #5483D0,
+     social icon background #2F5FAC) */
+  --color-blue-100: #c6dcff;
+  --color-blue-200: #b3d0fa;
+  --color-blue-300: #95beff;
+  --color-blue-400: #6fa0e6;
+  --color-blue-500: #5483d0;
+  --color-blue-600: #2f5fac;
   --color-blue-700: #274e93;
   --color-blue-800: #1b3868;
   --color-blue-900: #0f2040;
@@ -25,12 +27,12 @@
   --color-gray-800: #383d48;
   --color-gray-900: #1d2029;
 
-  /* Orange */
+  /* Orange (500 anchored to the real hero-triangle asset #FBAA1C) */
   --color-orange-100: #fdecd8;
-  --color-orange-500: #f2994a;
+  --color-orange-500: #fbaa1c;
 
   /* Utility */
-  --color-utility-green: #27ae60;
+  --color-utility-green: #2fac61;
   --color-utility-inner1: #5b93f2;
   --color-utility-inner2: #2f6fed;
 }

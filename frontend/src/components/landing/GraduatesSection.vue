@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import quoteMarkSm from '@/assets/landing/quote-mark-sm.svg'
+import quoteMarkLg from '@/assets/landing/quote-mark-lg.svg'
+
 interface Graduate {
   name: string
   quote: string
@@ -46,10 +49,20 @@ const graduates: Graduate[] = [
           class="h-40 w-full shrink-0 rounded-xl object-cover sm:w-28"
         />
         <div>
-          <span class="text-3xl leading-none text-blue-300">&ldquo;</span>
-          <p class="font-semibold text-blue-600">{{ graduate.name }}</p>
+          <img
+            :src="graduate.highlighted ? quoteMarkLg : quoteMarkSm"
+            alt=""
+            aria-hidden="true"
+            class="h-4 w-auto"
+          />
+          <p class="mt-1 font-semibold text-blue-600">{{ graduate.name }}</p>
           <p class="mt-2 text-sm text-gray-500">{{ graduate.quote }}</p>
-          <span class="mt-2 block text-right text-3xl leading-none text-blue-300">&rdquo;</span>
+          <img
+            :src="graduate.highlighted ? quoteMarkLg : quoteMarkSm"
+            alt=""
+            aria-hidden="true"
+            class="mt-2 ml-auto h-4 w-auto rotate-180"
+          />
         </div>
       </article>
     </div>
