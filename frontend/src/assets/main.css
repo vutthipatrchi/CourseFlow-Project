@@ -15,7 +15,7 @@
   --color-blue-600: #2f5fac;
   --color-blue-700: #274e93;
   --color-blue-800: #1b3868;
-  --color-blue-900: #0f2040;
+  --color-blue-900: #183056;
 
   /* Gray */
   --color-gray-100: #f5f6f8;
@@ -32,9 +32,9 @@
      nav text in the reference export) */
   --color-darkblue-500: #191c77;
 
-  /* Orange (500 anchored to the real hero-triangle asset #FBAA1C) */
+  /* Orange (500 anchored to the "Register here" CTA button border/text #F47E20) */
   --color-orange-100: #fdecd8;
-  --color-orange-500: #fbaa1c;
+  --color-orange-500: #f47e20;
 
   /* Utility */
   --color-utility-green: #2fac61;

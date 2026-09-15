@@ -12,7 +12,7 @@ const socials = [
 </script>
 
 <template>
-  <footer class="bg-gray-900">
+  <footer class="bg-blue-900">
     <div
       class="mx-auto flex max-w-6xl flex-col items-center gap-6 px-6 py-10 text-gray-300 sm:flex-row sm:justify-between"
     >
