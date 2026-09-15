@@ -2,8 +2,8 @@
 import featureSecure from '@/assets/landing/feature-secure.svg'
 import featureHeart from '@/assets/landing/feature-heart.svg'
 import featurePeople from '@/assets/landing/feature-people.svg'
-import featurePhotoSecure from '@/assets/landing/feature-photo-secure.svg'
-import featurePhotoCollab from '@/assets/landing/feature-photo-collab.svg'
+import featurePhotoSecure from '@/assets/landing/feature-photo-secure.jpg'
+import featurePhotoCollab from '@/assets/landing/feature-photo-collab.jpg'
 
 interface Feature {
   title: string
@@ -49,7 +49,7 @@ const collabFeatures: Feature[] = [
       <img
         :src="featurePhotoSecure"
         alt="Student working on code across two screens"
-        class="w-full shadow-lg"
+        class="w-full rounded-lg shadow-lg"
       />
       <div>
         <h2 class="text-2xl font-bold text-gray-900 md:text-3xl">
@@ -86,7 +86,7 @@ const collabFeatures: Feature[] = [
       <img
         :src="featurePhotoCollab"
         alt="Tutor's laptop screen showing a course website mockup"
-        class="w-full shadow-lg md:order-2"
+        class="w-full rounded-lg shadow-lg md:order-2"
       />
     </div>
   </section>
