@@ -4,6 +4,7 @@ import heroRing from '@/assets/landing/hero-ring.svg'
 import heroDot from '@/assets/landing/hero-dot.svg'
 import heroCross from '@/assets/landing/hero-cross.svg'
 import heroTriangle from '@/assets/landing/hero-triangle.svg'
+import dotSmall from '@/assets/landing/dot-small.svg'
 import heroIllustration from '@/assets/landing/hero-illustration.svg'
 </script>
 
@@ -19,11 +20,14 @@ import heroIllustration from '@/assets/landing/hero-illustration.svg'
     />
 
     <!-- decorative shapes -->
-    <span
-      class="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-blue-200/50 md:-left-20 md:-top-20 md:h-72 md:w-72"
-    ></span>
-    <img :src="heroRing" alt="" aria-hidden="true" class="absolute left-10 top-10 h-8 w-8" />
-    <img :src="heroDot" alt="" aria-hidden="true" class="absolute left-20 bottom-14 h-12 w-16" />
+    <img :src="heroRing" alt="" aria-hidden="true" class="absolute left-8 top-10 h-9 w-9 md:left-12" />
+    <img
+      :src="dotSmall"
+      alt=""
+      aria-hidden="true"
+      class="absolute left-[42%] top-[72%] hidden h-3 w-3 md:block"
+    />
+    <img :src="heroDot" alt="" aria-hidden="true" class="absolute left-[12%] bottom-0 h-14 w-20" />
     <img
       :src="heroCross"
       alt=""
