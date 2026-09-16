@@ -3,18 +3,33 @@ import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import DeleteConfirmationModal from '@/components/admin/DeleteConfirmationModal.vue'
 import { deletePromoCode, fetchPromoCodes } from '@/services/promoCodes'
+import { fetchCourseCatalog } from '@/services/courses'
 import { formatDateTime } from '@/utils/formatDateTime'
 import type { PromoCode } from '@/types/promoCode'
+import type { CourseOption } from '@/types/course'
 
 const promoCodes = ref<PromoCode[]>([])
+const courses = ref<CourseOption[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
 const deleteTarget = ref<PromoCode | null>(null)
 
 onMounted(async () => {
-  promoCodes.value = await fetchPromoCodes()
+  const [loadedPromoCodes, loadedCourses] = await Promise.all([
+    fetchPromoCodes(),
+    fetchCourseCatalog(),
+  ])
+  promoCodes.value = loadedPromoCodes
+  courses.value = loadedCourses
   isLoading.value = false
 })
+
+function coursesIncludedLabel(courseIds: string[]): string {
+  if (courseIds.length === 0) return 'All'
+  return courseIds
+    .map((id) => courses.value.find((course) => course.id === id)?.name ?? id)
+    .join(', ')
+}
 
 const filteredPromoCodes = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -110,8 +125,11 @@ function confirmDelete() {
               {{ formatMinimumPurchase(promoCode.minimumPurchase) }}
             </td>
             <td class="px-4 py-3">{{ discountTypeLabel(promoCode.discountType) }}</td>
-            <td class="max-w-56 truncate px-4 py-3" :title="promoCode.coursesIncluded">
-              {{ promoCode.coursesIncluded }}
+            <td
+              class="max-w-56 truncate px-4 py-3"
+              :title="coursesIncludedLabel(promoCode.courseIds)"
+            >
+              {{ coursesIncludedLabel(promoCode.courseIds) }}
             </td>
             <td class="px-4 py-3 whitespace-nowrap text-gray-600">
               {{ formatDateTime(promoCode.createdAt) }}

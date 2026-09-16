@@ -37,6 +37,17 @@ const courseCatalog: CourseOption[] = [
       },
     ],
   },
+  {
+    id: 'product-strategy-foundations',
+    name: 'Product Strategy Foundations',
+    lessons: [
+      {
+        id: 'strategy-basics',
+        name: 'Strategy Basics',
+        subLessons: [{ id: 'defining-product-vision', name: 'Defining Product Vision' }],
+      },
+    ],
+  },
 ]
 
 export function fetchCourseCatalog(): Promise<CourseOption[]> {

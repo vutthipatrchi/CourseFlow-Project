@@ -5,6 +5,8 @@ export interface PromoCode {
   code: string
   minimumPurchase: number
   discountType: DiscountType
-  coursesIncluded: string
+  discountValue: number
+  /** Course ids this promo applies to; an empty array means "All courses". */
+  courseIds: string[]
   createdAt: string
 }
