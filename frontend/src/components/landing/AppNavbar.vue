@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import logo from '@/assets/landing/logo.svg'
+import { Show, SignInButton, UserButton } from '@clerk/vue'
 </script>
 
 <template>
@@ -11,12 +12,19 @@ import logo from '@/assets/landing/logo.svg'
 
       <div class="flex items-center gap-4 sm:gap-8">
         <a href="#" class="text-sm font-medium text-darkblue-500 hover:text-blue-600">Our Courses</a>
-        <button
-          type="button"
-          class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-        >
-          Log in
-        </button>
+        <Show when="signed-out">
+          <SignInButton>
+            <button
+              type="button"
+              class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Log in
+            </button>
+          </SignInButton>
+        </Show>
+        <Show when="signed-in">
+          <UserButton />
+        </Show>
       </div>
     </nav>
   </header>
