@@ -1,6 +1,6 @@
 import type { Assignment } from '@/types/assignment'
 
-const mockAssignments: Assignment[] = Array.from({ length: 8 }, (_, index) => ({
+let assignments: Assignment[] = Array.from({ length: 8 }, (_, index) => ({
   id: `mock-${index + 1}`,
   detail: 'What are the 4 elements of a good service design?',
   course: 'Service Design Essentials',
@@ -11,6 +11,18 @@ const mockAssignments: Assignment[] = Array.from({ length: 8 }, (_, index) => ({
 
 export function fetchAssignments(): Promise<Assignment[]> {
   return new Promise((resolve) => {
-    setTimeout(() => resolve(mockAssignments.map((assignment) => ({ ...assignment }))), 300)
+    setTimeout(() => resolve(assignments.map((assignment) => ({ ...assignment }))), 300)
   })
+}
+
+export function createAssignment(
+  input: Pick<Assignment, 'detail' | 'course' | 'lesson' | 'subLesson'>,
+): Assignment {
+  const assignment: Assignment = {
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    ...input,
+  }
+  assignments = [assignment, ...assignments]
+  return assignment
 }

@@ -40,11 +40,6 @@ function formatCreatedAt(iso: string): string {
   return `${datePart} ${hours12}:${minutes}${period}`
 }
 
-function openAddModal() {
-  editingAssignment.value = null
-  isModalOpen.value = true
-}
-
 function openEditModal(assignment: Assignment) {
   editingAssignment.value = assignment
   isModalOpen.value = true
@@ -105,13 +100,12 @@ function handleDelete(assignment: Assignment) {
           />
         </div>
 
-        <button
-          type="button"
+        <RouterLink
+          to="/admin/assignments/new"
           class="flex shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-          @click="openAddModal"
         >
           <span aria-hidden="true">+</span> Add Assignment
-        </button>
+        </RouterLink>
       </div>
     </div>
 

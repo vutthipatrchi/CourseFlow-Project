@@ -33,18 +33,20 @@ describe('AssignmentsView', () => {
     expect(wrapper.text()).toContain('No assignments found.')
   })
 
-  it('adds a new assignment through the modal', async () => {
+  it('links "+ Add Assignment" to the full-page create route instead of a modal', async () => {
     const wrapper = await mountAndLoad()
-    await wrapper.get('button.bg-blue-600').trigger('click')
+    expect(wrapper.get('a.bg-blue-600').attributes('href')).toBe('/admin/assignments/new')
+  })
 
-    await wrapper.get('input[name="detail"]').setValue('Brand new assignment')
-    await wrapper.get('input[name="course"]').setValue('New Course')
-    await wrapper.get('input[name="lesson"]').setValue('New Lesson')
-    await wrapper.get('input[name="subLesson"]').setValue('New Sub-lesson')
+  it('edits an assignment through the modal', async () => {
+    const wrapper = await mountAndLoad()
+    await wrapper.get('button[aria-label^="Edit"]').trigger('click')
+
+    await wrapper.get('input[name="detail"]').setValue('Updated assignment detail')
     await wrapper.get('form').trigger('submit.prevent')
 
-    expect(wrapper.findAll('tbody tr')).toHaveLength(9)
-    expect(wrapper.text()).toContain('Brand new assignment')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(8)
+    expect(wrapper.text()).toContain('Updated assignment detail')
   })
 
   it('deletes an assignment after confirmation', async () => {
