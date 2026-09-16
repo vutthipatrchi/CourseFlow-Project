@@ -1,7 +1,15 @@
 <script setup lang="ts">
-defineProps<{
-  open: boolean
-}>()
+withDefaults(
+  defineProps<{
+    open: boolean
+    message?: string
+    confirmLabel?: string
+  }>(),
+  {
+    message: 'Are you sure you want to delete this assignment?',
+    confirmLabel: 'Yes, I want to delete the assignment',
+  },
+)
 
 const emit = defineEmits<{
   cancel: []
@@ -37,7 +45,7 @@ const emit = defineEmits<{
 
       <hr class="my-4 border-gray-200" />
 
-      <p class="text-sm text-gray-600">Are you sure you want to delete this assignment?</p>
+      <p class="text-sm text-gray-600">{{ message }}</p>
 
       <div class="mt-6 flex flex-col gap-3 sm:flex-row">
         <button
@@ -45,7 +53,7 @@ const emit = defineEmits<{
           class="flex-1 rounded-lg border-2 border-orange-500 bg-white px-4 py-2.5 text-sm font-semibold text-orange-500 hover:bg-orange-500 hover:text-white"
           @click="emit('confirm')"
         >
-          Yes, I want to delete the assignment
+          {{ confirmLabel }}
         </button>
         <button
           type="button"

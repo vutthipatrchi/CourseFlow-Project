@@ -1,40 +1,55 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
-import { deleteAssignment, fetchAssignments } from '@/services/assignments'
+import DeleteConfirmationModal from '@/components/admin/DeleteConfirmationModal.vue'
+import { deletePromoCode, fetchPromoCodes } from '@/services/promoCodes'
 import { formatDateTime } from '@/utils/formatDateTime'
-import type { Assignment } from '@/types/assignment'
+import type { PromoCode } from '@/types/promoCode'
 
-const assignments = ref<Assignment[]>([])
+const promoCodes = ref<PromoCode[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
+const deleteTarget = ref<PromoCode | null>(null)
 
 onMounted(async () => {
-  assignments.value = await fetchAssignments()
+  promoCodes.value = await fetchPromoCodes()
   isLoading.value = false
 })
 
-const filteredAssignments = computed(() => {
+const filteredPromoCodes = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  if (!query) return assignments.value
-  return assignments.value.filter((assignment) =>
-    [assignment.detail, assignment.course, assignment.lesson, assignment.subLesson].some((field) =>
-      field.toLowerCase().includes(query),
-    ),
-  )
+  if (!query) return promoCodes.value
+  return promoCodes.value.filter((promoCode) => promoCode.code.toLowerCase().includes(query))
 })
 
-function handleDelete(assignment: Assignment) {
-  if (!confirm(`Delete "${assignment.detail}"?`)) return
-  deleteAssignment(assignment.id)
-  assignments.value = assignments.value.filter((a) => a.id !== assignment.id)
+function formatMinimumPurchase(amount: number): string {
+  return new Intl.NumberFormat('en-US').format(amount)
+}
+
+function discountTypeLabel(discountType: PromoCode['discountType']): string {
+  return discountType === 'percent' ? 'Percent' : 'Fixed amount'
+}
+
+function openDeleteModal(promoCode: PromoCode) {
+  deleteTarget.value = promoCode
+}
+
+function closeDeleteModal() {
+  deleteTarget.value = null
+}
+
+function confirmDelete() {
+  if (!deleteTarget.value) return
+  deletePromoCode(deleteTarget.value.id)
+  promoCodes.value = promoCodes.value.filter((promoCode) => promoCode.id !== deleteTarget.value?.id)
+  deleteTarget.value = null
 }
 </script>
 
 <template>
   <AdminLayout>
     <div class="flex flex-wrap items-center justify-between gap-4">
-      <h1 class="text-2xl font-bold text-gray-900">Assignments</h1>
+      <h1 class="text-2xl font-bold text-gray-900">Promo code</h1>
 
       <div class="flex w-full flex-1 flex-wrap items-center justify-end gap-4 sm:w-auto">
         <div class="relative min-w-48 flex-1 sm:max-w-xs sm:flex-none">
@@ -56,16 +71,16 @@ function handleDelete(assignment: Assignment) {
             v-model="searchQuery"
             type="search"
             placeholder="Search..."
-            aria-label="Search assignments"
+            aria-label="Search promo codes"
             class="w-full rounded-lg border border-gray-300 py-2 pr-3 pl-9 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none"
           />
         </div>
 
         <RouterLink
-          to="/admin/assignments/new"
+          to="/admin/promo-code/new"
           class="flex shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
         >
-          <span aria-hidden="true">+</span> Add Assignment
+          <span aria-hidden="true">+</span> Add Promo code
         </RouterLink>
       </div>
     </div>
@@ -74,42 +89,40 @@ function handleDelete(assignment: Assignment) {
       <table class="w-full min-w-max text-left text-sm">
         <thead class="bg-gray-100 text-gray-600">
           <tr>
-            <th class="px-4 py-3 font-medium">Assignment detail</th>
-            <th class="px-4 py-3 font-medium">Course</th>
-            <th class="px-4 py-3 font-medium">Lesson</th>
-            <th class="px-4 py-3 font-medium">Sub-lesson</th>
+            <th class="px-4 py-3 font-medium">Promo code</th>
+            <th class="px-4 py-3 font-medium">Minimum purchase (THB)</th>
+            <th class="px-4 py-3 font-medium">Discount type</th>
+            <th class="px-4 py-3 font-medium">Courses Included</th>
             <th class="px-4 py-3 font-medium">Created date</th>
             <th class="px-4 py-3 font-medium">Action</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-if="isLoading">
-            <td colspan="6" class="px-4 py-8 text-center text-gray-500">Loading assignments…</td>
+            <td colspan="6" class="px-4 py-8 text-center text-gray-500">Loading promo codes…</td>
           </tr>
-          <tr v-else-if="filteredAssignments.length === 0">
-            <td colspan="6" class="px-4 py-8 text-center text-gray-500">No assignments found.</td>
+          <tr v-else-if="filteredPromoCodes.length === 0">
+            <td colspan="6" class="px-4 py-8 text-center text-gray-500">No promo codes found.</td>
           </tr>
-          <tr v-for="assignment in filteredAssignments" v-else :key="assignment.id">
-            <td class="max-w-56 truncate px-4 py-3" :title="assignment.detail">
-              {{ assignment.detail }}
+          <tr v-for="promoCode in filteredPromoCodes" v-else :key="promoCode.id">
+            <td class="px-4 py-3 font-medium text-gray-900">{{ promoCode.code }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {{ formatMinimumPurchase(promoCode.minimumPurchase) }}
             </td>
-            <td class="max-w-40 truncate px-4 py-3" :title="assignment.course">
-              {{ assignment.course }}
-            </td>
-            <td class="px-4 py-3">{{ assignment.lesson }}</td>
-            <td class="max-w-48 truncate px-4 py-3" :title="assignment.subLesson">
-              {{ assignment.subLesson }}
+            <td class="px-4 py-3">{{ discountTypeLabel(promoCode.discountType) }}</td>
+            <td class="max-w-56 truncate px-4 py-3" :title="promoCode.coursesIncluded">
+              {{ promoCode.coursesIncluded }}
             </td>
             <td class="px-4 py-3 whitespace-nowrap text-gray-600">
-              {{ formatDateTime(assignment.createdAt) }}
+              {{ formatDateTime(promoCode.createdAt) }}
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-3">
                 <button
                   type="button"
                   class="text-blue-600 hover:text-blue-800"
-                  :aria-label="`Delete ${assignment.detail}`"
-                  @click="handleDelete(assignment)"
+                  :aria-label="`Delete ${promoCode.code}`"
+                  @click="openDeleteModal(promoCode)"
                 >
                   <svg viewBox="0 0 24 24" fill="none" class="h-4 w-4" aria-hidden="true">
                     <path
@@ -122,9 +135,9 @@ function handleDelete(assignment: Assignment) {
                   </svg>
                 </button>
                 <RouterLink
-                  :to="`/admin/assignments/${assignment.id}/edit`"
+                  :to="`/admin/promo-code/${promoCode.id}/edit`"
                   class="text-blue-600 hover:text-blue-800"
-                  :aria-label="`Edit ${assignment.detail}`"
+                  :aria-label="`Edit ${promoCode.code}`"
                 >
                   <svg viewBox="0 0 24 24" fill="none" class="h-4 w-4" aria-hidden="true">
                     <path
@@ -141,5 +154,13 @@ function handleDelete(assignment: Assignment) {
         </tbody>
       </table>
     </div>
+
+    <DeleteConfirmationModal
+      :open="deleteTarget !== null"
+      message="Are you sure you want to delete this promo code?"
+      confirm-label="Yes, I want to delete the promo code"
+      @cancel="closeDeleteModal"
+      @confirm="confirmDelete"
+    />
   </AdminLayout>
 </template>
