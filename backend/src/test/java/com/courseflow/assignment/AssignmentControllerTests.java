@@ -1,0 +1,85 @@
+package com.courseflow.assignment;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import tools.jackson.databind.ObjectMapper;
+import java.time.OffsetDateTime;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+@WebMvcTest(AssignmentController.class)
+@ActiveProfiles("test")
+class AssignmentControllerTests {
+
+    @Autowired
+    private MockMvc mvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private AssignmentService assignmentService;
+
+    @Test
+    void createsAssignmentAndReturns201WithLocation() throws Exception {
+        var request = new CreateAssignmentRequest(1L, "Write a short essay", 3, "draft");
+        var response = new AssignmentResponse(10L, 1L, "Write a short essay", 3, "draft", OffsetDateTime.now());
+        when(assignmentService.create(any())).thenReturn(response);
+
+        mvc.perform(post("/api/admin/assignments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(header().string("Location", "/api/admin/assignments/10"))
+            .andExpect(jsonPath("$.id").value(10))
+            .andExpect(jsonPath("$.status").value("draft"));
+    }
+
+    @Test
+    void rejectsBlankDescription() throws Exception {
+        var request = new CreateAssignmentRequest(1L, "", 3, "draft");
+
+        mvc.perform(post("/api/admin/assignments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors.description").exists());
+    }
+
+    @Test
+    void rejectsNonPositiveDurationDays() throws Exception {
+        var request = new CreateAssignmentRequest(1L, "Write a short essay", 0, "draft");
+
+        mvc.perform(post("/api/admin/assignments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors.durationDays").exists());
+    }
+
+    @Test
+    void returnsAllAssignments() throws Exception {
+        var summary = new AssignmentSummary(
+            1L, "Write a short essay", 3, "draft",
+            "Introduction to Web Development", "HTML Basics", "Structuring a Page",
+            OffsetDateTime.now());
+        when(assignmentService.findAll()).thenReturn(List.of(summary));
+
+        mvc.perform(get("/api/admin/assignments"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(1))
+            .andExpect(jsonPath("$[0].courseName").value("Introduction to Web Development"));
+    }
+}

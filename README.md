@@ -49,6 +49,11 @@ Add each schema change as a new migration; do not edit migrations already applie
 Docker keeps data in the `postgres_data` volume. `docker compose down` stops
 services and retains that data.
 
+The `local` profile also loads `backend/src/main/resources/db/seed/`, which
+seeds demo course/lesson/sub-lesson data used by the admin assignments create
+form's sub-lesson dropdown. The default `standalone` profile has no database
+and no course data, so that dropdown is empty until you run with `local`.
+
 The root `.env` is read by Docker Compose, not Spring Boot. If you change the
 database name, port or credentials, also set `DB_URL`, `DB_USERNAME`, and
 `DB_PASSWORD` in the backend terminal. `SERVER_PORT` defaults to 8080; update
