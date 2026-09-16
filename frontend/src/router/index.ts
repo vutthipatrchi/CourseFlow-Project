@@ -37,6 +37,11 @@ const router = createRouter({
       name: 'admin-assignments-new',
       component: () => import('../views/admin/AddAssignmentView.vue'),
     },
+    {
+      path: '/admin/assignments/:id/edit',
+      name: 'admin-assignments-edit',
+      component: () => import('../views/admin/EditAssignmentView.vue'),
+    },
   ],
 })
 

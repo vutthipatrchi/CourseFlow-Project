@@ -15,6 +15,15 @@ export function fetchAssignments(): Promise<Assignment[]> {
   })
 }
 
+export function fetchAssignmentById(id: string): Promise<Assignment | null> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const found = assignments.find((assignment) => assignment.id === id)
+      resolve(found ? { ...found } : null)
+    }, 300)
+  })
+}
+
 export function createAssignment(
   input: Pick<Assignment, 'detail' | 'course' | 'lesson' | 'subLesson'>,
 ): Assignment {
@@ -25,4 +34,21 @@ export function createAssignment(
   }
   assignments = [assignment, ...assignments]
   return assignment
+}
+
+export function updateAssignment(
+  id: string,
+  input: Pick<Assignment, 'detail' | 'course' | 'lesson' | 'subLesson'>,
+): Assignment | null {
+  let updated: Assignment | null = null
+  assignments = assignments.map((assignment) => {
+    if (assignment.id !== id) return assignment
+    updated = { ...assignment, ...input }
+    return updated
+  })
+  return updated
+}
+
+export function deleteAssignment(id: string): void {
+  assignments = assignments.filter((assignment) => assignment.id !== id)
 }

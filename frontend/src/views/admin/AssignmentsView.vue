@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
-import AddAssignmentModal from '@/components/admin/AddAssignmentModal.vue'
-import { fetchAssignments } from '@/services/assignments'
+import { deleteAssignment, fetchAssignments } from '@/services/assignments'
 import type { Assignment } from '@/types/assignment'
 
 const assignments = ref<Assignment[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
-const isModalOpen = ref(false)
-const editingAssignment = ref<Assignment | null>(null)
 
 onMounted(async () => {
   assignments.value = await fetchAssignments()
@@ -40,32 +37,9 @@ function formatCreatedAt(iso: string): string {
   return `${datePart} ${hours12}:${minutes}${period}`
 }
 
-function openEditModal(assignment: Assignment) {
-  editingAssignment.value = assignment
-  isModalOpen.value = true
-}
-
-function closeModal() {
-  isModalOpen.value = false
-  editingAssignment.value = null
-}
-
-function handleSave(form: Pick<Assignment, 'detail' | 'course' | 'lesson' | 'subLesson'>) {
-  if (editingAssignment.value) {
-    const target = assignments.value.find((a) => a.id === editingAssignment.value?.id)
-    if (target) Object.assign(target, form)
-  } else {
-    assignments.value.unshift({
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      ...form,
-    })
-  }
-  closeModal()
-}
-
 function handleDelete(assignment: Assignment) {
   if (!confirm(`Delete "${assignment.detail}"?`)) return
+  deleteAssignment(assignment.id)
   assignments.value = assignments.value.filter((a) => a.id !== assignment.id)
 }
 </script>
@@ -160,11 +134,10 @@ function handleDelete(assignment: Assignment) {
                     />
                   </svg>
                 </button>
-                <button
-                  type="button"
+                <RouterLink
+                  :to="`/admin/assignments/${assignment.id}/edit`"
                   class="text-blue-600 hover:text-blue-800"
                   :aria-label="`Edit ${assignment.detail}`"
-                  @click="openEditModal(assignment)"
                 >
                   <svg viewBox="0 0 24 24" fill="none" class="h-4 w-4" aria-hidden="true">
                     <path
@@ -174,19 +147,12 @@ function handleDelete(assignment: Assignment) {
                       stroke-linejoin="round"
                     />
                   </svg>
-                </button>
+                </RouterLink>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-
-    <AddAssignmentModal
-      :open="isModalOpen"
-      :initial="editingAssignment"
-      @close="closeModal"
-      @save="handleSave"
-    />
   </AdminLayout>
 </template>

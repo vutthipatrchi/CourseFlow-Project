@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import { fetchCourseCatalog } from '@/services/courses'
 import { createAssignment } from '@/services/assignments'
+import { useCourseCascade } from '@/composables/useCourseCascade'
 import type { CourseOption } from '@/types/course'
 
 const router = useRouter()
 
 const courses = ref<CourseOption[]>([])
-const courseId = ref('')
-const lessonId = ref('')
-const subLessonId = ref('')
 const assignmentDetail = ref('')
 const submitted = ref(false)
 
@@ -19,25 +17,18 @@ onMounted(async () => {
   courses.value = await fetchCourseCatalog()
 })
 
-const selectedCourse = computed(
-  () => courses.value.find((course) => course.id === courseId.value) ?? null,
-)
-const availableLessons = computed(() => selectedCourse.value?.lessons ?? [])
-const selectedLesson = computed(
-  () => availableLessons.value.find((lesson) => lesson.id === lessonId.value) ?? null,
-)
-const availableSubLessons = computed(() => selectedLesson.value?.subLessons ?? [])
-const selectedSubLesson = computed(
-  () => availableSubLessons.value.find((subLesson) => subLesson.id === subLessonId.value) ?? null,
-)
-
-watch(courseId, () => {
-  lessonId.value = ''
-  subLessonId.value = ''
-})
-watch(lessonId, () => {
-  subLessonId.value = ''
-})
+const {
+  courseId,
+  lessonId,
+  subLessonId,
+  selectedCourse,
+  selectedLesson,
+  selectedSubLesson,
+  availableLessons,
+  availableSubLessons,
+  handleCourseChange,
+  handleLessonChange,
+} = useCourseCascade(courses)
 
 const errors = computed(() => ({
   course: courseId.value ? '' : 'Please select a course.',
@@ -96,6 +87,7 @@ function handleCreate() {
           id="course"
           v-model="courseId"
           class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          @change="handleCourseChange"
         >
           <option value="" disabled>Select Course</option>
           <option v-for="course in courses" :key="course.id" :value="course.id">
@@ -115,6 +107,7 @@ function handleCreate() {
             v-model="lessonId"
             :disabled="!courseId"
             class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+            @change="handleLessonChange"
           >
             <option value="" disabled>Select Lesson</option>
             <option v-for="lesson in availableLessons" :key="lesson.id" :value="lesson.id">

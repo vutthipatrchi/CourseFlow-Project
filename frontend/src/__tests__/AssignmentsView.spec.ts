@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
-import AssignmentsView from '../views/admin/AssignmentsView.vue'
 
+// services/assignments.ts keeps its mock data in a module-level singleton so
+// deletes/creates persist across a real page navigation. Reset the module
+// registry per test so that singleton doesn't leak between tests here.
 async function mountAndLoad() {
+  vi.resetModules()
+  const { default: AssignmentsView } = await import('../views/admin/AssignmentsView.vue')
   const router = createRouter({
     history: createWebHistory(),
     routes: [{ path: '/', component: AssignmentsView }],
@@ -33,20 +37,16 @@ describe('AssignmentsView', () => {
     expect(wrapper.text()).toContain('No assignments found.')
   })
 
-  it('links "+ Add Assignment" to the full-page create route instead of a modal', async () => {
+  it('links "+ Add Assignment" to the full-page create route', async () => {
     const wrapper = await mountAndLoad()
     expect(wrapper.get('a.bg-blue-600').attributes('href')).toBe('/admin/assignments/new')
   })
 
-  it('edits an assignment through the modal', async () => {
+  it("links each row's edit icon to its full-page edit route", async () => {
     const wrapper = await mountAndLoad()
-    await wrapper.get('button[aria-label^="Edit"]').trigger('click')
-
-    await wrapper.get('input[name="detail"]').setValue('Updated assignment detail')
-    await wrapper.get('form').trigger('submit.prevent')
-
-    expect(wrapper.findAll('tbody tr')).toHaveLength(8)
-    expect(wrapper.text()).toContain('Updated assignment detail')
+    expect(wrapper.get('a[aria-label^="Edit"]').attributes('href')).toBe(
+      '/admin/assignments/mock-1/edit',
+    )
   })
 
   it('deletes an assignment after confirmation', async () => {
