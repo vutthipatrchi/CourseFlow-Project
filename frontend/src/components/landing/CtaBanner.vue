@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ctaIllustration from '@/assets/landing/cta-illustration.svg'
 import dotRingGreen from '@/assets/landing/dot-ring-green.svg'
+import { Show } from '@clerk/vue'
 </script>
 
 <template>
@@ -24,7 +25,8 @@ import dotRingGreen from '@/assets/landing/dot-ring-green.svg'
           type="button"
           class="mt-6 rounded-lg border-2 border-orange-500 bg-white px-7 py-3 text-sm font-semibold text-orange-500 hover:bg-orange-500 hover:text-white"
         >
-          Register here
+          <Show when="signed-in">Check out our courses</Show>
+          <Show when="signed-out">Register here</Show>
         </button>
       </div>
 

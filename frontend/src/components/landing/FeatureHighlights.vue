@@ -92,7 +92,7 @@ const collabFeatures: Feature[] = [
       <div class="grid grid-cols-1 items-center gap-12 md:grid-cols-2">
         <div class="md:order-1">
           <h2 class="text-2xl font-bold text-gray-900 md:text-3xl">
-            Interactions between the tutor and the learners
+            Interaction between the tutor and the learners
           </h2>
           <ul class="mt-8 space-y-6">
             <li v-for="feature in collabFeatures" :key="feature.title" class="flex gap-4">

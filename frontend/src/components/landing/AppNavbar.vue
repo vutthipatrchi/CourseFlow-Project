@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import logo from '@/assets/landing/logo.svg'
-import { Show, SignInButton, UserButton } from '@clerk/vue'
+import { Show, SignInButton } from '@clerk/vue'
+import UserMenu from './UserMenu.vue'
 </script>
 
 <template>
@@ -23,7 +24,7 @@ import { Show, SignInButton, UserButton } from '@clerk/vue'
           </SignInButton>
         </Show>
         <Show when="signed-in">
-          <UserButton />
+          <UserMenu />
         </Show>
       </div>
     </nav>
