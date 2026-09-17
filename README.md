@@ -55,6 +55,15 @@ database name, port or credentials, also set `DB_URL`, `DB_USERNAME`, and
 the Vite proxy if you change it. Never place secrets in frontend code or `VITE_*`
 variables, because those are visible to browser users.
 
+### Using Supabase instead of local Postgres
+
+To point the `local` profile at a hosted Supabase database instead of the
+Docker container, copy `backend/.env.properties.example` to
+`backend/.env.properties` (gitignored) and fill in the connection string from
+Supabase → Project Settings → Database → Connection string. Spring Boot loads
+this file automatically via `spring.config.import` if it exists, so no shell
+env vars are needed.
+
 ## Checks
 
 ```powershell
