@@ -17,36 +17,42 @@ function formatDate(value: string): string {
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
-    <table class="min-w-full divide-y divide-gray-200 text-sm">
-      <thead class="bg-gray-100">
+  <div class="overflow-hidden rounded-lg bg-white">
+    <table class="min-w-full text-left">
+      <thead class="h-[41px] bg-[#E4E6ED] text-sm text-[#424C6B]">
         <tr>
-          <th class="px-4 py-3 text-left font-semibold text-gray-700">Assignment detail</th>
-          <th class="px-4 py-3 text-left font-semibold text-gray-700">Course</th>
-          <th class="px-4 py-3 text-left font-semibold text-gray-700">Lesson</th>
-          <th class="px-4 py-3 text-left font-semibold text-gray-700">Sub-lesson</th>
-          <th class="px-4 py-3 text-left font-semibold text-gray-700">Duration</th>
-          <th class="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
-          <th class="px-4 py-3 text-left font-semibold text-gray-700">Created</th>
+          <th class="w-12 px-6 py-2.5 text-center font-normal">#</th>
+          <th class="px-4 py-2.5 font-normal">Assignment detail</th>
+          <th class="px-4 py-2.5 font-normal">Course</th>
+          <th class="px-4 py-2.5 font-normal">Lesson</th>
+          <th class="px-4 py-2.5 font-normal">Sub-lesson</th>
+          <th class="px-4 py-2.5 font-normal">Duration</th>
+          <th class="px-4 py-2.5 font-normal">Status</th>
+          <th class="px-6 py-2.5 font-normal">Created date</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-200">
+      <tbody>
         <tr v-if="loading">
-          <td class="px-4 py-6 text-center text-gray-500" colspan="7">Loading assignments…</td>
+          <td class="px-4 py-8 text-center text-[#646D89]" colspan="8">Loading assignments…</td>
         </tr>
         <tr v-else-if="error">
-          <td class="px-4 py-6 text-center text-red-600" colspan="7">{{ error }}</td>
+          <td class="px-4 py-8 text-center text-red-600" colspan="8">{{ error }}</td>
         </tr>
         <tr v-else-if="assignments.length === 0">
-          <td class="px-4 py-6 text-center text-gray-500" colspan="7">No assignments yet.</td>
+          <td class="px-4 py-8 text-center text-[#646D89]" colspan="8">No assignments yet.</td>
         </tr>
-        <tr v-for="assignment in assignments" :key="assignment.id">
-          <td class="max-w-xs truncate px-4 py-3 text-gray-900">{{ assignment.description }}</td>
-          <td class="px-4 py-3 text-gray-700">{{ assignment.courseName }}</td>
-          <td class="px-4 py-3 text-gray-700">{{ assignment.lessonName }}</td>
-          <td class="px-4 py-3 text-gray-700">{{ assignment.subLessonName }}</td>
-          <td class="px-4 py-3 text-gray-700">{{ assignment.durationDays }} day(s)</td>
-          <td class="px-4 py-3">
+        <tr
+          v-for="(assignment, index) in assignments"
+          :key="assignment.id"
+          class="min-h-[88px] border-b border-[#F1F2F6] text-base text-[#000000]"
+        >
+          <td class="px-6 py-8 text-center">{{ index + 1 }}</td>
+          <td class="max-w-xs truncate px-4 py-8">{{ assignment.description }}</td>
+          <td class="px-4 py-8">{{ assignment.courseName }}</td>
+          <td class="px-4 py-8">{{ assignment.lessonName }}</td>
+          <td class="px-4 py-8">{{ assignment.subLessonName }}</td>
+          <td class="px-4 py-8">{{ assignment.durationDays }} day(s)</td>
+          <td class="px-4 py-8">
             <span
               class="rounded-full px-2 py-0.5 text-xs font-semibold"
               :class="
@@ -58,7 +64,7 @@ function formatDate(value: string): string {
               {{ assignment.status }}
             </span>
           </td>
-          <td class="px-4 py-3 text-gray-700">{{ formatDate(assignment.createdAt) }}</td>
+          <td class="px-6 py-8">{{ formatDate(assignment.createdAt) }}</td>
         </tr>
       </tbody>
     </table>

@@ -45,8 +45,7 @@ function handleCancel() {
 </script>
 
 <template>
-  <AdminLayout>
-    <h1 class="mb-6 text-2xl font-semibold text-gray-900">New assignment</h1>
+  <AdminLayout title="New Assignment">
     <p v-if="serverError" class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
       {{ serverError }}
     </p>

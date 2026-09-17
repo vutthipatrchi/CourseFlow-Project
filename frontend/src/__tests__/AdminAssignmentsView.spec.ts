@@ -22,6 +22,10 @@ function makeRouter() {
   })
 }
 
+const stubs = {
+  AdminLayout: { template: '<div><slot name="actions" /><slot /></div>' },
+}
+
 const sampleAssignment: Assignment = {
   id: 1,
   description: 'Build a todo app',
@@ -40,7 +44,7 @@ describe('AdminAssignmentsView', () => {
     router.push('/admin/assignments')
     await router.isReady()
 
-    const wrapper = mount(AdminAssignmentsView, { global: { plugins: [router] } })
+    const wrapper = mount(AdminAssignmentsView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Build a todo app')
@@ -54,7 +58,7 @@ describe('AdminAssignmentsView', () => {
     router.push('/admin/assignments')
     await router.isReady()
 
-    const wrapper = mount(AdminAssignmentsView, { global: { plugins: [router] } })
+    const wrapper = mount(AdminAssignmentsView, { global: { plugins: [router], stubs } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('No assignments yet.')
