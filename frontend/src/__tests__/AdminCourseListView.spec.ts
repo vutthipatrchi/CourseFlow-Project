@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { resetCourses } from '../admin/courseStore'
 import { clearUserRole, hasAdminAccess, setUserRole } from '../auth/access'
 import AdminCourseListView from '../views/AdminCourseListView.vue'
 
-beforeEach(() => clearUserRole())
+beforeEach(() => {
+  clearUserRole()
+  resetCourses()
+})
 
 function mountView() {
   const router = createRouter({
@@ -12,7 +16,17 @@ function mountView() {
     routes: [
       { path: '/', component: { template: '<div>Home</div>' } },
       { path: '/login', component: { template: '<div>Login</div>' } },
-      { path: '/admin/courses', component: AdminCourseListView },
+      { path: '/admin/courses', name: 'admin-courses', component: AdminCourseListView },
+      {
+        path: '/admin/courses/new',
+        name: 'admin-course-create',
+        component: { template: '<div />' },
+      },
+      {
+        path: '/admin/courses/:id/edit',
+        name: 'admin-course-edit',
+        component: { template: '<div />' },
+      },
     ],
   })
 
@@ -56,5 +70,26 @@ describe('admin course list', () => {
     await wrapper.get('input[type="search"]').setValue('missing course')
 
     expect(wrapper.get('.empty-state').text()).toContain('No courses match')
+  })
+
+  it('links each edit action to the full edit page', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('a[aria-label="Edit Service Design Essentials"]').attributes('href')).toBe(
+      '/admin/courses/1/edit',
+    )
+  })
+
+  it('asks for confirmation before deleting a course', async () => {
+    const wrapper = mountView()
+
+    await wrapper.get('button[aria-label="Delete Service Design Essentials"]').trigger('click')
+    expect(wrapper.get('[role="alertdialog"]').text()).toContain('Service Design Essentials')
+
+    await wrapper.get('.danger-button').trigger('click')
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(7)
+    expect(wrapper.get('tbody').text()).not.toContain('Service Design Essentials')
+    expect(wrapper.get('[role="status"]').text()).toContain('was deleted')
   })
 })
