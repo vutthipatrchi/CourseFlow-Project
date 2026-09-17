@@ -1,3 +1,4 @@
+import { getToken } from '@clerk/vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -11,7 +12,8 @@ const router = createRouter({
       path: '/admin/assignments',
       name: 'admin-assignments',
       component: () => import('../views/AdminAssignmentsView.vue'),
-      // Clerk is wired in main.ts, but no router.beforeEach guard checks this yet.
+      // requiresAdmin only checks "signed in" for now — there is no admin role yet,
+      // so any signed-in user currently passes this guard.
       meta: { requiresAdmin: true },
     },
     {
@@ -21,6 +23,12 @@ const router = createRouter({
       meta: { requiresAdmin: true },
     },
   ],
+})
+
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAdmin) return true
+  const token = await getToken()
+  return token ? true : { name: 'sign-in' }
 })
 
 export default router
