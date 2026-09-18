@@ -25,23 +25,19 @@ public class AssignmentRepository {
         return Boolean.TRUE.equals(exists);
     }
 
-    public AssignmentResponse insert(CreateAssignmentRequest request, String resolvedStatus) {
+    public AssignmentResponse insert(CreateAssignmentRequest request) {
         return jdbcClient
             .sql("""
-                INSERT INTO courseflow.assignments (sub_lesson_id, description, duration_days, status)
-                VALUES (:subLessonId, :description, :durationDays, :status)
-                RETURNING id, sub_lesson_id, description, duration_days, status, created_at
+                INSERT INTO courseflow.assignments (sub_lesson_id, description)
+                VALUES (:subLessonId, :description)
+                RETURNING id, sub_lesson_id, description, created_at
                 """)
             .param("subLessonId", request.subLessonId())
             .param("description", request.description())
-            .param("durationDays", request.durationDays())
-            .param("status", resolvedStatus)
             .query((rs, rowNum) -> new AssignmentResponse(
                 rs.getLong("id"),
                 rs.getLong("sub_lesson_id"),
                 rs.getString("description"),
-                rs.getInt("duration_days"),
-                rs.getString("status"),
                 rs.getObject("created_at", OffsetDateTime.class)
             ))
             .single();
@@ -50,7 +46,7 @@ public class AssignmentRepository {
     public List<AssignmentSummary> findAllWithContext() {
         return jdbcClient
             .sql("""
-                SELECT a.id, a.description, a.duration_days, a.status, a.created_at,
+                SELECT a.id, a.description, a.created_at,
                        c.name AS course_name, l.name AS lesson_name, sl.name AS sub_lesson_name
                 FROM courseflow.assignments a
                 JOIN courseflow.sub_lessons sl ON sl.id = a.sub_lesson_id
@@ -61,8 +57,6 @@ public class AssignmentRepository {
             .query((rs, rowNum) -> new AssignmentSummary(
                 rs.getLong("id"),
                 rs.getString("description"),
-                rs.getInt("duration_days"),
-                rs.getString("status"),
                 rs.getString("course_name"),
                 rs.getString("lesson_name"),
                 rs.getString("sub_lesson_name"),

@@ -23,9 +23,9 @@ class AssignmentRepositoryTests {
     @Test
     void insertsAndReadsBackAssignmentWithContext() {
         Long subLessonId = subLessonOptionRepository.findAll().get(0).subLessonId();
-        var request = new CreateAssignmentRequest(subLessonId, "Repository round-trip test", 5, "draft");
+        var request = new CreateAssignmentRequest(subLessonId, "Repository round-trip test");
 
-        AssignmentResponse inserted = assignmentRepository.insert(request, "draft");
+        AssignmentResponse inserted = assignmentRepository.insert(request);
 
         var found = assignmentRepository.findAllWithContext().stream()
             .filter(summary -> summary.id().equals(inserted.id()))
@@ -33,7 +33,5 @@ class AssignmentRepositoryTests {
             .orElseThrow();
 
         assertThat(found.description()).isEqualTo("Repository round-trip test");
-        assertThat(found.durationDays()).isEqualTo(5);
-        assertThat(found.status()).isEqualTo("draft");
     }
 }

@@ -38,8 +38,8 @@ class AssignmentControllerTests {
 
     @Test
     void createsAssignmentAndReturns201WithLocation() throws Exception {
-        var request = new CreateAssignmentRequest(1L, "Write a short essay", 3, "draft");
-        var response = new AssignmentResponse(10L, 1L, "Write a short essay", 3, "draft", OffsetDateTime.now());
+        var request = new CreateAssignmentRequest(1L, "Write a short essay");
+        var response = new AssignmentResponse(10L, 1L, "Write a short essay", OffsetDateTime.now());
         when(assignmentService.create(any())).thenReturn(response);
 
         mvc.perform(post("/api/admin/assignments")
@@ -48,13 +48,12 @@ class AssignmentControllerTests {
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(header().string("Location", "/api/admin/assignments/10"))
-            .andExpect(jsonPath("$.id").value(10))
-            .andExpect(jsonPath("$.status").value("draft"));
+            .andExpect(jsonPath("$.id").value(10));
     }
 
     @Test
     void rejectsBlankDescription() throws Exception {
-        var request = new CreateAssignmentRequest(1L, "", 3, "draft");
+        var request = new CreateAssignmentRequest(1L, "");
 
         mvc.perform(post("/api/admin/assignments")
                 .with(jwt())
@@ -65,21 +64,9 @@ class AssignmentControllerTests {
     }
 
     @Test
-    void rejectsNonPositiveDurationDays() throws Exception {
-        var request = new CreateAssignmentRequest(1L, "Write a short essay", 0, "draft");
-
-        mvc.perform(post("/api/admin/assignments")
-                .with(jwt())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.fieldErrors.durationDays").exists());
-    }
-
-    @Test
     void returnsAllAssignments() throws Exception {
         var summary = new AssignmentSummary(
-            1L, "Write a short essay", 3, "draft",
+            1L, "Write a short essay",
             "Introduction to Web Development", "HTML Basics", "Structuring a Page",
             OffsetDateTime.now());
         when(assignmentService.findAll()).thenReturn(List.of(summary));

@@ -19,10 +19,7 @@ public class AssignmentService {
         if (!assignmentRepository.subLessonExists(request.subLessonId())) {
             throw new ResourceNotFoundException("Sub-lesson " + request.subLessonId() + " not found");
         }
-        String resolvedStatus = (request.status() == null || request.status().isBlank())
-            ? "draft"
-            : request.status();
-        return assignmentRepository.insert(request, resolvedStatus);
+        return assignmentRepository.insert(request);
     }
 
     public List<AssignmentSummary> findAll() {

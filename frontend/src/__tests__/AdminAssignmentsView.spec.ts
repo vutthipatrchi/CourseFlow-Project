@@ -29,8 +29,6 @@ const stubs = {
 const sampleAssignment: Assignment = {
   id: 1,
   description: 'Build a todo app',
-  durationDays: 7,
-  status: 'draft',
   courseName: 'Web Development',
   lessonName: 'Vue Basics',
   subLessonName: 'Components',

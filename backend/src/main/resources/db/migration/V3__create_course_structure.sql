@@ -29,8 +29,6 @@ CREATE TABLE courseflow.assignments (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     sub_lesson_id BIGINT NOT NULL REFERENCES courseflow.sub_lessons (id) ON DELETE CASCADE,
     description TEXT NOT NULL,
-    duration_days INT NOT NULL CHECK (duration_days > 0),
-    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

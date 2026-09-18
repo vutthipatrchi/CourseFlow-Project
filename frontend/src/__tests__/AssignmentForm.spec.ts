@@ -18,9 +18,10 @@ describe('AssignmentForm', () => {
       props: { subLessonOptions: options, submitting: false },
     })
 
+    await wrapper.get('#course').setValue('Web Development')
+    await wrapper.get('#lesson').setValue('Vue Basics')
     await wrapper.get('#sub-lesson').setValue('1')
     await wrapper.get('#description').setValue('Build a todo app')
-    await wrapper.get('#duration-days').setValue(7)
     await wrapper.get('form').trigger('submit')
 
     const submitted = wrapper.emitted('submit')
@@ -28,8 +29,6 @@ describe('AssignmentForm', () => {
     expect(submitted![0]![0]).toEqual({
       subLessonId: 1,
       description: 'Build a todo app',
-      durationDays: 7,
-      status: 'draft',
     })
   })
 

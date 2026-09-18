@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { AssignmentStatus, CreateAssignmentPayload, SubLessonOption } from '@/types/assignment'
+import { computed, ref, watch } from 'vue'
+import type { CreateAssignmentPayload, SubLessonOption } from '@/types/assignment'
 
 const props = defineProps<{
   subLessonOptions: SubLessonOption[]
@@ -10,121 +10,137 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   submit: [payload: CreateAssignmentPayload]
-  cancel: []
 }>()
 
+const selectedCourse = ref<string | null>(null)
+const selectedLesson = ref<string | null>(null)
 const subLessonId = ref<number | null>(null)
 const description = ref('')
-const durationDays = ref(1)
-const status = ref<AssignmentStatus>('draft')
 const localError = ref<string | null>(null)
 
-function optionLabel(option: SubLessonOption): string {
-  return `${option.courseName} / ${option.lessonName} / ${option.subLessonName}`
-}
+const courses = computed(() => [...new Set(props.subLessonOptions.map((o) => o.courseName))])
+
+const lessons = computed(() => [
+  ...new Set(
+    props.subLessonOptions
+      .filter((o) => o.courseName === selectedCourse.value)
+      .map((o) => o.lessonName),
+  ),
+])
+
+const subLessons = computed(() =>
+  props.subLessonOptions.filter(
+    (o) => o.courseName === selectedCourse.value && o.lessonName === selectedLesson.value,
+  ),
+)
+
+watch(selectedCourse, () => {
+  selectedLesson.value = null
+  subLessonId.value = null
+})
+
+watch(selectedLesson, () => {
+  subLessonId.value = null
+})
 
 function handleSubmit() {
   localError.value = null
 
   if (subLessonId.value === null) {
-    localError.value = 'Select a sub-lesson.'
+    localError.value = 'Select a course, lesson and sub-lesson.'
     return
   }
   if (!description.value.trim()) {
-    localError.value = 'Description is required.'
+    localError.value = 'Assignment is required.'
     return
   }
 
   emit('submit', {
     subLessonId: subLessonId.value,
     description: description.value.trim(),
-    durationDays: durationDays.value,
-    status: status.value,
   })
 }
 </script>
 
 <template>
-  <form class="space-y-5" @submit.prevent="handleSubmit">
+  <form id="assignment-form" class="mx-auto max-w-230 space-y-10" @submit.prevent="handleSubmit">
     <p v-if="localError" class="text-sm text-red-600">{{ localError }}</p>
 
-    <div>
-      <label for="sub-lesson" class="block text-sm font-medium text-gray-700">Sub-lesson</label>
+    <div class="flex max-w-110 flex-col gap-1">
+      <label for="course" class="text-base text-black">Course</label>
       <select
-        id="sub-lesson"
-        v-model.number="subLessonId"
-        class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        id="course"
+        v-model="selectedCourse"
+        class="h-12 rounded-lg border border-[#D6D9E4] pt-3 pr-11 pb-3 pl-3 text-base text-black"
       >
-        <option :value="null" disabled>Select a sub-lesson</option>
-        <option
-          v-for="option in props.subLessonOptions"
-          :key="option.subLessonId"
-          :value="option.subLessonId"
-        >
-          {{ optionLabel(option) }}
-        </option>
+        <option :value="null" disabled>Select a course</option>
+        <option v-for="course in courses" :key="course" :value="course">{{ course }}</option>
       </select>
-      <p v-if="props.fieldErrors?.subLessonId" class="mt-1 text-sm text-red-600">
-        {{ props.fieldErrors.subLessonId }}
-      </p>
     </div>
 
-    <div>
-      <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-      <textarea
+    <div class="grid grid-cols-1 gap-10 sm:grid-cols-2">
+      <div class="flex flex-col gap-1">
+        <label for="lesson" class="text-base text-black">Lesson</label>
+        <select
+          id="lesson"
+          v-model="selectedLesson"
+          :disabled="!selectedCourse"
+          class="h-12 rounded-lg border border-[#D6D9E4] pt-3 pr-11 pb-3 pl-3 text-base text-black disabled:bg-gray-50"
+        >
+          <option :value="null" disabled>Select a lesson</option>
+          <option v-for="lesson in lessons" :key="lesson" :value="lesson">{{ lesson }}</option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="sub-lesson" class="text-base text-black">Sub-lesson</label>
+        <select
+          id="sub-lesson"
+          v-model.number="subLessonId"
+          :disabled="!selectedLesson"
+          class="h-12 rounded-lg border border-[#D6D9E4] pt-3 pr-11 pb-3 pl-3 text-base text-black disabled:bg-gray-50"
+        >
+          <option :value="null" disabled>Select a sub-lesson</option>
+          <option
+            v-for="option in subLessons"
+            :key="option.subLessonId"
+            :value="option.subLessonId"
+          >
+            {{ option.subLessonName }}
+          </option>
+        </select>
+        <p v-if="props.fieldErrors?.subLessonId" class="text-sm text-red-600">
+          {{ props.fieldErrors.subLessonId }}
+        </p>
+      </div>
+    </div>
+
+    <hr class="border-t border-[#D6D9E4]" />
+
+    <p class="text-xl font-semibold text-[#646D89]">Assignment detail</p>
+
+    <div class="flex flex-col gap-1">
+      <label for="description" class="text-base text-black">Assignment *</label>
+      <input
         id="description"
         v-model="description"
-        rows="4"
-        class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-      ></textarea>
-      <p v-if="props.fieldErrors?.description" class="mt-1 text-sm text-red-600">
+        type="text"
+        class="h-12 rounded-lg border border-[#D6D9E4] pt-3 pr-4 pb-3 pl-3 text-base text-black"
+      />
+      <p v-if="props.fieldErrors?.description" class="text-sm text-red-600">
         {{ props.fieldErrors.description }}
       </p>
     </div>
-
-    <div>
-      <label for="duration-days" class="block text-sm font-medium text-gray-700"
-        >Duration (days)</label
-      >
-      <input
-        id="duration-days"
-        v-model.number="durationDays"
-        type="number"
-        min="1"
-        class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-      />
-      <p v-if="props.fieldErrors?.durationDays" class="mt-1 text-sm text-red-600">
-        {{ props.fieldErrors.durationDays }}
-      </p>
-    </div>
-
-    <div>
-      <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-      <select
-        id="status"
-        v-model="status"
-        class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-      >
-        <option value="draft">Draft</option>
-        <option value="published">Published</option>
-      </select>
-    </div>
-
-    <div class="flex gap-3">
-      <button
-        type="submit"
-        :disabled="submitting"
-        class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-      >
-        {{ submitting ? 'Saving...' : 'Create assignment' }}
-      </button>
-      <button
-        type="button"
-        class="rounded-lg border-2 border-orange-500 bg-white px-5 py-2.5 text-sm font-semibold text-orange-500 hover:bg-orange-500 hover:text-white"
-        @click="emit('cancel')"
-      >
-        Cancel
-      </button>
-    </div>
   </form>
 </template>
+
+<style scoped>
+select {
+  appearance: none;
+  background-image: url('@/assets/landing/arrow_drop_down_black.svg');
+  background-repeat: no-repeat;
+  /* Figma: 20px icon frame 16px from the edge, glyph inset 5.83px within it */
+  background-position: right 21px center;
+  background-size: 9px 5px;
+}
+</style>

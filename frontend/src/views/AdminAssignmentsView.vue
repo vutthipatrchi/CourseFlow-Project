@@ -34,7 +34,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <AdminLayout title="Assignment">
+  <AdminLayout title="Assignments">
     <template #actions>
       <div
         class="flex h-12 w-80 items-center gap-2.5 rounded-lg border border-[#CCD0D7] bg-white px-4"

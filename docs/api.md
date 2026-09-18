@@ -16,8 +16,8 @@ with their features. No public user or course APIs exist yet.
 
 These endpoints require the `local` (or another database-backed) profile —
 they are unavailable when running with the default `standalone` profile.
-No authentication exists yet; these are open. Admin authentication (Clerk)
-is planned as a later feature.
+All of them require a valid Clerk-issued bearer token (any signed-in user;
+there is no admin-role check yet).
 
 ### GET /api/admin/sub-lessons
 
@@ -44,14 +44,9 @@ Request body:
 ```json
 {
   "subLessonId": 1,
-  "description": "Write a short essay",
-  "durationDays": 3,
-  "status": "draft"
+  "description": "Write a short essay"
 }
 ```
-
-`status` is optional and defaults to `"draft"` when omitted or blank; the
-only other allowed value is `"published"`.
 
 Responses:
 
@@ -62,8 +57,6 @@ Responses:
     "id": 10,
     "subLessonId": 1,
     "description": "Write a short essay",
-    "durationDays": 3,
-    "status": "draft",
     "createdAt": "2026-09-16T10:00:00Z"
   }
   ```
@@ -93,8 +86,6 @@ first.
   {
     "id": 10,
     "description": "Write a short essay",
-    "durationDays": 3,
-    "status": "draft",
     "courseName": "Introduction to Web Development",
     "lessonName": "HTML Basics",
     "subLessonName": "Structuring a Page",

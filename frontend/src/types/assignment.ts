@@ -1,5 +1,3 @@
-export type AssignmentStatus = 'draft' | 'published'
-
 export interface SubLessonOption {
   subLessonId: number
   subLessonName: string
@@ -10,8 +8,6 @@ export interface SubLessonOption {
 export interface Assignment {
   id: number
   description: string
-  durationDays: number
-  status: AssignmentStatus
   courseName: string
   lessonName: string
   subLessonName: string
@@ -21,6 +17,4 @@ export interface Assignment {
 export interface CreateAssignmentPayload {
   subLessonId: number
   description: string
-  durationDays: number
-  status?: AssignmentStatus
 }
