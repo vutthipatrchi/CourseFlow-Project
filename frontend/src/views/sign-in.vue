@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useSignIn } from '@clerk/vue'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import dotSmall from '@/assets/landing/dot-small.svg'
 import heroCross from '@/assets/landing/hero-cross.svg'
 
 const router = useRouter()
+const route = useRoute()
 const { isLoaded, signIn, setActive } = useSignIn()
 
 const email = ref('')
@@ -15,19 +16,24 @@ const errorMessage = ref('')
 const isSubmitting = ref(false)
 
 async function handleSubmit() {
-  if (!isLoaded.value || isSubmitting.value) return
+  const activeSignIn = signIn.value
+  const activateSession = setActive.value
+  if (!isLoaded.value || !activeSignIn || !activateSession || isSubmitting.value) return
   errorMessage.value = ''
   isSubmitting.value = true
 
   try {
-    const result = await signIn.value.create({
+    const result = await activeSignIn.create({
       identifier: email.value,
       password: password.value,
     })
 
     if (result.status === 'complete') {
-      await setActive.value({ session: result.createdSessionId })
-      router.push('/')
+      await activateSession({ session: result.createdSessionId })
+      const requestedPath = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+      const redirectPath =
+        requestedPath.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : '/'
+      await router.push(redirectPath)
     } else {
       errorMessage.value = 'Additional verification is required to finish signing in.'
     }

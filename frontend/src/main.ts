@@ -16,7 +16,6 @@ if (!PUBLISHABLE_KEY) {
 const app = createApp(App)
 
 app.use(createPinia())
-app.use(router)
-
 app.use(clerkPlugin, { publishableKey: PUBLISHABLE_KEY })
+app.use(router)
 app.mount('#app')
