@@ -1,0 +1,90 @@
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUser, useClerk } from '@clerk/vue'
+import iconPerson from '@/assets/landing/icon-person.svg'
+import iconBook from '@/assets/landing/icon-book.svg'
+import iconChecklist from '@/assets/landing/icon-checklist.svg'
+import iconStar from '@/assets/landing/icon-star.svg'
+import iconLogout from '@/assets/landing/icon-logout.svg'
+
+interface MenuItem {
+  label: string
+  icon: string
+  href: string
+}
+
+const menuItems: MenuItem[] = [
+  { label: 'Profile', icon: iconPerson, href: '#' },
+  { label: 'My Courses', icon: iconBook, href: '#' },
+  { label: 'My Assignments', icon: iconChecklist, href: '#' },
+  { label: 'My Wishlist', icon: iconStar, href: '#' },
+]
+
+const router = useRouter()
+const clerk = useClerk()
+const { user } = useUser()
+
+const isOpen = ref(false)
+const rootRef = ref<HTMLElement | null>(null)
+
+function toggle() {
+  isOpen.value = !isOpen.value
+}
+
+function handleClickOutside(event: MouseEvent) {
+  if (rootRef.value && !rootRef.value.contains(event.target as Node)) {
+    isOpen.value = false
+  }
+}
+
+async function handleLogout() {
+  isOpen.value = false
+  await clerk.value?.signOut()
+  router.push('/')
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutside))
+onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
+</script>
+
+<template>
+  <div ref="rootRef" class="relative">
+    <button type="button" class="flex items-center gap-2" @click="toggle">
+      <img :src="user?.imageUrl" :alt="user?.fullName ?? 'User'" class="h-9 w-9 rounded-full object-cover" />
+      <span class="text-sm font-medium text-darkblue-500">{{ user?.fullName }}</span>
+      <svg
+        viewBox="0 0 24 24"
+        class="h-4 w-4 text-gray-400 transition-transform"
+        :class="{ 'rotate-180': isOpen }"
+        fill="none"
+      >
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+
+    <div
+      v-if="isOpen"
+      class="absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-100 bg-white py-2 shadow-lg"
+    >
+      <a
+        v-for="item in menuItems"
+        :key="item.label"
+        :href="item.href"
+        class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+      >
+        <img :src="item.icon" alt="" aria-hidden="true" class="h-4 w-4" />
+        {{ item.label }}
+      </a>
+      <hr class="my-2 border-gray-100" />
+      <button
+        type="button"
+        class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+        @click="handleLogout"
+      >
+        <img :src="iconLogout" alt="" aria-hidden="true" class="h-4 w-4" />
+        Log out
+      </button>
+    </div>
+  </div>
+</template>

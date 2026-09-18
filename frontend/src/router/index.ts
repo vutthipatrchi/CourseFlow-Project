@@ -1,5 +1,6 @@
-import { getToken } from '@clerk/vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import { getToken } from '@clerk/vue'
+import { getRoleFromToken } from '@/lib/jwt'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,28 +8,51 @@ const router = createRouter({
     { path: '/', name: 'home', component: () => import('../views/HomeView.vue') },
     { path: '/sign-in', name: 'sign-in', component: () => import('../views/sign-in.vue') },
     { path: '/sign-up', name: 'sign-up', component: () => import('../views/sign-up.vue') },
-    { path: '/admin', redirect: { name: 'admin-assignments' } },
+    { path: '/admin', redirect: { name: 'admin-courses' } },
+    {
+      path: '/admin/courses',
+      name: 'admin-courses',
+      component: () => import('../views/AdminCourseListView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/courses/new',
+      name: 'admin-course-create',
+      component: () => import('../views/AdminCourseCreateView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/courses/:id/edit',
+      name: 'admin-course-edit',
+      component: () => import('../views/AdminCourseCreateView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
     {
       path: '/admin/assignments',
       name: 'admin-assignments',
       component: () => import('../views/AdminAssignmentsView.vue'),
-      // requiresAdmin only checks "signed in" for now — there is no admin role yet,
-      // so any signed-in user currently passes this guard.
-      meta: { requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/admin/assignments/create',
       name: 'admin-assignment-create',
       component: () => import('../views/AdminAssignmentCreateView.vue'),
-      meta: { requiresAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
 })
 
 router.beforeEach(async (to) => {
-  if (!to.meta.requiresAdmin) return true
+  if (!to.meta.requiresAuth) return
+
   const token = await getToken()
-  return token ? true : { name: 'sign-in' }
+  if (!token) {
+    return { name: 'sign-in', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresAdmin && getRoleFromToken(token) !== 'admin') {
+    return { name: 'home' }
+  }
 })
 
 export default router
