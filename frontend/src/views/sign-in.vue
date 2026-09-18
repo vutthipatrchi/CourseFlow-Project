@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useSignIn } from '@clerk/vue'
+import { useSignIn, getToken } from '@clerk/vue'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import dotSmall from '@/assets/landing/dot-small.svg'
 import heroCross from '@/assets/landing/hero-cross.svg'
+import { getRoleFromToken } from '@/lib/jwt'
 
 const router = useRouter()
 const route = useRoute()
@@ -30,10 +31,16 @@ async function handleSubmit() {
 
     if (result.status === 'complete') {
       await activateSession({ session: result.createdSessionId })
-      const requestedPath = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-      const redirectPath =
-        requestedPath.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : '/'
-      await router.push(redirectPath)
+
+      if (typeof route.query.redirect === 'string') {
+        const requestedPath = route.query.redirect
+        const redirectPath =
+          requestedPath.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : '/'
+        await router.push(redirectPath)
+      } else {
+        const role = getRoleFromToken(await getToken())
+        await router.push(role === 'admin' ? '/admin/courses' : '/')
+      }
     } else {
       errorMessage.value = 'Additional verification is required to finish signing in.'
     }
