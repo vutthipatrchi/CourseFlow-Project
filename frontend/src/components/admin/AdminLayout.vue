@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useClerk } from '@clerk/vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import courseIcon from '@/assets/admin/course.svg'
 import assignmentIcon from '@/assets/admin/assignment.svg'
 import promoCodeIcon from '@/assets/admin/promo-code.svg'
@@ -9,11 +9,16 @@ import logo from '@/assets/landing/logo.svg'
 
 defineProps<{
   title: string
+  breadcrumb?: string
+  backTo?: RouteLocationRaw
 }>()
 
 const route = useRoute()
 const router = useRouter()
 const isActive = (name: string) => route.name === name
+const isCourseActive = () =>
+  String(route.name ?? '').startsWith('admin-lesson') ||
+  String(route.name ?? '').startsWith('admin-course')
 
 const clerk = useClerk()
 async function logOut() {
@@ -33,7 +38,8 @@ async function logOut() {
       <nav class="flex flex-1 flex-col">
         <RouterLink
           :to="{ name: 'admin-courses' }"
-          class="flex h-14 items-center gap-4 px-6 text-base font-medium text-[#424C6B] hover:bg-[#F1F2F6]"
+          class="flex h-14 items-center gap-4 px-6 text-base font-medium"
+          :class="isCourseActive() ? 'bg-[#F1F2F6] text-[#424C6B]' : 'text-[#424C6B] hover:bg-[#F1F2F6]'"
         >
           <img :src="courseIcon" alt="" class="h-6 w-6 flex-none" />
           <span>Courses</span>
@@ -84,9 +90,27 @@ async function logOut() {
       <header
         class="flex h-[92px] flex-none items-center gap-4 border-b border-[#D6D9E4] bg-white px-10 py-4"
       >
-        <h1 class="flex-1 text-2xl leading-[1.25] font-medium tracking-[-0.02em] text-[#2A2E3F]">
-          {{ title }}
-        </h1>
+        <RouterLink
+          v-if="backTo"
+          :to="backTo"
+          class="flex h-10 w-10 flex-none items-center justify-center rounded-lg text-[#2A2E3F] hover:bg-[#F1F2F6]"
+          aria-label="Back to course"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            class="h-6 w-6 fill-none stroke-current"
+            stroke-width="1.5"
+          >
+            <path d="m15 5-7 7 7 7" />
+          </svg>
+        </RouterLink>
+        <div class="flex min-w-0 flex-1 flex-col gap-1">
+          <p v-if="breadcrumb" class="truncate text-sm text-[#9AA1B9]">{{ breadcrumb }}</p>
+          <h1 class="truncate text-2xl leading-[1.25] font-medium tracking-[-0.02em] text-[#2A2E3F]">
+            {{ title }}
+          </h1>
+        </div>
         <div class="flex items-center gap-4">
           <slot name="actions" />
         </div>
