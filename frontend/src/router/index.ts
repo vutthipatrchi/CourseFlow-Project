@@ -36,16 +36,19 @@ const router = createRouter({
       path: '/admin/assignments/new',
       name: 'admin-assignments-new',
       component: () => import('../views/admin/AddAssignmentView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/admin/assignments/:id/edit',
       name: 'admin-assignments-edit',
       component: () => import('../views/admin/EditAssignmentView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/admin/promo-code',
       name: 'admin-promo-code',
       component: () => import('../views/admin/PromoCodeView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
 })
