@@ -14,14 +14,12 @@ import UserMenu from './UserMenu.vue'
       <div class="flex items-center gap-4 sm:gap-8">
         <a href="#" class="text-sm font-medium text-darkblue-500 hover:text-blue-600">Our Courses</a>
         <Show when="signed-out">
-          <SignInButton>
-            <button
-              type="button"
-              class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              Log in
-            </button>
-          </SignInButton>
+          <a
+            href="/sign-in"
+            class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Log in
+          </a>
         </Show>
         <Show when="signed-in">
           <UserMenu />

@@ -29,6 +29,18 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+## Clerk authentication
+
+Copy `.env.example` to `.env.local` and replace the placeholder with the Clerk
+Publishable Key for the application:
+
+```env
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_publishable_key
+```
+
+The frontend provides `/sign-in` and `/sign-up` routes. Protected API endpoints
+verify the Clerk session token on the backend.
+
 ### Compile and Hot-Reload for Development
 
 ```sh
