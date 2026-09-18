@@ -1,10 +1,35 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { courses, resetCourses } from '../admin/courseStore'
 import AdminCourseCreateView from '../views/AdminCourseCreateView.vue'
 
-beforeEach(() => resetCourses())
+beforeEach(() => {
+  resetCourses()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const payload = init?.body ? JSON.parse(String(init.body)) : undefined
+      const segments = url.split('/')
+      const id = Number(segments[segments.length - 1]) || 9
+      const existing = courses.value.find((course) => course.id === id)
+      const course = {
+        ...existing,
+        ...payload,
+        id,
+        lessons: payload?.lessonItems?.length ?? existing?.lessons ?? 0,
+        createdAt: existing?.createdAt ?? '2026-09-17T12:00:00+07:00',
+        updatedAt: '2026-09-17T12:00:00+07:00',
+        accent: payload?.accent ?? existing?.accent ?? '#dce8fb',
+      }
+      return new Response(JSON.stringify(course), {
+        status: init?.method === 'POST' ? 201 : 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }),
+  )
+})
 
 async function mountView(path = '/admin/courses/new') {
   const router = createRouter({
@@ -57,7 +82,9 @@ describe('admin add course', () => {
     await wrapper.get('input[name="discountType"][value="fixed"]').setValue(true)
     await wrapper.get('input[name="discount"]:not(:disabled)').setValue(200)
     await wrapper.get('textarea[name="summary"]').setValue('A practical finance course.')
-    await wrapper.get('textarea[name="description"]').setValue('A detailed introduction to payment systems.')
+    await wrapper
+      .get('textarea[name="description"]')
+      .setValue('A detailed introduction to payment systems.')
     const coverImage = wrapper.get<HTMLInputElement>('input[name="coverImage"]')
     Object.defineProperty(coverImage.element, 'files', {
       configurable: true,

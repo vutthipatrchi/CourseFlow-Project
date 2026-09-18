@@ -1,22 +1,27 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import courseFlowLogo from '../assets/admin/courseflow-sidebar-logo.svg'
-import collaborationCourseThumbnail from '../assets/landing/feature-photo-collab.jpg'
-import designCourseThumbnail from '../assets/landing/instructor-jane.jpg'
-import marketingCourseThumbnail from '../assets/landing/feature-photo-secure.jpg'
-import productCourseThumbnail from '../assets/landing/instructor-brooklyn.jpg'
+import serviceDesignThumbnail from '../assets/admin/courses/service-design.jpg'
+import softwareDeveloperThumbnail from '../assets/admin/courses/software-developer.jpg'
+import uxUiDesignThumbnail from '../assets/admin/courses/ux-ui-design.jpg'
 import { clearUserRole } from '../auth/access'
-import { courses, removeCourse, type Course } from '../admin/courseStore'
+import {
+  courses,
+  coursesError,
+  coursesLoading,
+  loadCourses,
+  removeCourse,
+  type Course,
+} from '../admin/courseStore'
 
 const search = ref('')
 const route = useRoute()
 const coursePendingDeletion = ref<Course | null>(null)
 const courseThumbnails = [
-  collaborationCourseThumbnail,
-  designCourseThumbnail,
-  marketingCourseThumbnail,
-  productCourseThumbnail,
+  serviceDesignThumbnail,
+  softwareDeveloperThumbnail,
+  uxUiDesignThumbnail,
 ]
 const feedback = ref(
   typeof route.query.created === 'string'
@@ -25,6 +30,10 @@ const feedback = ref(
       ? `${route.query.updated} was updated.`
       : '',
 )
+
+onMounted(() => {
+  void loadCourses().catch(() => undefined)
+})
 
 const filteredCourses = computed(() => {
   const query = search.value.trim().toLocaleLowerCase()
@@ -39,6 +48,22 @@ function formatPrice(price: number) {
   }).format(price)
 }
 
+function formatDateTime(value: string) {
+  if (!value || /^\d{2}\/\d{2}\/\d{4}/.test(value)) return value
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
+    .format(date)
+    .replace(',', '')
+}
+
 function requestDeletion(course: Course) {
   feedback.value = ''
   coursePendingDeletion.value = course
@@ -48,13 +73,17 @@ function cancelDeletion() {
   coursePendingDeletion.value = null
 }
 
-function deleteCourse() {
+async function deleteCourse() {
   const course = coursePendingDeletion.value
   if (!course) return
 
-  removeCourse(course.id)
-  feedback.value = `${course.name} was deleted.`
-  coursePendingDeletion.value = null
+  try {
+    await removeCourse(course.id)
+    feedback.value = `${course.name} was deleted.`
+    coursePendingDeletion.value = null
+  } catch (error) {
+    feedback.value = error instanceof Error ? error.message : 'Unable to delete course.'
+  }
 }
 </script>
 
@@ -153,8 +182,8 @@ function deleteCourse() {
                 <td class="name-column">{{ course.name }}</td>
                 <td class="lesson-column">{{ course.lessons }} Lessons</td>
                 <td class="price-column">{{ formatPrice(course.price) }}</td>
-                <td class="created-date-column">{{ course.createdAt }}</td>
-                <td class="updated-date-column">{{ course.updatedAt }}</td>
+                <td class="created-date-column">{{ formatDateTime(course.createdAt) }}</td>
+                <td class="updated-date-column">{{ formatDateTime(course.updatedAt) }}</td>
                 <td class="action-column">
                   <button
                     class="delete-action"
@@ -189,7 +218,15 @@ function deleteCourse() {
                   </RouterLink>
                 </td>
               </tr>
-              <tr v-if="filteredCourses.length === 0">
+              <tr v-if="coursesLoading && courses.length === 0">
+                <td class="empty-state" colspan="8">Loading courses...</td>
+              </tr>
+              <tr v-else-if="coursesError && courses.length === 0">
+                <td class="empty-state error-state" colspan="8">
+                  Unable to load courses: {{ coursesError }}
+                </td>
+              </tr>
+              <tr v-else-if="filteredCourses.length === 0">
                 <td class="empty-state" colspan="8">No courses match “{{ search }}”.</td>
               </tr>
             </tbody>
@@ -207,7 +244,12 @@ function deleteCourse() {
       >
         <div class="modal-top">
           <h2 id="delete-course-title">Confirmation</h2>
-          <button class="modal-close" type="button" aria-label="Close confirmation" @click="cancelDeletion">
+          <button
+            class="modal-close"
+            type="button"
+            aria-label="Close confirmation"
+            @click="cancelDeletion"
+          >
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="m7 7 10 10M17 7 7 17" />
             </svg>
@@ -219,8 +261,12 @@ function deleteCourse() {
             <span class="sr-only">{{ coursePendingDeletion.name }}</span>
           </p>
           <div class="modal-actions">
-            <button class="secondary-button" type="button" @click="cancelDeletion">Secondary</button>
-            <button class="primary-button danger-button" type="button" @click="deleteCourse">Primary</button>
+            <button class="secondary-button" type="button" @click="cancelDeletion">
+              Secondary
+            </button>
+            <button class="primary-button danger-button" type="button" @click="deleteCourse">
+              Primary
+            </button>
           </div>
         </div>
       </section>

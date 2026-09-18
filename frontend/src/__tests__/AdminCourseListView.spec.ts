@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { resetCourses } from '../admin/courseStore'
 import { clearUserRole, hasAdminAccess, setUserRole } from '../auth/access'
@@ -8,6 +8,10 @@ import AdminCourseListView from '../views/AdminCourseListView.vue'
 beforeEach(() => {
   clearUserRole()
   resetCourses()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(null, { status: 204 })),
+  )
 })
 
 function mountView() {
@@ -52,6 +56,10 @@ describe('admin course list', () => {
     expect(wrapper.text()).toContain('Course name')
     expect(wrapper.text()).toContain('Created date')
     expect(wrapper.text()).toContain('Updated date')
+    const thumbnails = wrapper.findAll('.course-image img')
+    expect(thumbnails[0]?.attributes('src')).toContain('service-design.jpg')
+    expect(thumbnails[1]?.attributes('src')).toContain('software-developer.jpg')
+    expect(thumbnails[2]?.attributes('src')).toContain('ux-ui-design.jpg')
   })
 
   it('filters courses by name', async () => {
@@ -87,6 +95,7 @@ describe('admin course list', () => {
     expect(wrapper.get('[role="alertdialog"]').text()).toContain('Service Design Essentials')
 
     await wrapper.get('.danger-button').trigger('click')
+    await flushPromises()
 
     expect(wrapper.findAll('tbody tr')).toHaveLength(7)
     expect(wrapper.get('tbody').text()).not.toContain('Service Design Essentials')

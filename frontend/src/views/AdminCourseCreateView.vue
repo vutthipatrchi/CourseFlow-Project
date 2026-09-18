@@ -1,35 +1,45 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import courseFlowLogo from '../assets/admin/courseflow-sidebar-logo.svg'
 import { clearUserRole } from '../auth/access'
-import { addCourse, courses, updateCourse, type CourseLesson } from '../admin/courseStore'
+import {
+  addCourse,
+  courses,
+  getCourse,
+  updateCourse,
+  type Course,
+  type CourseLesson,
+  type CoursePayload,
+} from '../admin/courseStore'
 import FormFieldError from '../components/admin/FormFieldError.vue'
 
 const router = useRouter()
 const route = useRoute()
 const courseId = Number(route.params.id)
-const courseToEdit = Number.isInteger(courseId)
+const cachedCourse = Number.isInteger(courseId)
   ? courses.value.find((course) => course.id === courseId)
   : undefined
 const isEditing = route.name === 'admin-course-edit'
+const courseToEdit = ref<Course | undefined>(cachedCourse)
+const isLoadingCourse = ref(isEditing && !cachedCourse)
+const isSaving = ref(false)
+const apiError = ref('')
 
-if (isEditing && !courseToEdit) void router.replace({ name: 'admin-courses' })
-
-const name = ref(courseToEdit?.name ?? '')
-const category = ref(courseToEdit?.category ?? '')
-const price = ref(courseToEdit ? String(courseToEdit.price) : '')
-const learningTime = ref<number | null>(courseToEdit?.learningTime ?? null)
-const hasPromo = ref(courseToEdit?.hasPromo ?? !isEditing)
-const promoCode = ref(courseToEdit?.promoCode ?? '')
-const minimumPurchase = ref<number | null>(courseToEdit?.minimumPurchase ?? null)
-const discount = ref<number | null>(courseToEdit?.discount ?? null)
-const discountType = ref<'percentage' | 'fixed' | null>(courseToEdit?.discountType ?? null)
-const summary = ref(courseToEdit?.summary ?? '')
-const description = ref(courseToEdit?.description ?? '')
-const imageName = ref(courseToEdit?.imageName ?? '')
-const videoName = ref(courseToEdit?.videoName ?? '')
-const resourceName = ref(courseToEdit?.resourceName ?? '')
+const name = ref(cachedCourse?.name ?? '')
+const category = ref(cachedCourse?.category ?? '')
+const price = ref(cachedCourse ? String(cachedCourse.price) : '')
+const learningTime = ref<number | null>(cachedCourse?.learningTime ?? null)
+const hasPromo = ref(cachedCourse?.hasPromo ?? !isEditing)
+const promoCode = ref(cachedCourse?.promoCode ?? '')
+const minimumPurchase = ref<number | null>(cachedCourse?.minimumPurchase ?? null)
+const discount = ref<number | null>(cachedCourse?.discount ?? null)
+const discountType = ref<'percentage' | 'fixed' | null>(cachedCourse?.discountType ?? null)
+const summary = ref(cachedCourse?.summary ?? '')
+const description = ref(cachedCourse?.description ?? '')
+const imageName = ref(cachedCourse?.imageName ?? '')
+const videoName = ref(cachedCourse?.videoName ?? '')
+const resourceName = ref(cachedCourse?.resourceName ?? '')
 type CourseFormField =
   | 'name'
   | 'price'
@@ -42,30 +52,43 @@ type CourseFormField =
   | 'image'
 const fieldErrors = ref<Partial<Record<CourseFormField, string>>>({})
 const lessons = ref<CourseLesson[]>(
-  courseToEdit?.lessonItems?.map((lesson) => ({ ...lesson })) ??
-    Array.from({ length: courseToEdit?.lessons ?? 1 }, (_, index) => ({
+  cachedCourse?.lessonItems?.map((lesson) => ({ ...lesson })) ??
+    Array.from({ length: cachedCourse?.lessons ?? 1 }, (_, index) => ({
       id: index + 1,
       name: index === 0 ? 'Introduction' : `Lesson ${index + 1}`,
       subLessons: 1,
     })),
 )
 
-function formatTimestamp(date: Date) {
-  const datePart = new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date)
-  const timePart = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  })
-    .format(date)
-    .replace(' ', '')
-
-  return `${datePart} ${timePart}`
+function populateForm(course: Course) {
+  courseToEdit.value = course
+  name.value = course.name
+  category.value = course.category ?? ''
+  price.value = String(course.price)
+  learningTime.value = course.learningTime ?? null
+  hasPromo.value = course.hasPromo ?? false
+  promoCode.value = course.promoCode ?? ''
+  minimumPurchase.value = course.minimumPurchase ?? null
+  discount.value = course.discount ?? null
+  discountType.value = course.discountType ?? null
+  summary.value = course.summary ?? ''
+  description.value = course.description ?? ''
+  imageName.value = course.imageName ?? ''
+  videoName.value = course.videoName ?? ''
+  resourceName.value = course.resourceName ?? ''
+  lessons.value = course.lessonItems?.map((lesson) => ({ ...lesson })) ?? []
 }
+
+onMounted(async () => {
+  if (!isEditing || cachedCourse) return
+  try {
+    populateForm(await getCourse(courseId))
+  } catch (error) {
+    apiError.value = error instanceof Error ? error.message : 'Unable to load course.'
+  } finally {
+    isLoadingCourse.value = false
+  }
+})
 
 function rememberFile(event: Event, target: 'image' | 'video' | 'resource') {
   const file = (event.target as HTMLInputElement).files?.[0]
@@ -73,6 +96,11 @@ function rememberFile(event: Event, target: 'image' | 'video' | 'resource') {
   if (target === 'image') imageName.value = value
   if (target === 'video') videoName.value = value
   if (target === 'resource') resourceName.value = value
+}
+
+function rememberCoverImage(event: Event) {
+  rememberFile(event, 'image')
+  clearError('image')
 }
 
 function addLesson() {
@@ -158,16 +186,26 @@ function validateCourse() {
     errors.learningTime = 'Please fill out this field'
   }
   if (hasPromo.value && isEmpty(promoCode.value)) errors.promoCode = 'Please fill out this field'
-  if (hasPromo.value && (isEmpty(minimumPurchase.value) || !Number.isFinite(Number(minimumPurchase.value)))) {
+  if (
+    hasPromo.value &&
+    (isEmpty(minimumPurchase.value) || !Number.isFinite(Number(minimumPurchase.value)))
+  ) {
     errors.minimumPurchase = 'Please fill out this field'
   }
   if (hasPromo.value && !discountType.value) {
     errors.discount = 'Please select discount type'
   } else if (hasPromo.value && isEmpty(discount.value)) {
     errors.discount = 'Please fill out this field'
-  } else if (hasPromo.value && (!Number.isFinite(Number(discount.value)) || Number(discount.value) < 0)) {
+  } else if (
+    hasPromo.value &&
+    (!Number.isFinite(Number(discount.value)) || Number(discount.value) < 0)
+  ) {
     errors.discount = 'Please enter numbers only'
-  } else if (hasPromo.value && discountType.value === 'percentage' && Number(discount.value) > 100) {
+  } else if (
+    hasPromo.value &&
+    discountType.value === 'percentage' &&
+    Number(discount.value) > 100
+  ) {
     errors.discount = 'Discount must not exceed 100%'
   }
   if (!isEditing && isEmpty(summary.value)) errors.summary = 'Please fill out this field'
@@ -186,37 +224,47 @@ function focusLessonName(event: MouseEvent) {
 async function saveCourse() {
   if (!validateCourse()) return
 
-  const timestamp = formatTimestamp(new Date())
-  const details = {
+  apiError.value = ''
+  isSaving.value = true
+  const details: CoursePayload = {
     name: name.value.trim(),
-    lessons: lessons.value.length,
     price: Number(price.value),
     learningTime: learningTime.value,
-    updatedAt: timestamp,
     category: category.value.trim(),
     hasPromo: hasPromo.value,
     promoCode: promoCode.value.trim(),
     minimumPurchase: minimumPurchase.value,
     discount: discount.value,
-    discountType: discountType.value ?? undefined,
+    discountType: discountType.value,
     summary: summary.value.trim(),
     description: description.value.trim(),
     imageName: imageName.value,
     videoName: videoName.value,
     resourceName: resourceName.value,
-    lessonItems: lessons.value.map((lesson) => ({ ...lesson })),
+    accent: courseToEdit.value?.accent ?? '#dce8fb',
+    lessonItems: lessons.value.map((lesson) => ({
+      name: lesson.name,
+      subLessons: lesson.subLessons,
+    })),
   }
 
-  if (isEditing && courseToEdit) {
-    updateCourse(courseToEdit.id, details)
-  } else {
-    addCourse({ ...details, createdAt: timestamp, accent: '#dce8fb' })
-  }
+  try {
+    if (isEditing) {
+      if (!courseToEdit.value) throw new Error('Course is not available for editing.')
+      await updateCourse(courseToEdit.value.id, details)
+    } else {
+      await addCourse(details)
+    }
 
-  await router.push({
-    name: 'admin-courses',
-    query: { [isEditing ? 'updated' : 'created']: name.value.trim() },
-  })
+    await router.push({
+      name: 'admin-courses',
+      query: { [isEditing ? 'updated' : 'created']: name.value.trim() },
+    })
+  } catch (error) {
+    apiError.value = error instanceof Error ? error.message : 'Unable to save course.'
+  } finally {
+    isSaving.value = false
+  }
 }
 </script>
 
@@ -285,11 +333,15 @@ async function saveCourse() {
           </h1>
           <div class="topbar-actions">
             <RouterLink class="cancel-button" to="/admin/courses">Cancel</RouterLink>
-            <button class="save-button" type="submit">{{ isEditing ? 'Edit' : 'Create' }}</button>
+            <button class="save-button" type="submit" :disabled="isSaving || isLoadingCourse">
+              {{ isSaving ? 'Saving...' : isEditing ? 'Edit' : 'Create' }}
+            </button>
           </div>
         </header>
 
         <main class="content">
+          <p v-if="apiError" class="api-error" role="alert">{{ apiError }}</p>
+          <p v-if="isLoadingCourse" class="loading-state" role="status">Loading course...</p>
           <section class="package-card" aria-label="Course details">
             <label class="field full-width" :class="{ 'has-error': fieldErrors.name }">
               <span>Course name <b aria-hidden="true">*</b></span>
@@ -474,7 +526,7 @@ async function saveCourse() {
                     name="coverImage"
                     type="file"
                     accept="image/*"
-                    @change="rememberFile($event, 'image'); clearError('image')"
+                    @change="rememberCoverImage"
                   />
                 </span>
                 <FormFieldError :message="fieldErrors.image" />
@@ -497,11 +549,7 @@ async function saveCourse() {
                     <path d="M12 6v12M6 12h12" />
                   </svg>
                   {{ resourceName || 'Upload file' }}
-                  <input
-                    name="attachment"
-                    type="file"
-                    @change="rememberFile($event, 'resource')"
-                  />
+                  <input name="attachment" type="file" @change="rememberFile($event, 'resource')" />
                 </span>
               </label>
             </div>
@@ -740,9 +788,29 @@ h1 span {
   background: #2f5fac;
   color: #fff;
 }
+.save-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
 .content {
   min-height: calc(100vh - 92px);
   padding: 40px;
+}
+.api-error,
+.loading-state {
+  width: min(1120px, 100%);
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+.api-error {
+  border: 1px solid #f47e20;
+  background: #fff7f0;
+  color: #b8540b;
+}
+.loading-state {
+  background: #edf3fc;
+  color: #424c6b;
 }
 .package-card {
   display: flex;

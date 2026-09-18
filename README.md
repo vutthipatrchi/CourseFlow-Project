@@ -31,7 +31,9 @@ cd backend
 On macOS/Linux use `sh ./mvnw spring-boot:run` in `backend/`.
 Open http://localhost:5173. The page checks `/api/health` through the Vite
 proxy to http://localhost:8080. The default `standalone` profile runs without
-a database. No business data or authentication is implemented yet.
+a database and exposes only the health endpoint. Start the `local` profile to
+enable the PostgreSQL-backed admin course API. Authentication is not yet
+implemented.
 
 ## Local PostgreSQL and migrations
 
@@ -44,7 +46,8 @@ cd backend
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
 
-Flyway runs `backend/src/main/resources/db/migration/V1__initialize_schema.sql`.
+Flyway runs all migrations in `backend/src/main/resources/db/migration/`,
+including the course and lesson tables plus local seed data.
 Add each schema change as a new migration; do not edit migrations already applied.
 Docker keeps data in the `postgres_data` volume. `docker compose down` stops
 services and retains that data.
