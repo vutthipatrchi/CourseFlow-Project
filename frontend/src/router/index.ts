@@ -54,11 +54,13 @@ const router = createRouter({
       path: '/admin/promo-code/new',
       name: 'admin-promo-code-new',
       component: () => import('../views/admin/AddPromoCodeView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/admin/promo-code/:id/edit',
       name: 'admin-promo-code-edit',
       component: () => import('../views/admin/EditPromoCodeView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
 })
