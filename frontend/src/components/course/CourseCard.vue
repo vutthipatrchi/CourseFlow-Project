@@ -4,6 +4,7 @@
 // แก้ไขได้: image aspect ratio, icon style, footer stat layout
 
 type Props = {
+  id: string
   category: string
   title: string
   description: string
@@ -16,7 +17,8 @@ defineProps<Props>()
 </script>
 
 <template>
-  <article
+  <RouterLink
+    :to="`/courses/${id}`"
     class="flex w-full max-w-89.25 flex-col rounded-lg bg-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)]"
   >
     <img :src="imageUrl" :alt="title" class="h-60 w-full rounded-t-lg bg-gray-100 object-cover" />
@@ -37,5 +39,5 @@ defineProps<Props>()
         <span class="text-base text-[#646D89]">{{ hourCount }} Hours</span>
       </div>
     </div>
-  </article>
+  </RouterLink>
 </template>

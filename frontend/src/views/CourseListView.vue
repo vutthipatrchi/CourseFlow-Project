@@ -35,6 +35,7 @@ import { courses } from '@/data/courses'
         <CourseCard
           v-for="course in courses"
           :key="course.id"
+          :id="course.id"
           :category="course.category"
           :title="course.title"
           :description="course.description"
