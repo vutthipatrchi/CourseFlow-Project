@@ -1,3 +1,4 @@
+import { getToken } from '@clerk/vue'
 import axios from 'axios'
 
 const client = axios.create({
@@ -5,8 +6,13 @@ const client = axios.create({
   timeout: 10000,
 })
 
-// Clerk auth will attach a bearer token here via a request interceptor once
-// authentication is added; no interceptor exists yet.
+client.interceptors.request.use(async (config) => {
+  const token = await getToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 export interface ApiError {
   message: string
