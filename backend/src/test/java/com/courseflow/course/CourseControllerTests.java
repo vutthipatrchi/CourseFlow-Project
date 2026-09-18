@@ -1,5 +1,6 @@
 package com.courseflow.course;
 
+import com.courseflow.config.SecurityConfig;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,7 +16,9 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -23,6 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CourseController.class)
 @ActiveProfiles("local")
+@Import(SecurityConfig.class)
+@AutoConfigureMockMvc(addFilters = false)
 class CourseControllerTests {
     @Autowired
     private MockMvc mvc;

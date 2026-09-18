@@ -32,8 +32,20 @@ On macOS/Linux use `sh ./mvnw spring-boot:run` in `backend/`.
 Open http://localhost:5173. The page checks `/api/health` through the Vite
 proxy to http://localhost:8080. The default `standalone` profile runs without
 a database and exposes only the health endpoint. Start the `local` profile to
-enable the PostgreSQL-backed admin course API. Authentication is not yet
-implemented.
+enable the PostgreSQL-backed admin course API. Clerk handles sign-up and
+sign-in in the frontend, while Spring Security validates Clerk JWTs for
+protected backend endpoints.
+
+Create `frontend/.env.local` and add the Clerk publishable key:
+
+```properties
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_key
+```
+
+Copy `backend/.env.properties.example` to `backend/.env.properties` and set the
+Clerk JWKS URL plus database values. Both local environment files are ignored
+by Git. Admin course routes require a signed-in Clerk session, and frontend API
+requests send the Clerk bearer token to Spring Boot.
 
 ## Local PostgreSQL and migrations
 
@@ -57,6 +69,15 @@ database name, port or credentials, also set `DB_URL`, `DB_USERNAME`, and
 `DB_PASSWORD` in the backend terminal. `SERVER_PORT` defaults to 8080; update
 the Vite proxy if you change it. Never place secrets in frontend code or `VITE_*`
 variables, because those are visible to browser users.
+
+### Using Supabase instead of local Postgres
+
+To point the `local` profile at a hosted Supabase database instead of the
+Docker container, copy `backend/.env.properties.example` to
+`backend/.env.properties` (gitignored) and fill in the connection string from
+Supabase → Project Settings → Database → Connection string. Spring Boot loads
+this file automatically via `spring.config.import` if it exists, so no shell
+env vars are needed.
 
 ## Checks
 

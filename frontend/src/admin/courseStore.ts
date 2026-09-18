@@ -1,3 +1,4 @@
+import { getToken } from '@clerk/vue'
 import { ref } from 'vue'
 
 export type CourseLesson = { id: number; name: string; subLessons: number }
@@ -40,9 +41,14 @@ export const coursesError = ref('')
 let coursesLoaded = false
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const token = await getToken()
   const response = await fetch(url, {
     ...init,
-    headers: init?.body ? { 'Content-Type': 'application/json', ...init.headers } : init?.headers,
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init?.headers,
+    },
   })
 
   if (!response.ok) {

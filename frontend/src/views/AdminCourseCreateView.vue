@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { SignOutButton } from '@clerk/vue'
 import courseFlowLogo from '../assets/admin/courseflow-sidebar-logo.svg'
-import { clearUserRole } from '../auth/access'
 import {
   addCourse,
   courses,
@@ -307,12 +307,14 @@ async function saveCourse() {
           </svg>
           Promo code
         </a>
-        <RouterLink class="nav-item logout" to="/" @click="clearUserRole">
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
-          </svg>
-          Log out
-        </RouterLink>
+        <SignOutButton redirect-url="/">
+          <button class="nav-item logout" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
+            </svg>
+            Log out
+          </button>
+        </SignOutButton>
       </nav>
     </aside>
 
@@ -714,7 +716,10 @@ async function saveCourse() {
 }
 .nav-item.logout {
   margin-top: auto;
+  border: 0;
+  background: transparent;
   font-weight: 700;
+  cursor: pointer;
 }
 .workspace {
   min-width: 0;

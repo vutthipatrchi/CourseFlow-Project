@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { SignOutButton } from '@clerk/vue'
 import courseFlowLogo from '../assets/admin/courseflow-sidebar-logo.svg'
 import serviceDesignThumbnail from '../assets/admin/courses/service-design.jpg'
 import softwareDeveloperThumbnail from '../assets/admin/courses/software-developer.jpg'
 import uxUiDesignThumbnail from '../assets/admin/courses/ux-ui-design.jpg'
-import { clearUserRole } from '../auth/access'
 import {
   courses,
   coursesError,
@@ -126,12 +126,14 @@ async function deleteCourse() {
           </svg>
           Promo code
         </a>
-        <RouterLink class="nav-item logout" to="/" @click="clearUserRole">
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
-          </svg>
-          Log out
-        </RouterLink>
+        <SignOutButton redirect-url="/">
+          <button class="nav-item logout" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
+            </svg>
+            Log out
+          </button>
+        </SignOutButton>
       </nav>
     </aside>
 
@@ -396,7 +398,10 @@ async function deleteCourse() {
 
 .nav-item.logout {
   margin-top: auto;
+  border: 0;
+  background: transparent;
   font-weight: 700;
+  cursor: pointer;
 }
 
 .workspace {
