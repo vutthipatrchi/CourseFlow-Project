@@ -1,27 +1,43 @@
 # ส่งต่องาน: Admin Assignments
 
-**Branch:** `feature/admin-assignments`
+**Branch:** `feature/admin-assignments` (PR #3) · **อัปเดตล่าสุด:** 2026-09-18
 
 ## สรุป
 
-Feature "admin สร้าง assignment" และ "admin ดู assignment ทั้งหมด" ทำเสร็จและเทสต์
-end-to-end แล้วบนสาขานี้ (ดู endpoint contract ที่ [api.md](./api.md)) แต่มี 6 เรื่อง
-ที่ยัง**รอคนอื่นหรือ branch อื่น** ก่อนจะถือว่าจบจริง ๆ — ในจำนวนนี้มีแค่ 1 เรื่องที่
-ทำต่อได้เลยตอนนี้ ที่เหลือต้องรอการตัดสินใจหรือรอเช็คกับ branch อื่นก่อน
+Feature "admin สร้าง assignment" และ "admin ดู assignment ทั้งหมด" ทำเสร็จแล้ว และทดสอบ
+end-to-end บน Supabase กลางกับ Clerk (Development) แล้ว (ดู endpoint contract ที่
+[api.md](./api.md)) ยังมี 7 เรื่องค้างอยู่ ส่วนใหญ่เป็นของ branch อื่นหรือต้องให้ทีมตัดสินใจ
+มีแค่เรื่องที่ 1 ที่ต้องทำก่อน merge
 
 ## รายการที่ยังรอ
 
 | # | Item | Blocked on | Resume when / how | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Review PR | รอเพื่อนในทีม approve PR เข้า `dev` | เปิด PR ได้เลยตอนนี้ ไม่มีอะไรต้องรอก่อน | **พร้อมทำเลย** |
-| 2 | Auth ของ admin จริง | รอคนไป provision Clerk account + keys และตัดสินใจว่าจะเก็บ role `admin` ไว้ที่ไหน (ตอนนี้สมมติว่าอยู่ใน Clerk user metadata) | พอมี keys แล้ว: เสียบ `router.beforeEach` guard ที่ flag `meta.requiresAdmin` เดิมใน `frontend/src/router/index.ts` และเพิ่ม `spring-boot-starter-oauth2-resource-server` ไป verify JWT หน้า `@Profile("!standalone")` beans ที่มีอยู่แล้ว ไม่ต้องรื้อโครงสร้างเดิม | **รอการตัดสินใจ** |
-| 3 | CI ไม่รันบน PR เข้า `dev` | รอเจ้าของ repo ตัดสินใจว่าจะแก้ `.github/workflows/ci.yml` ให้ trigger บน `dev` ด้วยไหม (ตอนนี้ trigger แค่ `main`) | เพิ่ม `dev` เข้า `branches` list ของ workflow ไม่บล็อกการ merge feature นี้ แค่ merge ไปแบบไม่มี CI check จนกว่าจะแก้ | **รอการตัดสินใจ** |
-| 4 | เลข Flyway migration ชนกัน | มีผลก็ต่อเมื่อมี branch อื่นที่แตะ DB schema พร้อมกัน เช่น feature "admin จัดการ course" | ก่อน merge ต้องเช็คว่ายังไม่มีใครใช้ `V2__...` ใน `db/migration` ไปก่อน (สาขานี้จองไว้ที่ `V2__create_course_structure.sql`) ถ้าชน ฝั่งที่ merge ทีหลังต้องเปลี่ยนเลข | **มีเงื่อนไข** |
-| 5 | เจ้าของ schema courses/lessons/sub_lessons | รอคนที่จะทำ "admin จัดการ course" ในอนาคต — schema และ seed data ตอนนี้เป็นสิ่งที่เราออกแบบเองเพราะยังไม่มี ERD/spec จริง | ถ้า schema ของเขาต่างจากนี้ ต้องคุยรวมกันก่อนทั้งสอง branch จะ merge เข้า `dev` ไม่งั้นต้อง migrate ข้อมูลใหม่ทีหลัง | **มีเงื่อนไข** |
-| 6 | `docs/branch-protection.md` เก่าไม่ตรงของจริง | รอเจ้าของ repo อัปเดต doc/settings ใน GitHub — ตอนนี้ doc เขียนว่าใช้ `feat/...` จาก `main` แต่ทีมใช้ `feature/...` จาก `dev` จริง | ไม่บล็อกงานนี้ แค่บันทึกไว้กันคนอ่านทีหลังเข้าใจผิด | **หนี้เอกสาร ไม่บล็อก** |
+| 1 | Review PR #3 | รอเพื่อนในทีม approve เข้า `dev` | PR พร้อม merge แล้ว ไม่มี conflict | **รอ review** |
+| 2 | Backend ยังไม่เช็ค role admin | ฝั่ง frontend มี guard จาก #8 แล้ว (อ่าน `metadata.role` จาก Clerk token) แต่ backend แค่ตรวจว่า token ถูกต้อง ใครที่ login แล้วก็เรียก `/api/admin/*` ได้ | เพิ่มการเช็ค claim `metadata.role == "admin"` ใน `SecurityConfig` สำหรับ `/api/admin/**` กระทบ endpoint course ของ #6 ด้วย ควรทำเป็น PR แยกที่ทีมตกลงร่วมกัน | **รอการตัดสินใจ** |
+| 3 | แก้ course แล้ว sub-lesson กับ assignment หายตาม | `CourseRepository.replaceLessons` (#6) ลบ lesson ทั้งหมดของ course แล้ว insert ใหม่ทุกครั้งที่ save ส่วน `sub_lessons.lesson_id` เป็น `ON DELETE CASCADE` | เจ้าของ #6 เปลี่ยนเป็น update lesson เดิมแทนการลบทิ้ง ต้องทำก่อนจะมี sub-lesson จริงใน database (ตอนนี้มีแค่ seed ของ profile `local`) | **รอเจ้าของ #6** |
+| 4 | Flyway เก็บ history ผิด schema | Local: user ชื่อ `courseflow` ตรงกับ schema ที่ V1 สร้าง พอสตาร์ท backend รอบที่สอง Flyway จะหา history table ผิด schema แล้วล่ม. Supabase: `flyway_schema_history` อยู่ใน `public` ซึ่ง Data API เปิดให้เข้าถึงได้โดยไม่มี RLS | ตั้ง `spring.flyway.default-schema=courseflow` แก้ได้ทั้งสองอย่าง แต่ต้องรีเซ็ต database อีกรอบ ควรทำเป็น PR แยกและนัดทีมก่อน | **รอการตัดสินใจ** |
+| 5 | Sidebar admin มี 2 ตัว | `AdminCourseListView` (#6) มี sidebar ของตัวเอง ชื่อเมนูไม่ตรงกับ `AdminLayout` และลิงก์ Assignment เป็น `href="#assignments"` กดแล้วไม่ไปหน้า assignment | ย้ายหน้า course มาใช้ `AdminLayout` ตัวเดียวกัน | **รอคุยกับเจ้าของ #6** |
+| 6 | CI ไม่รันบน PR เข้า `dev` | `.github/workflows/ci.yml` trigger แค่ `main` | เพิ่ม `dev` เข้า `branches` ของ workflow ไม่บล็อกการ merge แค่ merge ไปโดยไม่มี CI check จนกว่าจะแก้ | **รอการตัดสินใจ** |
+| 7 | `docs/branch-protection.md` ไม่ตรงของจริง | doc เขียนว่าใช้ `feat/...` แตกจาก `main` แต่ทีมใช้ `feature/...` แตกจาก `dev` | ไม่บล็อกงานนี้ แค่บันทึกไว้กันคนอ่านเข้าใจผิด | **หนี้เอกสาร ไม่บล็อก** |
 
-## งานที่ตั้งใจไม่ทำในสาขานี้
+## เรื่องที่จบแล้ว
 
-- แก้ไข/ลบ assignment และค้นหา/กรอง — scope มีแค่สร้างกับดูทั้งหมด
-- ไม่มี Pinia store — แค่ 2 หน้า ใช้ local state พอ
-- ไม่ปรับ UI เพิ่มเติมนอกจากใช้ design token ที่มาจาก `feature/landing-page` อยู่แล้ว
+- **เลข Flyway migration ชนกัน:** `dev` มี `V3__create_course_tables.sql` ของ #6 แล้ว branch นี้ใช้ V4
+  migration ถัดไปต้องเริ่มที่ V5 ส่วน database ไหนเคยรัน V3 เก่าของ branch นี้จะเจอ
+  `checksum mismatch for migration version 3` ต้องรีเซ็ตด้วย
+  `DROP SCHEMA IF EXISTS courseflow CASCADE; DROP TABLE IF EXISTS public.flyway_schema_history;`
+  (Supabase กลางรีเซ็ตแล้วเมื่อ 2026-09-18)
+- **เจ้าของ schema course:** ใช้ `courses` / `course_lessons` ของ #6 branch นี้เพิ่มแค่
+  `sub_lessons` (FK → `course_lessons`) กับ `assignments`
+- **Clerk และสิทธิ์ admin:** login กับ guard ฝั่ง frontend มาจาก #8 การให้สิทธิ์ admin ทำใน
+  Clerk Dashboard (instance Development) → Users → เลือก user → Metadata → ช่อง **Public** →
+  ใส่ `{"role": "admin"}` แล้ว logout/login ใหม่ (ส่วน session token ตั้งให้ส่ง
+  `metadata` มาด้วยไว้แล้ว)
+
+## งานที่ตั้งใจไม่ทำใน branch นี้
+
+- แก้ไข/ลบ assignment: ไอคอนในคอลัมน์ Action เป็นแค่ placeholder กดไม่ได้
+- `durationDays` / `status`: ตัดออกทั้ง API, database และฟอร์ม เพราะไม่มีใน Figma
+- Search API: ช่องค้นหากรองจากข้อมูลที่โหลดมาแล้วฝั่ง client
+- Pinia store: มีแค่ 2 หน้า ใช้ local state พอ
