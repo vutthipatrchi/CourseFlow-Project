@@ -50,7 +50,7 @@ public class AssignmentRepository {
                        c.name AS course_name, l.name AS lesson_name, sl.name AS sub_lesson_name
                 FROM courseflow.assignments a
                 JOIN courseflow.sub_lessons sl ON sl.id = a.sub_lesson_id
-                JOIN courseflow.lessons l ON l.id = sl.lesson_id
+                JOIN courseflow.course_lessons l ON l.id = sl.lesson_id
                 JOIN courseflow.courses c ON c.id = l.course_id
                 ORDER BY a.created_at DESC
                 """)

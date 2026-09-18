@@ -21,7 +21,7 @@ public class SubLessonOptionRepository {
                 SELECT sl.id AS sub_lesson_id, sl.name AS sub_lesson_name,
                        l.name AS lesson_name, c.name AS course_name
                 FROM courseflow.sub_lessons sl
-                JOIN courseflow.lessons l ON l.id = sl.lesson_id
+                JOIN courseflow.course_lessons l ON l.id = sl.lesson_id
                 JOIN courseflow.courses c ON c.id = l.course_id
                 ORDER BY c.name, l.position, sl.position
                 """)

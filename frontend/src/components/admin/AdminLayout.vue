@@ -31,12 +31,13 @@ async function logOut() {
       </div>
 
       <nav class="flex flex-1 flex-col">
-        <div
+        <RouterLink
+          :to="{ name: 'admin-courses' }"
           class="flex h-14 items-center gap-4 px-6 text-base font-medium text-[#424C6B] hover:bg-[#F1F2F6]"
         >
           <img :src="courseIcon" alt="" class="h-6 w-6 flex-none" />
           <span>Courses</span>
-        </div>
+        </RouterLink>
 
         <RouterLink
           :to="{ name: 'admin-assignments' }"

@@ -45,9 +45,9 @@ the "create assignment" form's sub-lesson picker.
 [
   {
     "subLessonId": 1,
-    "subLessonName": "Structuring a Page",
-    "lessonName": "HTML Basics",
-    "courseName": "Introduction to Web Development"
+    "subLessonName": "Sub-lesson 1",
+    "lessonName": "Lesson 1",
+    "courseName": "Service Design Essentials"
   }
 ]
 ```
@@ -103,9 +103,9 @@ first.
   {
     "id": 10,
     "description": "Write a short essay",
-    "courseName": "Introduction to Web Development",
-    "lessonName": "HTML Basics",
-    "subLessonName": "Structuring a Page",
+    "courseName": "Service Design Essentials",
+    "lessonName": "Lesson 1",
+    "subLessonName": "Sub-lesson 1",
     "createdAt": "2026-09-16T10:00:00Z"
   }
 ]
