@@ -16,6 +16,12 @@ if (!PUBLISHABLE_KEY) {
 const app = createApp(App)
 
 app.use(createPinia())
-app.use(clerkPlugin, { publishableKey: PUBLISHABLE_KEY })
+app.use(clerkPlugin, {
+  publishableKey: PUBLISHABLE_KEY,
+  signInUrl: import.meta.env.VITE_CLERK_SIGN_IN_URL,
+  signUpUrl: import.meta.env.VITE_CLERK_SIGN_UP_URL,
+  signInFallbackRedirectUrl: import.meta.env.VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL,
+  signUpFallbackRedirectUrl: import.meta.env.VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL,
+})
 app.use(router)
 app.mount('#app')
