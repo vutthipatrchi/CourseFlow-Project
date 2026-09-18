@@ -117,7 +117,12 @@ async function handleVerify() {
       <span
         class="pointer-events-none absolute -bottom-32 -left-32 hidden h-[450px] w-[450px] rounded-full bg-orange-500 md:block"
       ></span>
-      <img :src="dotSmall" alt="" aria-hidden="true" class="absolute right-[4%] bottom-[80px] hidden h-6 w-6 md:block" />
+      <img
+        :src="dotSmall"
+        alt=""
+        aria-hidden="true"
+        class="absolute right-[4%] bottom-[80px] hidden h-6 w-6 md:block"
+      />
 
       <div class="relative w-full max-w-md px-6">
         <template v-if="step === 'credentials'">
