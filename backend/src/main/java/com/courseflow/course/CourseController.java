@@ -18,36 +18,36 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin/courses")
 @Profile("!standalone")
 public class CourseController {
-    private final CourseRepository courses;
+    private final CourseService courseService;
 
-    public CourseController(CourseRepository courses) {
-        this.courses = courses;
+    public CourseController(CourseService courseService) {
+        this.courseService = courseService;
     }
 
     @GetMapping
     public List<Course> list() {
-        return courses.findAll();
+        return courseService.findAll();
     }
 
     @GetMapping("/{id}")
     public Course get(@PathVariable long id) {
-        return courses.findById(id).orElseThrow(() -> new CourseNotFoundException(id));
+        return courseService.findById(id);
     }
 
     @PostMapping
     public ResponseEntity<Course> create(@Valid @RequestBody CourseRequest request) {
-        var course = courses.create(request);
+        var course = courseService.create(request);
         return ResponseEntity.created(URI.create("/api/admin/courses/" + course.id())).body(course);
     }
 
     @PutMapping("/{id}")
     public Course update(@PathVariable long id, @Valid @RequestBody CourseRequest request) {
-        return courses.update(id, request);
+        return courseService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable long id) {
-        courses.delete(id);
+        courseService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }

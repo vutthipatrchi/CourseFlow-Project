@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import deleteIcon from '@/assets/admin/delete.svg'
@@ -7,18 +8,16 @@ import editIcon from '@/assets/admin/edit.svg'
 import serviceDesignThumbnail from '../assets/admin/courses/service-design.jpg'
 import softwareDeveloperThumbnail from '../assets/admin/courses/software-developer.jpg'
 import uxUiDesignThumbnail from '../assets/admin/courses/ux-ui-design.jpg'
-import {
-  courses,
-  coursesError,
-  coursesLoading,
-  loadCourses,
-  removeCourse,
-  type Course,
-} from '../admin/courseStore'
+import { useCourseStore } from '@/stores/course'
+import type { AdminCourse } from '@/types/course'
+
+const courseStore = useCourseStore()
+const { courses, error: coursesError, loading: coursesLoading } = storeToRefs(courseStore)
+const { load: loadCourses, remove: removeCourse } = courseStore
 
 const search = ref('')
 const route = useRoute()
-const coursePendingDeletion = ref<Course | null>(null)
+const coursePendingDeletion = ref<AdminCourse | null>(null)
 const deleting = ref(false)
 const courseThumbnails = [serviceDesignThumbnail, softwareDeveloperThumbnail, uxUiDesignThumbnail]
 const feedback = ref(
@@ -67,7 +66,7 @@ function formatDateTime(value: string) {
     .replace(',', '')
 }
 
-function requestDeletion(course: Course) {
+function requestDeletion(course: AdminCourse) {
   feedback.value = ''
   coursePendingDeletion.value = course
 }
