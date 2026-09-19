@@ -48,12 +48,12 @@ record OrderRecord(
 record PaymentRecord(
     UUID id, UUID orderId, String providerChargeId, UUID idempotencyKey,
     PaymentMethod method, long amountSatang, String currency, PaymentStatus status,
-    String qrImageUrl, String authorizeUri, String failureMessage, Instant expiresAt
+    String qrImageUrl, String failureMessage, Instant expiresAt
 ) {}
 
 record ProviderCharge(
     String id, PaymentStatus status, long amountSatang, String currency,
-    String qrImageUrl, String authorizeUri, String failureMessage
+    String qrImageUrl, String failureMessage
 ) {}
 
 record OrderCreated(
@@ -64,8 +64,8 @@ record OrderCreated(
 
 record PaymentView(
     UUID paymentId, UUID orderId, String reference, String method, String status,
-    long amountSatang, String currency, String qrUrl, String authorizeUri,
-    String failureMessage, Instant expiresAt
+    long amountSatang, String currency, String qrUrl, String failureMessage,
+    Instant expiresAt
 ) {}
 
 record DownloadedQr(byte[] bytes, String contentType) {}

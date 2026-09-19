@@ -1,3 +1,6 @@
+import type { AxiosRequestConfig } from 'axios'
+import client, { toApiError } from './client'
+
 export type PaymentStatus = 'creating' | 'pending' | 'successful' | 'failed' | 'expired' | 'review'
 
 export interface PaymentConfig {
@@ -26,7 +29,6 @@ export interface PaymentView {
   amountSatang: number
   currency: string
   qrUrl: string | null
-  authorizeUri: string | null
   failureMessage: string | null
   expiresAt: string
 }
@@ -39,38 +41,29 @@ export interface CardDetails {
   securityCode: string
 }
 
-interface ApiErrorBody {
-  message?: string
-}
-
 const checkoutTokenPrefix = 'courseflow:checkout:'
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init)
-  if (!response.ok) {
-    let body: ApiErrorBody = {}
-    try {
-      body = (await response.json()) as ApiErrorBody
-    } catch {
-      // The HTTP status is still useful if an intermediary returned a non-JSON body.
-    }
-    throw new Error(body.message || `Payment request failed (${response.status})`)
+async function request<T>(config: AxiosRequestConfig): Promise<T> {
+  try {
+    const { data } = await client.request<T>(config)
+    return data
+  } catch (error) {
+    throw new Error(toApiError(error).message)
   }
-  return (await response.json()) as T
 }
 
 export function getPaymentConfig() {
-  return request<PaymentConfig>('/api/payments/config')
+  return request<PaymentConfig>({ url: '/payments/config' })
 }
 
 export function createOrder(promotionCode: string) {
-  return request<OrderCreated>('/api/orders', {
+  return request<OrderCreated>({
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    url: '/orders',
+    data: {
       courseId: 1,
       promotionCode: promotionCode.trim(),
-    }),
+    },
   })
 }
 
@@ -80,14 +73,14 @@ export function createCardPayment(
   cardToken: string,
   idempotencyKey: string,
 ) {
-  return request<PaymentView>(`/api/orders/${orderId}/payments/card`, {
+  return request<PaymentView>({
     method: 'POST',
+    url: `/orders/${orderId}/payments/card`,
     headers: {
-      'Content-Type': 'application/json',
       'X-Checkout-Token': checkoutToken,
       'Idempotency-Key': idempotencyKey,
     },
-    body: JSON.stringify({ cardToken }),
+    data: { cardToken },
   })
 }
 
@@ -96,8 +89,9 @@ export function createPromptPayPayment(
   checkoutToken: string,
   idempotencyKey: string,
 ) {
-  return request<PaymentView>(`/api/orders/${orderId}/payments/promptpay`, {
+  return request<PaymentView>({
     method: 'POST',
+    url: `/orders/${orderId}/payments/promptpay`,
     headers: {
       'X-Checkout-Token': checkoutToken,
       'Idempotency-Key': idempotencyKey,
@@ -106,19 +100,24 @@ export function createPromptPayPayment(
 }
 
 export function getPayment(paymentId: string, checkoutToken: string) {
-  return request<PaymentView>(`/api/payments/${paymentId}`, {
-    headers: { 'X-Checkout-Token': checkoutToken },
-    cache: 'no-store',
+  return request<PaymentView>({
+    url: `/payments/${paymentId}`,
+    headers: {
+      'X-Checkout-Token': checkoutToken,
+      'Cache-Control': 'no-cache',
+    },
   })
 }
 
 export async function downloadQr(paymentId: string, checkoutToken: string) {
-  const response = await fetch(`/api/payments/${paymentId}/qr`, {
-    headers: { 'X-Checkout-Token': checkoutToken },
-    cache: 'no-store',
+  return request<Blob>({
+    url: `/payments/${paymentId}/qr`,
+    headers: {
+      'X-Checkout-Token': checkoutToken,
+      'Cache-Control': 'no-cache',
+    },
+    responseType: 'blob',
   })
-  if (!response.ok) throw new Error(`Unable to download QR image (${response.status})`)
-  return response.blob()
 }
 
 export function tokenizeCard(publicKey: string, card: CardDetails): Promise<string> {

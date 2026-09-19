@@ -33,8 +33,7 @@ class PaymentServiceTests {
             repository,
             gateway,
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new SecureRandom(),
-            "http://localhost:5173"
+            new SecureRandom()
         );
     }
 
@@ -69,7 +68,7 @@ class PaymentServiceTests {
         ProviderCharge providerCharge = new ProviderCharge(
             "chrg_test_123", PaymentStatus.PENDING, 335_900, "thb",
             "https://api.omise.co/charges/chrg_test_123/documents/doc_test/downloads/qr.png",
-            null, null
+            null
         );
         when(gateway.createPromptPayCharge(
             eq(checkout.created().orderId()), any(UUID.class), eq(checkout.saved().reference()),
@@ -79,7 +78,7 @@ class PaymentServiceTests {
             new PaymentRecord(
                 invocation.getArgument(0), checkout.created().orderId(), providerCharge.id(),
                 idempotencyKey, PaymentMethod.PROMPTPAY, 335_900, "thb",
-                PaymentStatus.PENDING, providerCharge.qrImageUrl(), null, null,
+                PaymentStatus.PENDING, providerCharge.qrImageUrl(), null,
                 checkout.saved().expiresAt()
             )
         ));
@@ -101,16 +100,16 @@ class PaymentServiceTests {
         PaymentRecord pending = new PaymentRecord(
             paymentId, checkout.created().orderId(), "chrg_test_456", UUID.randomUUID(),
             PaymentMethod.CARD, 335_900, "thb", PaymentStatus.PENDING,
-            null, null, null, checkout.saved().expiresAt()
+            null, null, checkout.saved().expiresAt()
         );
         PaymentRecord successful = new PaymentRecord(
             paymentId, checkout.created().orderId(), "chrg_test_456", pending.idempotencyKey(),
             PaymentMethod.CARD, 335_900, "thb", PaymentStatus.SUCCESSFUL,
-            null, null, null, checkout.saved().expiresAt()
+            null, null, checkout.saved().expiresAt()
         );
         ProviderCharge providerCharge = new ProviderCharge(
             "chrg_test_456", PaymentStatus.SUCCESSFUL, 335_900, "thb",
-            null, null, null
+            null, null
         );
         when(repository.findPayment(paymentId)).thenReturn(
             Optional.of(pending), Optional.of(successful), Optional.of(successful)

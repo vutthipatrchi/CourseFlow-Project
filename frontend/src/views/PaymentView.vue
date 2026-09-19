@@ -12,7 +12,7 @@ import {
   rememberCheckout,
   tokenizeCard,
   type PaymentConfig,
-} from '@/lib/payment-api'
+} from '@/api/payments'
 
 type PaymentMethod = 'card' | 'qr'
 
@@ -130,10 +130,6 @@ async function confirmPayment() {
     }
 
     rememberCheckout(payment.paymentId, order.accessToken)
-    if (payment.authorizeUri) {
-      window.location.assign(payment.authorizeUri)
-      return
-    }
     await router.push({
       name: payment.method === 'promptpay' ? 'payment-qr' : 'payment-status',
       query: { paymentId: payment.paymentId },

@@ -25,7 +25,6 @@ const promptPayPayment = {
   amountSatang: 335900,
   currency: 'thb',
   qrUrl: `/api/payments/${paymentId}/qr`,
-  authorizeUri: null,
   failureMessage: null,
   expiresAt: order.expiresAt,
 }
@@ -51,7 +50,7 @@ const mocks = vi.hoisted(() => ({
   downloadQr: vi.fn<(paymentId: string, checkoutToken: string) => Promise<Blob>>(),
 }))
 
-vi.mock('@/lib/payment-api', () => mocks)
+vi.mock('@/api/payments', () => mocks)
 
 function createTestRouter(initialPath = '/payment') {
   const router = createRouter({

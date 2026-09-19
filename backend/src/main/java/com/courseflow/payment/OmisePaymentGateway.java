@@ -42,7 +42,7 @@ final class OmisePaymentGateway implements PaymentGateway {
     @Override
     public ProviderCharge createCardCharge(
         UUID orderId, UUID paymentId, String reference, long amountSatang,
-        String currency, String cardToken, String returnUri, Instant expiresAt
+        String currency, String cardToken, Instant expiresAt
     ) {
         try {
             Request<Charge> request = new Charge.CreateRequestBuilder()
@@ -50,7 +50,6 @@ final class OmisePaymentGateway implements PaymentGateway {
                 .currency(currency)
                 .card(cardToken)
                 .description("CourseFlow order " + reference)
-                .returnUri(returnUri)
                 .expiresAt(ZonedDateTime.ofInstant(expiresAt, ZoneOffset.UTC))
                 .metadata(Map.of("orderId", orderId.toString(), "paymentId", paymentId.toString()))
                 .build();
@@ -142,7 +141,7 @@ final class OmisePaymentGateway implements PaymentGateway {
         }
         return new ProviderCharge(
             charge.getId(), mapStatus(charge.getStatus()), charge.getAmount(), charge.getCurrency(),
-            qrUrl, charge.getAuthorizeUri(), charge.getFailureMessage()
+            qrUrl, charge.getFailureMessage()
         );
     }
 

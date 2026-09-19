@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
-import { checkoutTokenFor, getPayment, type PaymentView } from '@/lib/payment-api'
+import { checkoutTokenFor, getPayment, type PaymentView } from '@/api/payments'
 
 const route = useRoute()
 const payment = ref<PaymentView | null>(null)

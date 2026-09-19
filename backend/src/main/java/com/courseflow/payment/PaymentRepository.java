@@ -160,11 +160,11 @@ class PaymentRepository {
         jdbc.update(
             """
             UPDATE courseflow.payments
-            SET provider_charge_id = ?, status = ?, qr_image_url = ?, authorize_uri = ?,
+            SET provider_charge_id = ?, status = ?, qr_image_url = ?,
                 failure_message = ?, updated_at = NOW()
             WHERE id = ?
             """,
-            charge.id(), charge.status().value(), charge.qrImageUrl(), charge.authorizeUri(),
+            charge.id(), charge.status().value(), charge.qrImageUrl(),
             charge.failureMessage(), paymentId
         );
     }
@@ -229,8 +229,7 @@ class PaymentRepository {
             PaymentMethod.valueOf(rs.getString("method").toUpperCase()),
             rs.getLong("amount_satang"), rs.getString("currency"),
             PaymentStatus.from(rs.getString("status")), rs.getString("qr_image_url"),
-            rs.getString("authorize_uri"), rs.getString("failure_message"),
-            rs.getTimestamp("expires_at").toInstant()
+            rs.getString("failure_message"), rs.getTimestamp("expires_at").toInstant()
         );
     }
 

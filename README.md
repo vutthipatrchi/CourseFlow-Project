@@ -92,7 +92,6 @@ following values to `backend/.env.properties`:
 ```properties
 OMISE_PUBLIC_KEY=pkey_test_...
 OMISE_SECRET_KEY=skey_test_...
-APP_BASE_URL=http://localhost:5173
 ```
 
 Configure the Opn webhook endpoint as

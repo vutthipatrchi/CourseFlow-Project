@@ -8,7 +8,7 @@ interface PaymentGateway {
     String publicKey();
     ProviderCharge createCardCharge(
         UUID orderId, UUID paymentId, String reference, long amountSatang,
-        String currency, String cardToken, String returnUri, Instant expiresAt
+        String currency, String cardToken, Instant expiresAt
     );
     ProviderCharge createPromptPayCharge(
         UUID orderId, UUID paymentId, String reference, long amountSatang,

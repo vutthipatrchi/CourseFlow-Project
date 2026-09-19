@@ -10,7 +10,6 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,25 +24,18 @@ class PaymentService {
     private final PaymentGateway gateway;
     private final Clock clock;
     private final SecureRandom random;
-    private final String appBaseUrl;
 
-    PaymentService(
-        PaymentRepository repository,
-        PaymentGateway gateway,
-        @Value("${courseflow.app-base-url:http://localhost:5173}") String appBaseUrl
-    ) {
-        this(repository, gateway, Clock.systemUTC(), new SecureRandom(), appBaseUrl);
+    PaymentService(PaymentRepository repository, PaymentGateway gateway) {
+        this(repository, gateway, Clock.systemUTC(), new SecureRandom());
     }
 
     PaymentService(
-        PaymentRepository repository, PaymentGateway gateway, Clock clock,
-        SecureRandom random, String appBaseUrl
+        PaymentRepository repository, PaymentGateway gateway, Clock clock, SecureRandom random
     ) {
         this.repository = repository;
         this.gateway = gateway;
         this.clock = clock;
         this.random = random;
-        this.appBaseUrl = appBaseUrl.replaceAll("/+$", "");
     }
 
     boolean providerEnabled() { return gateway.enabled(); }
@@ -114,7 +106,7 @@ class PaymentService {
         PaymentRecord payment = new PaymentRecord(
             paymentId, orderId, null, idempotencyKey, method,
             order.totalSatang(), order.currency(), PaymentStatus.CREATING,
-            null, null, null, order.expiresAt()
+            null, null, order.expiresAt()
         );
         repository.insertPayment(payment);
 
@@ -122,9 +114,7 @@ class PaymentService {
             ProviderCharge charge = method == PaymentMethod.CARD
                 ? gateway.createCardCharge(
                     order.id(), paymentId, order.reference(), order.totalSatang(),
-                    order.currency(), cardToken,
-                    appBaseUrl + "/payment/status?paymentId=" + paymentId,
-                    order.expiresAt()
+                    order.currency(), cardToken, order.expiresAt()
                 )
                 : gateway.createPromptPayCharge(
                     order.id(), paymentId, order.reference(), order.totalSatang(),
@@ -213,7 +203,7 @@ class PaymentService {
             payment.id(), order.id(), order.reference(), payment.method().value(),
             payment.status().value(), payment.amountSatang(), payment.currency(),
             payment.qrImageUrl() == null ? null : "/api/payments/" + payment.id() + "/qr",
-            payment.authorizeUri(), payment.failureMessage(), payment.expiresAt()
+            payment.failureMessage(), payment.expiresAt()
         );
     }
 

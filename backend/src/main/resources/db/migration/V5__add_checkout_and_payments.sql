@@ -33,7 +33,6 @@ CREATE TABLE courseflow.payments (
     currency CHAR(3) NOT NULL,
     status VARCHAR(24) NOT NULL CHECK (status IN ('creating', 'pending', 'successful', 'failed', 'expired', 'review')),
     qr_image_url TEXT,
-    authorize_uri TEXT,
     failure_message TEXT,
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
