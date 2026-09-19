@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import logo from '@/assets/landing/logo.svg'
-import { Show, SignInButton } from '@clerk/vue'
+import { Show } from '@clerk/vue'
 import UserMenu from './UserMenu.vue'
 </script>
 
@@ -12,7 +12,9 @@ import UserMenu from './UserMenu.vue'
       </a>
 
       <div class="flex items-center gap-4 sm:gap-8">
-        <a href="#" class="text-sm font-medium text-darkblue-500 hover:text-blue-600">Our Courses</a>
+        <a href="#" class="text-sm font-medium text-darkblue-500 hover:text-blue-600"
+          >Our Courses</a
+        >
         <Show when="signed-out">
           <a
             href="/sign-in"

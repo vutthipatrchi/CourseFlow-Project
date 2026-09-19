@@ -12,6 +12,7 @@ const router = createRouter({
       name: 'sign-up',
       component: () => import('../views/SignUpView.vue'),
     },
+    { path: '/admin', redirect: { name: 'admin-courses' } },
     {
       path: '/admin/courses',
       name: 'admin-courses',
@@ -28,6 +29,18 @@ const router = createRouter({
       path: '/admin/courses/:id/edit',
       name: 'admin-course-edit',
       component: () => import('../views/AdminCourseCreateView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/assignments',
+      name: 'admin-assignments',
+      component: () => import('../views/AdminAssignmentsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/assignments/create',
+      name: 'admin-assignment-create',
+      component: () => import('../views/AdminAssignmentCreateView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
