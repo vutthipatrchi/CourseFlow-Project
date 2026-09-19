@@ -202,3 +202,29 @@ success response shape. `404 Not Found` when `id` does not exist.
 
 Deletes a promo code. `204 No Content` on success, `404 Not Found` when
 `id` does not exist.
+
+## Payment checkout
+
+Payment endpoints are enabled when the backend runs with a database profile.
+All monetary values are integer satang and the backend calculates the final
+amount from its own course and promotion records.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/payments/config` | Return provider availability and the publishable key used for browser tokenization. |
+| `POST` | `/api/orders` | Create a 30-minute checkout and return an opaque checkout token. |
+| `POST` | `/api/orders/{orderId}/payments/card` | Charge a provider card token. |
+| `POST` | `/api/orders/{orderId}/payments/promptpay` | Create a provider PromptPay charge and QR image. |
+| `GET` | `/api/payments/{paymentId}` | Refresh a charge from the provider and return its verified status. |
+| `GET` | `/api/payments/{paymentId}/qr` | Download the provider QR image through the authenticated proxy. |
+| `POST` | `/api/webhooks/opn` | Receive an Opn event and reconcile it after retrieving the charge from Opn. |
+
+The order response contains `accessToken`. Send it as `X-Checkout-Token` on
+payment, status, and QR requests. Send a UUID as `Idempotency-Key` on both
+payment-creation endpoints. Card requests contain only `{ "cardToken":
+"tokn_test_..." }`; raw card numbers and security codes must never reach this
+API.
+
+The current checkout is guest-capable and authorizes access through the opaque
+checkout token. User-account authentication can be added independently when
+the account model is implemented.

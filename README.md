@@ -29,12 +29,12 @@ cd backend
 ```
 
 On macOS/Linux use `sh ./mvnw spring-boot:run` in `backend/`.
-Open http://localhost:5173. The page checks `/api/health` through the Vite
-proxy to http://localhost:8080. The default `standalone` profile runs without
-a database and exposes only the health endpoint. Start the `local` profile to
-enable the PostgreSQL-backed admin course API. Clerk handles sign-up and
-sign-in in the frontend, while Spring Security validates Clerk JWTs for
-protected backend endpoints.
+Open http://localhost:5173. The frontend sends `/api/*` through the Vite proxy
+to http://localhost:8080. The default `standalone` profile runs without a
+database and exposes only the health endpoint. Start the `local` profile to
+enable the PostgreSQL-backed admin course and payment APIs. Clerk handles
+sign-up and sign-in in the frontend, while Spring Security validates Clerk JWTs
+for protected admin endpoints.
 
 Create `frontend/.env.local` and add the Clerk publishable key:
 
@@ -83,6 +83,28 @@ Docker container, copy `backend/.env.properties.example` to
 Supabase → Project Settings → Database → Connection string. Spring Boot loads
 this file automatically via `spring.config.import` if it exists, so no shell
 env vars are needed.
+
+## Payment setup (Opn Payments / Omise)
+
+The checkout supports card tokenization and PromptPay QR payments. Add the
+following values to `backend/.env.properties`:
+
+```properties
+OMISE_PUBLIC_KEY=pkey_test_...
+OMISE_SECRET_KEY=skey_test_...
+APP_BASE_URL=http://localhost:5173
+```
+
+Configure the Opn webhook endpoint as
+`https://your-api-host.example/api/webhooks/opn`. The webhook handler does not
+trust the posted status: it retrieves the charge from Opn with the secret key,
+checks amount and currency, deduplicates event IDs, and only then activates the
+subscription. Keep `OMISE_SECRET_KEY` on the backend only.
+
+The checkout token is stored in browser session storage and sent in the
+`X-Checkout-Token` header; it is never placed in a URL. Payment creation also
+requires an `Idempotency-Key`. PromptPay QR images are proxied by the backend so
+the Save QR image action can download the provider-generated PNG securely.
 
 ## Checks
 

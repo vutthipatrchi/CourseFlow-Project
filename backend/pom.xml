@@ -58,6 +58,11 @@
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>co.omise</groupId>
+			<artifactId>omise-java</artifactId>
+			<version>5.3.0</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>

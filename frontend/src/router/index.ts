@@ -13,6 +13,17 @@ const router = createRouter({
       component: () => import('../views/SignUpView.vue'),
     },
     { path: '/admin', redirect: { name: 'admin-courses' } },
+    { path: '/payment', name: 'payment', component: () => import('../views/PaymentView.vue') },
+    {
+      path: '/payment/qr',
+      name: 'payment-qr',
+      component: () => import('../views/PaymentQrView.vue'),
+    },
+    {
+      path: '/payment/status',
+      name: 'payment-status',
+      component: () => import('../views/PaymentStatusView.vue'),
+    },
     {
       path: '/admin/courses',
       name: 'admin-courses',
