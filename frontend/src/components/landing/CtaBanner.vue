@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { Show } from '@clerk/vue'
 import ctaIllustration from '@/assets/landing/cta-illustration.svg'
 import dotRingGreen from '@/assets/landing/dot-ring-green.svg'
-import { Show } from '@clerk/vue'
 </script>
 
 <template>
@@ -21,13 +21,22 @@ import { Show } from '@clerk/vue'
     <div class="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-16 md:grid-cols-2">
       <div>
         <h2 class="text-2xl font-bold text-white md:text-3xl">Want to start learning?</h2>
-        <button
-          type="button"
-          class="mt-6 rounded-lg border-2 border-orange-500 bg-white px-7 py-3 text-sm font-semibold text-orange-500 hover:bg-orange-500 hover:text-white"
-        >
-          <Show when="signed-in">Check out our courses</Show>
-          <Show when="signed-out">Register here</Show>
-        </button>
+        <Show when="signed-out">
+          <a
+            href="/sign-up"
+            class="mt-6 inline-block rounded-lg border-2 border-orange-500 bg-white px-7 py-3 text-sm font-semibold text-orange-500 hover:bg-orange-500 hover:text-white"
+          >
+            Register here
+          </a>
+        </Show>
+        <Show when="signed-in">
+          <a
+            href="#"
+            class="mt-6 inline-block rounded-lg border-2 border-orange-500 bg-white px-7 py-3 text-sm font-semibold text-orange-500 hover:bg-orange-500 hover:text-white"
+          >
+            Check out our courses
+          </a>
+        </Show>
       </div>
 
       <div class="flex justify-center md:justify-end">
