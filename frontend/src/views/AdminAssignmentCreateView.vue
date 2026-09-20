@@ -30,23 +30,24 @@ const serverError = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    const [options] = await Promise.all([
-      listSubLessonOptions(),
-      isEditing.value
-        ? getAssignment(assignmentId.value!).then((assignment) => {
-            initialValue.value = {
-              subLessonId: assignment.subLessonId,
-              description: assignment.description,
-            }
-          })
-        : Promise.resolve(),
-    ])
-    subLessonOptions.value = options
+    subLessonOptions.value = await listSubLessonOptions()
   } catch (err) {
     serverError.value = toApiError(err).message
-  } finally {
-    loading.value = false
   }
+
+  if (isEditing.value) {
+    try {
+      const assignment = await getAssignment(assignmentId.value!)
+      initialValue.value = {
+        subLessonId: assignment.subLessonId,
+        description: assignment.description,
+      }
+    } catch (err) {
+      serverError.value = toApiError(err).message
+    }
+  }
+
+  loading.value = false
 })
 
 async function handleSubmit(payload: CreateAssignmentPayload) {
