@@ -110,3 +110,78 @@ first.
   }
 ]
 ```
+
+## Admin promo codes
+
+Same auth requirement as admin assignments (a valid Clerk bearer token;
+no admin-role check yet) and same profile restriction (`local` or another
+database-backed profile).
+
+`courseIds` is a list of course ids the promo applies to; an **empty
+list means "all courses"**.
+
+### GET /api/admin/promo-codes
+
+Returns every promo code, newest first.
+
+```json
+[
+  {
+    "id": 1,
+    "code": "NEWYEAR200",
+    "minimumPurchase": 500,
+    "discountType": "fixed",
+    "discountValue": 200,
+    "courseIds": [],
+    "createdAt": "2026-09-16T10:00:00Z",
+    "updatedAt": "2026-09-16T10:00:00Z"
+  }
+]
+```
+
+### GET /api/admin/promo-codes/{id}
+
+Returns one promo code, same shape as above. `404 Not Found` when `id`
+does not exist.
+
+### POST /api/admin/promo-codes
+
+Creates a promo code.
+
+Request body:
+
+```json
+{
+  "code": "NEWYEAR200",
+  "minimumPurchase": 500,
+  "discountType": "fixed",
+  "discountValue": 200,
+  "courseIds": []
+}
+```
+
+- `code`: letters and numbers only, required.
+- `discountType`: `"fixed"` or `"percent"`.
+- `discountValue`: must be greater than 0; a `"percent"` value cannot
+  exceed 100; a `"fixed"` value cannot exceed `minimumPurchase`.
+- `courseIds`: omit or send `[]` for "all courses".
+
+Responses:
+
+- `201 Created` with a `Location` header and the created promo code.
+- `400 Bad Request` for validation failures or a duplicate code
+  (case-insensitive), both shaped like:
+
+  ```json
+  { "message": "Promo code \"NEWYEAR200\" already exists", "fieldErrors": { "code": "..." } }
+  ```
+
+### PUT /api/admin/promo-codes/{id}
+
+Updates a promo code. Same request body and validation as `POST`, same
+success response shape. `404 Not Found` when `id` does not exist.
+
+### DELETE /api/admin/promo-codes/{id}
+
+Deletes a promo code. `204 No Content` on success, `404 Not Found` when
+`id` does not exist.
