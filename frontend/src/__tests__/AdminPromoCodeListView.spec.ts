@@ -65,7 +65,7 @@ describe('AdminPromoCodeListView', () => {
 
     expect(wrapper.text()).toContain('NEWYEAR200')
     expect(wrapper.text()).toContain('500')
-    expect(wrapper.text()).toContain('Fixed amount')
+    expect(wrapper.text()).toContain('THB(Baht)')
     expect(wrapper.text()).toContain('Service Design Essentials')
   })
 

@@ -19,7 +19,7 @@ function formatMinimumPurchase(amount: number): string {
 }
 
 function discountTypeLabel(discountType: PromoCode['discountType']): string {
-  return discountType === 'percent' ? 'Percent' : 'Fixed amount'
+  return discountType === 'percent' ? 'Percent(%)' : 'THB(Baht)'
 }
 
 function coursesIncludedLabel(courseIds: number[]): string {
