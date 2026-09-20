@@ -104,8 +104,23 @@ function rememberCoverImage(event: Event) {
 }
 
 function addLesson() {
-  const nextId = lessons.value.reduce((largest, lesson) => Math.max(largest, lesson.id), 0) + 1
-  lessons.value.push({ id: nextId, name: `Lesson ${nextId}`, subLessons: 1 })
+  const targetCourseId =
+    isEditing && Number.isInteger(courseId) && courseId > 0 ? String(courseId) : 'new'
+
+  router.push({
+    name: 'admin-lesson-create',
+    params: { courseId: targetCourseId },
+  })
+}
+
+function editLesson(lesson: CourseLesson) {
+  const targetCourseId =
+    isEditing && Number.isInteger(courseId) && courseId > 0 ? String(courseId) : 'new'
+
+  router.push({
+    name: 'admin-lesson-edit',
+    params: { courseId: targetCourseId, lessonId: String(lesson.id) },
+  })
 }
 
 function removeLesson(id: number) {
@@ -216,9 +231,8 @@ function validateCourse() {
   return Object.keys(errors).length === 0
 }
 
-function focusLessonName(event: MouseEvent) {
-  const row = (event.currentTarget as HTMLElement).closest('.lesson-row')
-  row?.querySelector<HTMLInputElement>('input')?.focus()
+function onLessonEditClick(_event: MouseEvent, lesson: CourseLesson) {
+  editLesson(lesson)
 }
 
 async function saveCourse() {
@@ -595,7 +609,7 @@ async function saveCourse() {
                     class="lesson-edit"
                     type="button"
                     :aria-label="`Edit lesson ${index + 1}`"
-                    @click="focusLessonName"
+                    @click="onLessonEditClick($event, lesson)"
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24">
                       <path

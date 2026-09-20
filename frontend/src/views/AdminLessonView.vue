@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '../components/admin/AdminLayout.vue'
+import { getCourse } from '../admin/courseStore'
 import { createLesson, deleteLesson, fetchLesson, updateLesson } from '../api/lessons'
 import {
   emptySubLesson,
@@ -12,32 +13,61 @@ import {
 const route = useRoute()
 const router = useRouter()
 
-const courseId = computed(() => Number(route.params.courseId))
+const courseId = computed(() => {
+  const raw = String(route.params.courseId ?? '')
+  if (raw === 'new') return NaN
+  return Number(raw)
+})
 const lessonIdParam = computed(() => route.params.lessonId)
 const isCreate = computed(() => route.name === 'admin-lesson-create')
+const isDraftCourse = computed(() => String(route.params.courseId) === 'new')
 
 const courseName = ref('Service Design Essentials')
 const lessonName = ref('')
 const subLessons = ref<SubLessonFormItem[]>([emptySubLesson()])
-const loading = ref(!isCreate.value)
+const loading = ref(true)
 const saving = ref(false)
 const errorMessage = ref('')
 const usingDemoData = ref(false)
 
 const pageTitle = computed(() => (isCreate.value ? 'Add Lesson' : 'Edit Lesson'))
 const breadcrumb = computed(() => {
-  const lessonLabel = lessonName.value || 'Introduction'
-  return `Course '${courseName.value}' / ${isCreate.value ? lessonLabel : `Lesson '${lessonLabel}'`}`
+  const lessonLabel = lessonName.value.trim() || 'Introduction'
+  return `Course '${courseName.value}' / ${lessonLabel}`
 })
+const backToCourse = computed(() => {
+  if (isDraftCourse.value || !Number.isFinite(courseId.value) || courseId.value <= 0) {
+    return { name: 'admin-course-create' as const }
+  }
+  return {
+    name: 'admin-course-edit' as const,
+    params: { id: String(courseId.value) },
+  }
+})
+const canDeleteSubLesson = computed(() => subLessons.value.length > 1)
 
 onMounted(async () => {
-  if (isCreate.value) return
+  if (!isDraftCourse.value && Number.isFinite(courseId.value) && courseId.value > 0) {
+    try {
+      const course = await getCourse(courseId.value)
+      courseName.value = course.name
+    } catch {
+      // Keep the demo course name when the course API is unavailable.
+    }
+  }
+
+  if (isCreate.value) {
+    loading.value = false
+    return
+  }
+
   const lessonId = Number(lessonIdParam.value)
   if (!Number.isFinite(lessonId)) {
     errorMessage.value = 'Invalid lesson id'
     loading.value = false
     return
   }
+
   try {
     const detail = await fetchLesson(lessonId)
     lessonName.value = detail.name
@@ -45,8 +75,6 @@ onMounted(async () => {
       ? toFormSubLessons(detail.subLessons)
       : [emptySubLesson()]
   } catch {
-    // Backend lesson APIs need profile=local + Postgres. Show demo data so the
-    // sub-lesson UI is still reviewable while that is unavailable.
     usingDemoData.value = true
     lessonName.value = 'Introduction'
     subLessons.value = toFormSubLessons([
@@ -85,10 +113,7 @@ function addSubLesson() {
 }
 
 function removeSubLesson(localKey: string) {
-  if (subLessons.value.length === 1) {
-    subLessons.value = [emptySubLesson()]
-    return
-  }
+  if (!canDeleteSubLesson.value) return
   subLessons.value = subLessons.value.filter((item) => item.localKey !== localKey)
 }
 
@@ -96,12 +121,12 @@ function onVideoSelected(item: SubLessonFormItem, event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  // Upload storage is not wired yet — keep a local object URL as the videoUrl.
   item.videoUrl = URL.createObjectURL(file)
 }
 
 function validate(): string | null {
   if (!lessonName.value.trim()) return 'Lesson name is required'
+  if (subLessons.value.length < 1) return 'At least one sub-lesson is required'
   for (const [index, item] of subLessons.value.entries()) {
     if (!item.name.trim()) return `Sub-lesson ${index + 1}: name is required`
     if (!item.videoUrl.trim()) return `Sub-lesson ${index + 1}: video is required`
@@ -116,6 +141,13 @@ async function save() {
     errorMessage.value = validationError
     return
   }
+
+  if (isDraftCourse.value || !Number.isFinite(courseId.value) || courseId.value <= 0) {
+    // Course is not saved yet — return to the course form with the draft lesson.
+    goToCourse()
+    return
+  }
+
   saving.value = true
   try {
     const payload = {
@@ -127,17 +159,15 @@ async function save() {
       })),
     }
     if (isCreate.value) {
-      const created = await createLesson(courseId.value, {
+      await createLesson(courseId.value, {
         name: payload.name,
         subLessons: payload.subLessons.map(({ name, videoUrl }) => ({ name, videoUrl })),
       })
-      await router.push({
-        name: 'admin-lesson-edit',
-        params: { courseId: String(courseId.value), lessonId: String(created.id) },
-      })
+      goToCourse()
       return
     }
     await updateLesson(Number(lessonIdParam.value), payload)
+    goToCourse()
   } catch (error) {
     errorMessage.value =
       error instanceof Error
@@ -148,8 +178,8 @@ async function save() {
   }
 }
 
-function cancel() {
-  router.push({ name: 'home' })
+function goToCourse() {
+  router.push(backToCourse.value)
 }
 
 async function onDeleteLesson() {
@@ -157,7 +187,7 @@ async function onDeleteLesson() {
   if (!window.confirm('Delete this lesson and all of its sub-lessons?')) return
   try {
     await deleteLesson(Number(lessonIdParam.value))
-    router.push({ name: 'admin-lesson-create', params: { courseId: String(courseId.value) } })
+    goToCourse()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Delete failed'
   }
@@ -165,12 +195,12 @@ async function onDeleteLesson() {
 </script>
 
 <template>
-  <AdminLayout :title="pageTitle" :breadcrumb="breadcrumb">
+  <AdminLayout :title="pageTitle" :breadcrumb="breadcrumb" :back-to="backToCourse">
     <template #actions>
       <button
         type="button"
         class="rounded-xl border border-[#F47E20] px-8 py-3 text-base font-bold text-[#F47E20]"
-        @click="cancel"
+        @click="goToCourse"
       >
         Cancel
       </button>
@@ -214,9 +244,18 @@ async function onDeleteLesson() {
           <article
             v-for="item in subLessons"
             :key="item.localKey"
-            class="flex gap-4 rounded-xl bg-[#F6F7FC] p-6"
+            class="flex gap-4 rounded-xl border border-[#E4E6ED] bg-[#F6F7FC] p-6"
           >
-            <div class="pt-8 text-[#9AA1B9]" aria-hidden="true">⋮⋮</div>
+            <div class="flex items-start pt-8 text-[#C8CCDB]" aria-hidden="true">
+              <svg viewBox="0 0 10 16" class="h-4 w-2.5 fill-current">
+                <circle cx="2" cy="2" r="1.5" />
+                <circle cx="8" cy="2" r="1.5" />
+                <circle cx="2" cy="8" r="1.5" />
+                <circle cx="8" cy="8" r="1.5" />
+                <circle cx="2" cy="14" r="1.5" />
+                <circle cx="8" cy="14" r="1.5" />
+              </svg>
+            </div>
             <div class="flex min-w-0 flex-1 flex-col gap-4">
               <div class="flex items-start justify-between gap-4">
                 <label class="flex min-w-0 flex-1 flex-col gap-1">
@@ -228,8 +267,9 @@ async function onDeleteLesson() {
                   />
                 </label>
                 <button
+                  v-if="canDeleteSubLesson"
                   type="button"
-                  class="pt-7 text-base font-medium text-[#2F5FAC]"
+                  class="pt-7 text-base font-medium text-[#2F5FAC] hover:underline"
                   @click="removeSubLesson(item.localKey)"
                 >
                   Delete
@@ -239,17 +279,17 @@ async function onDeleteLesson() {
               <div class="flex flex-col gap-2">
                 <span class="text-base text-[#424C6B]">Video *</span>
                 <label
-                  class="flex h-40 w-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#D6D9E4] bg-[#EFF0F6] text-[#9AA1B9]"
+                  class="flex h-40 w-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl bg-[#EFF0F6] text-[#9AA1B9]"
                 >
                   <template v-if="item.videoUrl">
                     <span class="px-3 text-center text-xs break-all text-[#2F5FAC]">Video set</span>
-                    <span class="px-3 text-center text-[10px] break-all text-[#646D89]">{{
-                      item.videoUrl
+                    <span class="max-w-full px-3 text-center text-[10px] break-all text-[#646D89]">{{
+                      item.videoUrl.startsWith('blob:') ? 'Selected video file' : item.videoUrl
                     }}</span>
                   </template>
                   <template v-else>
-                    <span class="text-3xl leading-none">+</span>
-                    <span class="text-sm">Upload Video</span>
+                    <span class="text-3xl leading-none font-light text-[#2F5FAC]">+</span>
+                    <span class="text-sm text-[#9AA1B9]">Upload Video</span>
                   </template>
                   <input
                     type="file"
