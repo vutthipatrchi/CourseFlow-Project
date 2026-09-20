@@ -52,12 +52,20 @@ async function logOut() {
           <span>Assignments</span>
         </RouterLink>
 
-        <div
-          class="flex h-14 items-center gap-4 px-6 text-base font-medium text-[#424C6B] hover:bg-[#F1F2F6]"
+        <RouterLink
+          :to="{ name: 'admin-promo-codes' }"
+          class="flex h-14 items-center gap-4 px-6 text-base font-medium"
+          :class="
+            isActive('admin-promo-codes') ||
+            isActive('admin-promo-code-create') ||
+            isActive('admin-promo-code-edit')
+              ? 'bg-[#F1F2F6] text-[#424C6B]'
+              : 'text-[#424C6B] hover:bg-[#F1F2F6]'
+          "
         >
           <img :src="promoCodeIcon" alt="" class="h-6 w-6 flex-none" />
           <span>Promo code</span>
-        </div>
+        </RouterLink>
       </nav>
 
       <button
