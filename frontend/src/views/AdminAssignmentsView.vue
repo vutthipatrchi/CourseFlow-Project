@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AssignmentTable from '@/components/admin/AssignmentTable.vue'
-import { listAssignments } from '@/api/assignments'
+import { deleteAssignment, listAssignments } from '@/api/assignments'
 import { toApiError } from '@/api/client'
 import type { Assignment } from '@/types/assignment'
 
@@ -11,6 +11,8 @@ const assignments = ref<Assignment[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const search = ref('')
+const pendingDeletion = ref<Assignment | null>(null)
+const deleteError = ref<string | null>(null)
 
 const filteredAssignments = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -22,7 +24,8 @@ const filteredAssignments = computed(() => {
   )
 })
 
-onMounted(async () => {
+async function loadAssignments() {
+  loading.value = true
   try {
     assignments.value = await listAssignments()
   } catch (err) {
@@ -30,7 +33,31 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadAssignments)
+
+function requestDeletion(assignment: Assignment) {
+  deleteError.value = null
+  pendingDeletion.value = assignment
+}
+
+function cancelDeletion() {
+  pendingDeletion.value = null
+}
+
+async function confirmDeletion() {
+  const assignment = pendingDeletion.value
+  if (!assignment) return
+
+  try {
+    await deleteAssignment(assignment.id)
+    pendingDeletion.value = null
+    await loadAssignments()
+  } catch (err) {
+    deleteError.value = toApiError(err).message
+  }
+}
 </script>
 
 <template>
@@ -63,6 +90,54 @@ onMounted(async () => {
       </RouterLink>
     </template>
 
-    <AssignmentTable :assignments="filteredAssignments" :loading="loading" :error="error" />
+    <AssignmentTable
+      :assignments="filteredAssignments"
+      :loading="loading"
+      :error="error"
+      @delete="requestDeletion"
+    />
+
+    <div
+      v-if="pendingDeletion"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      @click.self="cancelDeletion"
+    >
+      <section
+        class="w-full max-w-md rounded-2xl bg-white p-8"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-assignment-title"
+      >
+        <div class="flex items-center justify-between">
+          <h2 id="delete-assignment-title" class="text-xl font-bold text-[#2A2E3F]">
+            Confirmation
+          </h2>
+          <button type="button" aria-label="Close" @click="cancelDeletion">
+            <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6 stroke-[#646D89]" stroke-width="1.5">
+              <path d="m7 7 10 10M17 7 7 17" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+        <hr class="my-4 border-[#D6D9E4]" />
+        <p class="text-base text-[#646D89]">Are you sure you want to delete this assignment?</p>
+        <p v-if="deleteError" class="mt-2 text-sm text-red-600">{{ deleteError }}</p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            class="flex h-12 items-center justify-center rounded-xl border border-[#D6D9E4] px-6 text-base font-bold text-[#424C6B] hover:bg-[#F1F2F6]"
+            @click="cancelDeletion"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="flex h-12 items-center justify-center rounded-xl bg-red-600 px-6 text-base font-bold text-white hover:bg-red-700"
+            @click="confirmDeletion"
+          >
+            Delete
+          </button>
+        </div>
+      </section>
+    </div>
   </AdminLayout>
 </template>

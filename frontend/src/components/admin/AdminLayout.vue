@@ -43,7 +43,9 @@ async function logOut() {
           :to="{ name: 'admin-assignments' }"
           class="flex h-14 items-center gap-4 px-6 text-base font-medium"
           :class="
-            isActive('admin-assignments') || isActive('admin-assignment-create')
+            isActive('admin-assignments') ||
+            isActive('admin-assignment-create') ||
+            isActive('admin-assignment-edit')
               ? 'bg-[#F1F2F6] text-[#424C6B]'
               : 'text-[#424C6B] hover:bg-[#F1F2F6]'
           "

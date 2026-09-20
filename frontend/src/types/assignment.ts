@@ -18,3 +18,10 @@ export interface CreateAssignmentPayload {
   subLessonId: number
   description: string
 }
+
+export interface AssignmentDetail {
+  id: number
+  subLessonId: number
+  description: string
+  createdAt: string
+}
