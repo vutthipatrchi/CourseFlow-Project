@@ -5,7 +5,7 @@ import { courses, resetCourses } from '../admin/courseStore'
 import AdminCourseCreateView from '../views/AdminCourseCreateView.vue'
 
 vi.mock('@clerk/vue', () => ({
-  getToken: vi.fn(async () => 'test-clerk-token'),
+  getToken: vi.fn<() => Promise<string>>(async () => 'test-clerk-token'),
   SignOutButton: { template: '<div><slot /></div>' },
 }))
 
