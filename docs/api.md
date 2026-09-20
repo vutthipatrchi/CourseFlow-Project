@@ -110,3 +110,20 @@ first.
   }
 ]
 ```
+
+### GET /api/admin/assignments/{id}
+
+Returns one assignment. Response body is the same shape as the `POST`
+response above. `404 Not Found` (`{ "message": "Assignment 999 not found" }`)
+when `id` does not exist.
+
+### PUT /api/admin/assignments/{id}
+
+Updates an assignment's sub-lesson and description. Same request body and
+validation as `POST`, same success response shape. `404 Not Found` when
+either `id` or the request's `subLessonId` does not exist.
+
+### DELETE /api/admin/assignments/{id}
+
+Deletes an assignment. `204 No Content` on success, `404 Not Found` when
+`id` does not exist.

@@ -2,6 +2,7 @@ package com.courseflow.assignment;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -41,6 +42,49 @@ public class AssignmentRepository {
                 rs.getObject("created_at", OffsetDateTime.class)
             ))
             .single();
+    }
+
+    public Optional<AssignmentResponse> findById(long id) {
+        return jdbcClient
+            .sql("SELECT id, sub_lesson_id, description, created_at FROM courseflow.assignments WHERE id = :id")
+            .param("id", id)
+            .query((rs, rowNum) -> new AssignmentResponse(
+                rs.getLong("id"),
+                rs.getLong("sub_lesson_id"),
+                rs.getString("description"),
+                rs.getObject("created_at", OffsetDateTime.class)
+            ))
+            .optional();
+    }
+
+    public Optional<AssignmentResponse> update(long id, CreateAssignmentRequest request) {
+        return jdbcClient
+            .sql("""
+                UPDATE courseflow.assignments
+                   SET sub_lesson_id = :subLessonId,
+                       description = :description,
+                       updated_at = CURRENT_TIMESTAMP
+                 WHERE id = :id
+                RETURNING id, sub_lesson_id, description, created_at
+                """)
+            .param("id", id)
+            .param("subLessonId", request.subLessonId())
+            .param("description", request.description())
+            .query((rs, rowNum) -> new AssignmentResponse(
+                rs.getLong("id"),
+                rs.getLong("sub_lesson_id"),
+                rs.getString("description"),
+                rs.getObject("created_at", OffsetDateTime.class)
+            ))
+            .optional();
+    }
+
+    public boolean deleteById(long id) {
+        int updated = jdbcClient
+            .sql("DELETE FROM courseflow.assignments WHERE id = :id")
+            .param("id", id)
+            .update();
+        return updated > 0;
     }
 
     public List<AssignmentSummary> findAllWithContext() {
