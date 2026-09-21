@@ -1,6 +1,6 @@
-import { createRouter, createWebHistory } from 'vue-router'
 import { getToken } from '@clerk/vue'
 import { getRoleFromToken } from '@/lib/jwt'
+import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,6 +23,18 @@ const router = createRouter({
       path: '/admin/courses/new',
       name: 'admin-course-create',
       component: () => import('../views/AdminCourseCreateView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/courses/:courseId/lessons/new',
+      name: 'admin-lesson-create',
+      component: () => import('../views/AdminLessonView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/courses/:courseId/lessons/:lessonId',
+      name: 'admin-lesson-edit',
+      component: () => import('../views/AdminLessonView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
