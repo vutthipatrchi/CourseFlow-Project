@@ -1,11 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import AdminAssignmentsView from '../views/AdminAssignmentsView.vue'
-import { listAssignments } from '@/api/assignments'
+import { deleteAssignment, listAssignments } from '@/api/assignments'
 import type { Assignment } from '@/types/assignment'
 
 vi.mock('@/api/assignments')
+
+beforeEach(() => vi.clearAllMocks())
 
 function makeRouter() {
   return createRouter({
@@ -16,6 +18,11 @@ function makeRouter() {
       {
         path: '/admin/assignments/create',
         name: 'admin-assignment-create',
+        component: { template: '<div />' },
+      },
+      {
+        path: '/admin/assignments/:id/edit',
+        name: 'admin-assignment-edit',
         component: { template: '<div />' },
       },
     ],
@@ -60,6 +67,47 @@ describe('AdminAssignmentsView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('No assignments yet.')
+    wrapper.unmount()
+  })
+
+  it('opens a confirmation modal and only deletes once confirmed', async () => {
+    vi.mocked(listAssignments).mockResolvedValue([sampleAssignment])
+    vi.mocked(deleteAssignment).mockResolvedValue(undefined)
+    const router = makeRouter()
+    router.push('/admin/assignments')
+    await router.isReady()
+
+    const wrapper = mount(AdminAssignmentsView, { global: { plugins: [router], stubs } })
+    await flushPromises()
+
+    await wrapper.get('button[aria-label^="Delete"]').trigger('click')
+    expect(wrapper.text()).toContain('Are you sure you want to delete this assignment?')
+    expect(deleteAssignment).not.toHaveBeenCalled()
+
+    vi.mocked(listAssignments).mockResolvedValue([])
+    const confirmButton = wrapper.findAll('button').find((button) => button.text() === 'Delete')
+    await confirmButton!.trigger('click')
+    await flushPromises()
+
+    expect(deleteAssignment).toHaveBeenCalledWith(1)
+    expect(wrapper.text()).not.toContain('Confirmation')
+    wrapper.unmount()
+  })
+
+  it('closing the confirmation modal does not delete the assignment', async () => {
+    vi.mocked(listAssignments).mockResolvedValue([sampleAssignment])
+    const router = makeRouter()
+    router.push('/admin/assignments')
+    await router.isReady()
+
+    const wrapper = mount(AdminAssignmentsView, { global: { plugins: [router], stubs } })
+    await flushPromises()
+
+    await wrapper.get('button[aria-label^="Delete"]').trigger('click')
+    await wrapper.get('button[aria-label="Close"]').trigger('click')
+
+    expect(wrapper.text()).not.toContain('Are you sure you want to delete this assignment?')
+    expect(deleteAssignment).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 })

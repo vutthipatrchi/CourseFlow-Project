@@ -117,7 +117,12 @@ async function handleVerify() {
       <span
         class="pointer-events-none absolute -bottom-32 -left-32 hidden h-[450px] w-[450px] rounded-full bg-orange-500 md:block"
       ></span>
-      <img :src="dotSmall" alt="" aria-hidden="true" class="absolute right-[4%] bottom-[80px] hidden h-6 w-6 md:block" />
+      <img
+        :src="dotSmall"
+        alt=""
+        aria-hidden="true"
+        class="absolute right-[4%] bottom-[80px] hidden h-6 w-6 md:block"
+      />
 
       <div class="relative w-full max-w-md px-6">
         <template v-if="step === 'credentials'">
@@ -133,7 +138,7 @@ async function handleVerify() {
                 autocomplete="email"
                 placeholder="Enter Email"
                 required
-                class="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             </div>
 
@@ -146,7 +151,7 @@ async function handleVerify() {
                 autocomplete="current-password"
                 placeholder="Enter password"
                 required
-                class="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             </div>
 
@@ -187,7 +192,7 @@ async function handleVerify() {
                 autocomplete="one-time-code"
                 placeholder="Enter code"
                 required
-                class="mt-1.5 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             </div>
 

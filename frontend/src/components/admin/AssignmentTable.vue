@@ -9,6 +9,10 @@ defineProps<{
   error: string | null
 }>()
 
+const emit = defineEmits<{
+  delete: [assignment: Assignment]
+}>()
+
 function formatDate(value: string): string {
   const d = new Date(value)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -61,8 +65,20 @@ function formatDate(value: string): string {
           <td class="truncate px-4 py-8">{{ formatDate(assignment.createdAt) }}</td>
           <td class="px-4 py-8">
             <div class="flex items-center justify-center gap-3">
-              <img :src="deleteIcon" alt="Delete (not available yet)" class="h-6 w-6 opacity-50" />
-              <img :src="editIcon" alt="Edit (not available yet)" class="h-6 w-6 opacity-50" />
+              <button
+                type="button"
+                :aria-label="`Delete ${assignment.description}`"
+                class="cursor-pointer"
+                @click="emit('delete', assignment)"
+              >
+                <img :src="deleteIcon" alt="" class="h-6 w-6" />
+              </button>
+              <RouterLink
+                :to="{ name: 'admin-assignment-edit', params: { id: assignment.id } }"
+                :aria-label="`Edit ${assignment.description}`"
+              >
+                <img :src="editIcon" alt="" class="h-6 w-6" />
+              </RouterLink>
             </div>
           </td>
         </tr>

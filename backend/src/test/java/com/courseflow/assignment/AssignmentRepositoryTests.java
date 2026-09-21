@@ -34,4 +34,41 @@ class AssignmentRepositoryTests {
 
         assertThat(found.description()).isEqualTo("Repository round-trip test");
     }
+
+    @Test
+    void updatesAssignmentDescription() {
+        Long subLessonId = subLessonOptionRepository.findAll().get(0).subLessonId();
+        var inserted = assignmentRepository.insert(new CreateAssignmentRequest(subLessonId, "Before update"));
+
+        var updated = assignmentRepository.update(
+            inserted.id(), new CreateAssignmentRequest(subLessonId, "After update"));
+
+        assertThat(updated).isPresent();
+        assertThat(updated.get().description()).isEqualTo("After update");
+        assertThat(assignmentRepository.findById(inserted.id()).orElseThrow().description())
+            .isEqualTo("After update");
+    }
+
+    @Test
+    void updatingAMissingAssignmentReturnsEmpty() {
+        var result = assignmentRepository.update(-1L, new CreateAssignmentRequest(1L, "No such row"));
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void deletesAssignmentSoItNoLongerReadsBack() {
+        Long subLessonId = subLessonOptionRepository.findAll().get(0).subLessonId();
+        var inserted = assignmentRepository.insert(new CreateAssignmentRequest(subLessonId, "To be deleted"));
+
+        boolean deleted = assignmentRepository.deleteById(inserted.id());
+
+        assertThat(deleted).isTrue();
+        assertThat(assignmentRepository.findById(inserted.id())).isEmpty();
+    }
+
+    @Test
+    void deletingAMissingAssignmentReturnsFalse() {
+        assertThat(assignmentRepository.deleteById(-1L)).isFalse();
+    }
 }

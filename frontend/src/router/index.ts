@@ -44,6 +44,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/admin/assignments/:id/edit',
+      name: 'admin-assignment-edit',
+      component: () => import('../views/AdminAssignmentCreateView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/admin/promo-codes',
       name: 'admin-promo-codes',
       component: () => import('../views/AdminPromoCodeListView.vue'),
