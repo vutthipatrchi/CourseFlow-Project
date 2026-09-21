@@ -29,7 +29,9 @@ async function logOut() {
 
 <template>
   <div class="flex min-h-screen bg-white">
-    <aside class="flex w-[240px] flex-none flex-col gap-10 border-r border-[#D6D9E4] bg-white">
+    <aside
+      class="sticky top-0 flex h-screen w-[240px] flex-none flex-col gap-10 border-r border-[#D6D9E4] bg-white"
+    >
       <div class="flex flex-col items-center gap-6 px-6 pt-10 pb-6">
         <img :src="logo" alt="CourseFlow" style="width: 174px; height: 19px" />
         <span class="text-center text-base text-[#646D89]">Admin Panel Control</span>
