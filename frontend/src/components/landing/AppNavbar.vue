@@ -5,7 +5,7 @@ import UserMenu from './UserMenu.vue'
 </script>
 
 <template>
-  <header class="w-full bg-white">
+  <header class="relative z-50 w-full bg-white">
     <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
       <a href="/">
         <img :src="logo" alt="CourseFlow" class="h-4" />
