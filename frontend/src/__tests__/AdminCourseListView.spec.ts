@@ -8,6 +8,7 @@ import AdminCourseListView from '../views/AdminCourseListView.vue'
 vi.mock('@clerk/vue', () => ({
   getToken: vi.fn<() => Promise<string>>(async () => 'test-clerk-token'),
   SignOutButton: { template: '<div><slot /></div>' },
+  useClerk: () => ({ value: { signOut: vi.fn() } }),
 }))
 
 beforeEach(() => {
@@ -39,7 +40,17 @@ function mountView() {
     ],
   })
 
-  return mount(AdminCourseListView, { global: { plugins: [router] } })
+  return mount(AdminCourseListView, {
+    global: {
+      plugins: [router],
+      stubs: {
+        AdminLayout: {
+          props: ['title'],
+          template: '<div><h1>{{ title }}</h1><slot name="actions" /><slot /></div>',
+        },
+      },
+    },
+  })
 }
 
 describe('admin course access', () => {
@@ -98,6 +109,8 @@ describe('admin course list', () => {
 
     await wrapper.get('button[aria-label="Delete Service Design Essentials"]').trigger('click')
     expect(wrapper.get('[role="alertdialog"]').text()).toContain('Service Design Essentials')
+    expect(wrapper.get('.secondary-button').text()).toBe('Cancel')
+    expect(wrapper.get('.danger-button').text()).toBe('Delete')
 
     await wrapper.get('.danger-button').trigger('click')
     await flushPromises()
@@ -105,5 +118,16 @@ describe('admin course list', () => {
     expect(wrapper.findAll('tbody tr')).toHaveLength(7)
     expect(wrapper.get('tbody').text()).not.toContain('Service Design Essentials')
     expect(wrapper.get('[role="status"]').text()).toContain('was deleted')
+  })
+
+  it('cancels deletion without removing the course', async () => {
+    const wrapper = mountView()
+
+    await wrapper.get('button[aria-label="Delete Service Design Essentials"]').trigger('click')
+    await wrapper.get('.secondary-button').trigger('click')
+
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
+    expect(wrapper.findAll('tbody tr')).toHaveLength(8)
+    expect(wrapper.text()).toContain('Service Design Essentials')
   })
 })
