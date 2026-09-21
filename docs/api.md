@@ -29,12 +29,23 @@ percentage discount cannot exceed 100. Promo fields are required when
 
 The current UI stores uploaded file names in `imageName`, `videoName`, and
 `resourceName`; binary file upload/storage is not part of these JSON endpoints.
-`lessonItems` must contain at least one lesson.
+`lessonItems` must contain at least one lesson. Each item may include an optional
+`id` for an existing lesson. On update the backend upserts by id (preserving
+nested `sub_lessons` and assignments) and deletes lessons omitted from the list.
+Do not omit `id` for existing lessons when saving a course, or those lessons will
+be re-created and their sub-lessons will be lost.
 
 ## Admin video uploads
 
 These endpoints require a database-backed profile (`local`). Uploaded files are
-stored on the backend filesystem (`courseflow.upload.dir`, default `uploads/`).
+stored on the **backend host filesystem** (`courseflow.upload.dir`, default
+`uploads/` under the backend working directory). This is intended for local
+development and a single backend instance with persistent disk.
+
+Production note: a multi-instance or serverless frontend (e.g. Vercel-only)
+cannot rely on this path — move binary storage to object storage (S3 / Supabase
+Storage) in a follow-up. Until then, run the Spring Boot `local` profile on a
+host that keeps the `uploads/` directory.
 
 ### POST /api/admin/uploads/videos
 

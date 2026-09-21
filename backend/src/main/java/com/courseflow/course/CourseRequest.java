@@ -28,7 +28,7 @@ public record CourseRequest(
     String accent,
     @NotEmpty(message = "Course must have at least one lesson") List<@Valid LessonRequest> lessonItems
 ) {
-    public record LessonRequest(@NotBlank String name, @Min(0) int subLessons) {
+    public record LessonRequest(Long id, @NotBlank String name, @Min(0) int subLessons) {
     }
 
     @AssertTrue(message = "Promo code, minimum purchase, discount, and discount type are required when promo is enabled")

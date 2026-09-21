@@ -64,7 +64,7 @@ public class CourseRepository {
             """, parameters(request), keyHolder, new String[] {"id"});
 
         var id = keyHolder.getKey().longValue();
-        replaceLessons(id, request.lessonItems());
+        syncLessons(id, request.lessonItems());
         return findById(id).orElseThrow(() -> new CourseNotFoundException(id));
     }
 
@@ -94,7 +94,7 @@ public class CourseRepository {
             """, params);
         if (updated == 0) throw new CourseNotFoundException(id);
 
-        replaceLessons(id, request.lessonItems());
+        syncLessons(id, request.lessonItems());
         return findById(id).orElseThrow(() -> new CourseNotFoundException(id));
     }
 
@@ -105,22 +105,67 @@ public class CourseRepository {
         }
     }
 
-    private void replaceLessons(long courseId, List<CourseRequest.LessonRequest> lessons) {
-        jdbc.update("DELETE FROM courseflow.course_lessons WHERE course_id = :courseId", Map.of("courseId", courseId));
-        if (lessons == null) return;
+    /**
+     * Upserts lessons in place so existing sub_lessons / assignments are preserved.
+     * Lessons omitted from the payload are deleted (and cascade to nested rows).
+     */
+    private void syncLessons(long courseId, List<CourseRequest.LessonRequest> lessons) {
+        if (lessons == null || lessons.isEmpty()) {
+            jdbc.update(
+                "DELETE FROM courseflow.course_lessons WHERE course_id = :courseId",
+                Map.of("courseId", courseId));
+            return;
+        }
 
+        var keptIds = new java.util.ArrayList<Long>();
         for (int index = 0; index < lessons.size(); index++) {
             var lesson = lessons.get(index);
+            int position = index + 1;
+            Long lessonId = lesson.id();
+
+            if (lessonId != null) {
+                int updated = jdbc.update("""
+                    UPDATE courseflow.course_lessons
+                       SET name = :name,
+                           position = :position,
+                           sub_lessons = :subLessons
+                     WHERE id = :id
+                       AND course_id = :courseId
+                    """, Map.of(
+                    "id", lessonId,
+                    "courseId", courseId,
+                    "name", lesson.name(),
+                    "position", position,
+                    "subLessons", lesson.subLessons()
+                ));
+                if (updated > 0) {
+                    keptIds.add(lessonId);
+                    continue;
+                }
+            }
+
+            var keyHolder = new GeneratedKeyHolder();
             jdbc.update("""
                 INSERT INTO courseflow.course_lessons (course_id, name, position, sub_lessons)
                 VALUES (:courseId, :name, :position, :subLessons)
-                """, Map.of(
-                    "courseId", courseId,
-                    "name", lesson.name(),
-                    "position", index + 1,
-                    "subLessons", lesson.subLessons()
-                ));
+                """, new MapSqlParameterSource()
+                    .addValue("courseId", courseId)
+                    .addValue("name", lesson.name())
+                    .addValue("position", position)
+                    .addValue("subLessons", lesson.subLessons()),
+                keyHolder,
+                new String[] {"id"});
+            keptIds.add(keyHolder.getKey().longValue());
         }
+
+        var deleteParams = new MapSqlParameterSource()
+            .addValue("courseId", courseId)
+            .addValue("keptIds", keptIds);
+        jdbc.update("""
+            DELETE FROM courseflow.course_lessons
+             WHERE course_id = :courseId
+               AND id NOT IN (:keptIds)
+            """, deleteParams);
     }
 
     private Course loadCourse(CourseRow row) {

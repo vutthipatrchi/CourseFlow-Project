@@ -30,7 +30,7 @@ export type CoursePayload = Omit<
   Course,
   'id' | 'lessons' | 'createdAt' | 'updatedAt' | 'lessonItems'
 > & {
-  lessonItems: Array<Omit<CourseLesson, 'id'>>
+  lessonItems: Array<{ id?: number; name: string; subLessons: number }>
 }
 
 const API_URL = '/api/admin/courses'

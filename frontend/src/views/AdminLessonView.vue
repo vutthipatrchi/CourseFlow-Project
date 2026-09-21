@@ -51,7 +51,14 @@ const backToCourse = computed(() => {
 const canDeleteSubLesson = computed(() => subLessons.value.length > 1)
 
 onMounted(async () => {
-  if (!isDraftCourse.value && Number.isFinite(courseId.value) && courseId.value > 0) {
+  if (isDraftCourse.value) {
+    errorMessage.value =
+      'This course is not saved yet. Create the course from the course form first, then add lessons.'
+    loading.value = false
+    return
+  }
+
+  if (Number.isFinite(courseId.value) && courseId.value > 0) {
     try {
       const course = await getCourse(courseId.value)
       courseName.value = course.name
@@ -258,7 +265,7 @@ async function onDeleteLesson() {
       <button
         type="button"
         class="rounded-xl bg-[#2F5FAC] px-8 py-3 text-base font-bold text-white disabled:opacity-60"
-        :disabled="saving || loading || uploadingKey !== null"
+        :disabled="saving || loading || uploadingKey !== null || isDraftCourse"
         @click="save"
       >
         {{ isCreate ? 'Create' : 'Edit' }}
