@@ -1,115 +1,175 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
-import { formatThb, subscription } from '@/lib/payment'
+import { formatThb } from '@/lib/payment'
 import {
   createCardPayment,
   createOrder,
   createPromptPayPayment,
   getPaymentConfig,
-  rememberCheckout,
   tokenizeCard,
+  continueCardAuthentication,
   type PaymentConfig,
+  type OrderCreated,
+  type PaymentView,
 } from '@/api/payments'
 
-type PaymentMethod = 'card' | 'qr'
-
 const router = useRouter()
-const paymentMethod = ref<PaymentMethod>('card')
+const route = useRoute()
+const paymentMethod = ref<'card' | 'qr'>('card')
 const promoCode = ref('')
 const promoMessage = ref('')
-const courseTitle = ref<string>(subscription.title)
-const subtotal = ref<number>(subscription.subtotal)
-const discount = ref<number>(subscription.defaultDiscount)
+const order = ref<OrderCreated | null>(null)
+const courseTitle = computed(() => order.value?.courseTitle ?? 'Loading your course…')
+const subtotal = computed(() => (order.value?.subtotalSatang ?? 0) / 100)
+const discount = computed(() => (order.value?.discountSatang ?? 0) / 100)
+const total = computed(() => (order.value?.totalSatang ?? 0) / 100)
 const submitted = ref(false)
 const processing = ref(false)
+const recovering = ref(false)
 const errorMessage = ref('')
 const paymentConfig = ref<PaymentConfig | null>(null)
 const card = reactive({ number: '', owner: '', expiry: '', cvv: '' })
+let attemptKey = crypto.randomUUID()
 
-const total = computed(() => subtotal.value - discount.value)
 const methodLabel = computed(() =>
   paymentMethod.value === 'card' ? 'Credit card / Debit card' : 'QR code',
 )
 const digits = computed(() => card.number.replace(/\D/g, ''))
 const expiryParts = computed(() => /^(0[1-9]|1[0-2])\s*\/\s*([0-9]{2})$/.exec(card.expiry))
-const cardValid = computed(
-  () =>
+const cardValid = computed(() => {
+  const expiry = expiryParts.value
+  if (!expiry) return false
+  const lastDay = new Date(2000 + Number(expiry[2]), Number(expiry[1]), 1)
+  return (
     digits.value.length >= 13 &&
     digits.value.length <= 19 &&
     card.owner.trim().length >= 2 &&
-    Boolean(expiryParts.value) &&
-    /^\d{3,4}$/.test(card.cvv),
-)
-
-onMounted(async () => {
-  try {
-    paymentConfig.value = await getPaymentConfig()
-    if (!paymentConfig.value.enabled) {
-      errorMessage.value = 'Payment is not configured yet. Please contact support.'
-    }
-  } catch (error) {
-    errorMessage.value = messageFrom(error)
-  }
+    lastDay.getTime() > Date.now() &&
+    /^\d{3,4}$/.test(card.cvv)
+  )
+})
+const courseId = computed(() => {
+  const value = Number(route.query.courseId ?? 1)
+  return Number.isSafeInteger(value) && value > 0 ? value : null
 })
 
 function messageFrom(error: unknown) {
   return error instanceof Error ? error.message : 'Unable to process payment'
 }
 
+async function openPayment(payment: PaymentView, authorize = false) {
+  await router.push({
+    name:
+      payment.method === 'promptpay' && payment.status === 'pending'
+        ? 'payment-qr'
+        : 'payment-status',
+    query: { paymentId: payment.paymentId },
+  })
+  if (authorize && payment.status === 'pending' && payment.authorizeUrl)
+    continueCardAuthentication(payment.authorizeUrl)
+}
+
+async function prepareOrder() {
+  if (!courseId.value) throw new Error('Please select a valid course.')
+  const next = await createOrder(courseId.value, promoCode.value)
+  if (order.value?.orderId !== next.orderId) attemptKey = crypto.randomUUID()
+  order.value = next
+  promoCode.value = next.promotionCode || ''
+  if (next.payment) await openPayment(next.payment)
+}
+
+async function initialize() {
+  processing.value = true
+  errorMessage.value = ''
+  try {
+    paymentConfig.value = await getPaymentConfig()
+    if (!paymentConfig.value.enabled)
+      throw new Error('Payment is not configured yet. Please contact support.')
+    await prepareOrder()
+  } catch (error) {
+    errorMessage.value = messageFrom(error)
+  } finally {
+    processing.value = false
+  }
+}
+onMounted(initialize)
+
 function formatCardNumber(event: Event) {
-  const input = event.target as HTMLInputElement
-  card.number = input.value
+  card.number = (event.target as HTMLInputElement).value
     .replace(/\D/g, '')
     .slice(0, 19)
     .replace(/(.{4})/g, '$1 ')
     .trim()
 }
-
 function formatExpiry(event: Event) {
-  const input = event.target as HTMLInputElement
-  const value = input.value.replace(/\D/g, '').slice(0, 4)
+  const value = (event.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 4)
   card.expiry = value.length > 2 ? `${value.slice(0, 2)} / ${value.slice(2)}` : value
 }
-
-function applyPromo() {
-  const code = promoCode.value.trim().toUpperCase()
-  if (code === 'COURSE200') {
-    discount.value = 200
-    promoMessage.value = 'Promotion code applied'
-  } else {
-    discount.value = subscription.defaultDiscount
-    promoMessage.value = code ? 'Promotion code is invalid' : 'Enter a promotion code'
+async function applyPromo() {
+  if (processing.value || recovering.value) return
+  processing.value = true
+  promoMessage.value = ''
+  try {
+    await prepareOrder()
+    promoMessage.value = 'Promotion code applied. Please review your total.'
+  } catch (error) {
+    promoMessage.value = messageFrom(error)
+  } finally {
+    processing.value = false
   }
 }
 
 async function confirmPayment() {
-  submitted.value = true
+  if (processing.value) return
   errorMessage.value = ''
-  if (paymentMethod.value === 'card' && !cardValid.value) return
-  if (!paymentConfig.value?.enabled) {
-    errorMessage.value = 'Payment is not available right now. Please try again later.'
+  if (!order.value || !paymentConfig.value?.enabled) return
+  // A lost HTTP response never authorizes a second charge. Recover the persisted order first.
+  if (recovering.value) {
+    processing.value = true
+    try {
+      await prepareOrder()
+      recovering.value = false
+      errorMessage.value = 'Please review the payment details before continuing.'
+    } catch (error) {
+      errorMessage.value = messageFrom(error)
+    } finally {
+      processing.value = false
+    }
     return
   }
-
+  if (
+    promoCode.value.trim().toUpperCase() !== order.value.promotionCode ||
+    Date.parse(order.value.expiresAt) <= Date.now()
+  ) {
+    processing.value = true
+    try {
+      await prepareOrder()
+      errorMessage.value =
+        'Your checkout has been updated. Please review the total and confirm again.'
+    } catch (error) {
+      errorMessage.value = messageFrom(error)
+    } finally {
+      processing.value = false
+    }
+    return
+  }
+  submitted.value = true
+  if (paymentMethod.value === 'card' && !cardValid.value) return
   processing.value = true
+  let chargeRequested = false
   try {
-    const order = await createOrder(promoCode.value)
-    courseTitle.value = order.courseTitle
-    subtotal.value = order.subtotalSatang / 100
-    discount.value = order.discountSatang / 100
-
-    let payment
+    let payment: PaymentView
     if (paymentMethod.value === 'qr') {
-      payment = await createPromptPayPayment(order.orderId, order.accessToken, crypto.randomUUID())
+      chargeRequested = true
+      payment = await createPromptPayPayment(order.value.orderId, attemptKey)
     } else {
-      const expiry = expiryParts.value
-      if (!expiry) return
-      let cardToken: string
+      const expiry = expiryParts.value!
+      let token: string
       try {
-        cardToken = await tokenizeCard(paymentConfig.value.publicKey, {
+        token = await tokenizeCard(paymentConfig.value.publicKey, {
           name: card.owner.trim(),
           number: digits.value,
           expirationMonth: Number(expiry[1]),
@@ -120,22 +180,17 @@ async function confirmPayment() {
         card.number = ''
         card.expiry = ''
         card.cvv = ''
+        submitted.value = false
       }
-      payment = await createCardPayment(
-        order.orderId,
-        order.accessToken,
-        cardToken,
-        crypto.randomUUID(),
-      )
+      chargeRequested = true
+      payment = await createCardPayment(order.value.orderId, token, attemptKey)
     }
-
-    rememberCheckout(payment.paymentId, order.accessToken)
-    await router.push({
-      name: payment.method === 'promptpay' ? 'payment-qr' : 'payment-status',
-      query: { paymentId: payment.paymentId },
-    })
+    await openPayment(payment, true)
   } catch (error) {
-    errorMessage.value = messageFrom(error)
+    recovering.value = chargeRequested
+    errorMessage.value = chargeRequested
+      ? 'We could not confirm the result. Check your payment status before trying again.'
+      : messageFrom(error)
   } finally {
     processing.value = false
   }
@@ -167,7 +222,7 @@ async function confirmPayment() {
           novalidate
           @submit.prevent="confirmPayment"
         >
-          <fieldset :disabled="processing">
+          <fieldset :disabled="processing || recovering">
             <legend class="mb-4 text-base leading-6 text-gray-700">Select payment method</legend>
 
             <div class="space-y-2">
@@ -299,13 +354,13 @@ async function confirmPayment() {
                 <input
                   id="promo-code"
                   v-model="promoCode"
-                  :disabled="processing"
+                  :disabled="processing || recovering"
                   placeholder="Promotion code"
                   class="h-12 min-w-0 flex-1 rounded-lg border border-gray-400 bg-white px-4 uppercase placeholder:normal-case placeholder:text-gray-600 focus:border-blue-600 focus:outline-none"
                 />
                 <button
                   type="button"
-                  :disabled="!promoCode.trim() || processing"
+                  :disabled="!promoCode.trim() || processing || recovering"
                   class="h-12 rounded-xl bg-blue-600 px-5 font-semibold text-white hover:bg-blue-900 disabled:bg-gray-400 disabled:text-gray-600"
                   @click="applyPromo"
                 >
@@ -347,7 +402,7 @@ async function confirmPayment() {
 
             <div class="border-t border-gray-400 pt-6">
               <p
-                v-if="submitted && paymentMethod === 'card' && !cardValid"
+                v-if="submitted && !recovering && paymentMethod === 'card' && !cardValid"
                 role="alert"
                 class="mb-4 text-sm text-red-700"
               >
@@ -357,16 +412,26 @@ async function confirmPayment() {
                 {{ errorMessage }}
               </p>
               <button
+                v-if="!order && !processing"
+                type="button"
+                class="mb-4 text-blue-600 underline"
+                @click="initialize"
+              >
+                Reload checkout
+              </button>
+              <button
                 type="submit"
-                :disabled="processing || paymentConfig === null"
+                :disabled="processing || !order || !paymentConfig?.enabled"
                 class="min-h-[60px] w-full rounded-xl bg-blue-600 px-4 py-4 text-base font-semibold text-white shadow-[4px_4px_16px_rgba(0,0,0,0.08)] hover:bg-blue-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 {{
                   processing
                     ? 'Processing…'
-                    : paymentMethod === 'qr'
-                      ? 'Continue to QR code'
-                      : 'Confirm payment'
+                    : recovering
+                      ? 'Check payment status'
+                      : paymentMethod === 'qr'
+                        ? 'Continue to QR code'
+                        : 'Confirm payment'
                 }}
               </button>
             </div>

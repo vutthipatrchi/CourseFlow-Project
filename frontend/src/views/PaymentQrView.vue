@@ -1,65 +1,58 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
+import { downloadQr } from '@/api/payments'
+import { usePaymentStatus } from '@/lib/usePaymentStatus'
 import { formatThb } from '@/lib/payment'
-import { checkoutTokenFor, downloadQr, getPayment, type PaymentView } from '@/api/payments'
 
 const route = useRoute()
-const payment = ref<PaymentView | null>(null)
+const paymentId = computed(() =>
+  typeof route.query.paymentId === 'string' ? route.query.paymentId : '',
+)
+const { payment, errorMessage, loading } = usePaymentStatus(paymentId)
 const qrBlob = ref<Blob | null>(null)
 const qrSrc = ref('')
-const errorMessage = ref('')
-const loading = ref(true)
-let pollTimer: ReturnType<typeof setTimeout> | undefined
-
-const paymentId = computed(() =>
-  typeof route.query.paymentId === 'string' && /^[0-9a-f-]{36}$/i.test(route.query.paymentId)
-    ? route.query.paymentId
-    : '',
-)
-const amount = computed(() => (payment.value?.amountSatang ?? 0) / 100)
-const terminal = computed(() =>
-  ['successful', 'failed', 'expired', 'review'].includes(payment.value?.status ?? ''),
-)
-
-onMounted(load)
+const qrError = ref('')
+let disposed = false
+let downloading = false
+watch(payment, async (next) => {
+  if (!next?.qrUrl || next.status !== 'pending' || qrBlob.value || downloading) return
+  downloading = true
+  try {
+    const blob = await downloadQr(next.paymentId)
+    if (disposed || paymentId.value !== next.paymentId) return
+    qrBlob.value = blob
+    qrSrc.value = URL.createObjectURL(blob)
+    qrError.value = ''
+  } catch (error) {
+    if (!disposed) qrError.value = error instanceof Error ? error.message : 'Unable to load QR code'
+  } finally {
+    downloading = false
+  }
+})
+watch(paymentId, () => {
+  if (qrSrc.value) URL.revokeObjectURL(qrSrc.value)
+  qrBlob.value = null
+  qrSrc.value = ''
+})
 onUnmounted(() => {
-  if (pollTimer) clearTimeout(pollTimer)
+  disposed = true
   if (qrSrc.value) URL.revokeObjectURL(qrSrc.value)
 })
-
-async function load() {
-  const checkoutToken = paymentId.value ? checkoutTokenFor(paymentId.value) : null
-  if (!paymentId.value || !checkoutToken) {
-    errorMessage.value = 'This checkout session is missing or has expired.'
-    loading.value = false
-    return
-  }
-
-  try {
-    payment.value = await getPayment(paymentId.value, checkoutToken)
-    if (!qrBlob.value && payment.value.qrUrl) {
-      qrBlob.value = await downloadQr(paymentId.value, checkoutToken)
-      qrSrc.value = URL.createObjectURL(qrBlob.value)
-    }
-    errorMessage.value = ''
-    if (!terminal.value) pollTimer = setTimeout(load, 2000)
-  } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Unable to load QR payment'
-    pollTimer = setTimeout(load, 5000)
-  } finally {
-    loading.value = false
-  }
-}
-
 function saveQrImage() {
   if (!qrBlob.value || !payment.value) return
   const url = URL.createObjectURL(qrBlob.value)
+  const extension =
+    qrBlob.value.type === 'image/svg+xml'
+      ? 'svg'
+      : qrBlob.value.type === 'image/jpeg'
+        ? 'jpg'
+        : 'png'
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `courseflow-qr-${payment.value.reference}.png`
+  anchor.download = `courseflow-qr-${payment.value.reference}.${extension}`
   anchor.click()
   URL.revokeObjectURL(url)
 }
@@ -70,59 +63,61 @@ function saveQrImage() {
     <CheckoutNavbar />
     <main class="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
       <section class="flex w-full max-w-[420px] flex-col items-center text-center">
-        <h1 class="text-xl font-medium text-black">Scan QR code</h1>
+        <h1 class="text-xl font-medium text-black">
+          {{ payment?.status === 'successful' ? 'Payment successful' : 'Scan QR code' }}
+        </h1>
         <p v-if="payment" class="mt-1 text-xs text-gray-600">
           Reference no. {{ payment.reference }}
         </p>
         <p v-if="payment" class="mt-3 text-lg font-medium text-orange-500">
-          {{ formatThb(amount) }}
+          {{ formatThb(payment.amountSatang / 100) }}
         </p>
-
         <p v-if="loading" role="status" class="mt-8 text-sm text-gray-700">
           Loading secure QR code…
         </p>
-        <p v-else-if="errorMessage" role="alert" class="mt-8 text-sm text-red-700">
-          {{ errorMessage }}
+        <p v-if="errorMessage || qrError" role="alert" class="mt-8 text-sm text-red-700">
+          {{ errorMessage || qrError }}
         </p>
-        <template v-else-if="payment">
+        <template v-if="payment?.status === 'pending'">
           <img
             v-if="qrSrc"
             :src="qrSrc"
             :alt="`QR code for reference ${payment.reference}`"
-            class="mt-6 h-[190px] w-[190px]"
+            class="mt-6 h-[220px] w-[220px]"
           />
-          <p
-            v-if="payment.status === 'successful'"
-            role="status"
-            class="mt-6 font-medium text-green-700"
-          >
-            Payment successful
-          </p>
-          <p
-            v-else-if="payment.status === 'pending'"
-            role="status"
-            class="mt-4 text-sm text-gray-700"
-          >
-            Waiting for payment confirmation…
-          </p>
-          <p v-else role="alert" class="mt-6 text-sm text-red-700">
-            {{ payment.failureMessage || `Payment status: ${payment.status}` }}
+          <p role="status" class="mt-4 text-sm text-gray-700">Waiting for payment confirmation…</p>
+          <p class="mt-2 text-xs text-gray-600">
+            Expires {{ new Date(payment.expiresAt).toLocaleString() }}
           </p>
           <button
             type="button"
             :disabled="!qrBlob"
-            class="mt-8 min-h-14 w-full max-w-[290px] rounded-xl bg-blue-600 px-6 py-4 text-sm font-semibold text-white shadow-[4px_4px_16px_rgba(0,0,0,0.08)] hover:bg-blue-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 disabled:bg-gray-400"
+            class="mt-8 min-h-14 w-full max-w-[290px] rounded-xl bg-blue-600 px-6 py-4 text-sm font-semibold text-white disabled:bg-gray-400"
             @click="saveQrImage"
           >
             Save QR image
           </button>
         </template>
-
         <RouterLink
-          to="/payment"
-          class="mt-5 text-sm font-semibold text-blue-600 hover:text-blue-900"
-          >Back to payment</RouterLink
+          v-if="payment?.status === 'successful'"
+          to="/my-courses"
+          class="mt-8 font-semibold text-blue-600"
+          >View my courses</RouterLink
         >
+        <p
+          v-else-if="payment && payment.status !== 'pending'"
+          role="status"
+          class="mt-6 text-sm text-gray-700"
+        >
+          {{ payment.failureMessage || `Payment status: ${payment.status}` }}
+        </p>
+        <RouterLink
+          v-if="payment && ['failed', 'expired'].includes(payment.status)"
+          :to="{ name: 'payment', query: { courseId: payment.courseId } }"
+          class="mt-6 font-semibold text-blue-600"
+          >Try another payment</RouterLink
+        >
+        <RouterLink to="/" class="mt-6 text-sm text-blue-600">Back to home</RouterLink>
       </section>
     </main>
     <CheckoutFooter />

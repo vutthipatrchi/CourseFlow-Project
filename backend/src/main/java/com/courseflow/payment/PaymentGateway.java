@@ -2,6 +2,7 @@ package com.courseflow.payment;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Optional;
 
 interface PaymentGateway {
     boolean enabled();
@@ -15,5 +16,6 @@ interface PaymentGateway {
         String currency, Instant expiresAt
     );
     ProviderCharge retrieveCharge(String chargeId);
+    Optional<ProviderCharge> findCharge(UUID paymentId, Instant createdAt);
     DownloadedQr downloadQr(String imageUrl);
 }

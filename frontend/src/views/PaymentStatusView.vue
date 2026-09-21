@@ -1,49 +1,33 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
-import { checkoutTokenFor, getPayment, type PaymentView } from '@/api/payments'
+import { continueCardAuthentication } from '@/api/payments'
+import { usePaymentStatus } from '@/lib/usePaymentStatus'
+import { formatThb } from '@/lib/payment'
 
 const route = useRoute()
-const payment = ref<PaymentView | null>(null)
-const errorMessage = ref('')
-let pollTimer: ReturnType<typeof setTimeout> | undefined
-
 const paymentId = computed(() =>
-  typeof route.query.paymentId === 'string' && /^[0-9a-f-]{36}$/i.test(route.query.paymentId)
-    ? route.query.paymentId
-    : '',
+  typeof route.query.paymentId === 'string' ? route.query.paymentId : '',
 )
-const terminal = computed(() =>
-  ['successful', 'failed', 'expired', 'review'].includes(payment.value?.status ?? ''),
-)
+const { payment, errorMessage, loading } = usePaymentStatus(paymentId)
+const redirectError = ref('')
 const heading = computed(() => {
   if (payment.value?.status === 'successful') return 'Payment successful'
   if (payment.value?.status === 'failed') return 'Payment failed'
   if (payment.value?.status === 'expired') return 'Payment expired'
-  if (payment.value?.status === 'review') return 'Payment under review'
+  if (payment.value?.status === 'review') return 'Confirming your payment'
+  if (payment.value?.authorizeUrl) return 'Verify your card payment'
   return 'Confirming your payment'
 })
-
-onMounted(load)
-onUnmounted(() => {
-  if (pollTimer) clearTimeout(pollTimer)
-})
-
-async function load() {
-  const checkoutToken = paymentId.value ? checkoutTokenFor(paymentId.value) : null
-  if (!paymentId.value || !checkoutToken) {
-    errorMessage.value = 'This checkout session is missing or has expired.'
-    return
-  }
+function verifyCard() {
+  if (!payment.value?.authorizeUrl) return
   try {
-    payment.value = await getPayment(paymentId.value, checkoutToken)
-    errorMessage.value = ''
-    if (!terminal.value) pollTimer = setTimeout(load, 2000)
+    continueCardAuthentication(payment.value.authorizeUrl)
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Unable to load payment status'
-    pollTimer = setTimeout(load, 5000)
+    redirectError.value =
+      error instanceof Error ? error.message : 'Unable to open card verification'
   }
 }
 </script>
@@ -59,21 +43,51 @@ async function load() {
         <p v-if="payment" class="mt-3 text-sm text-gray-600">
           Reference no. {{ payment.reference }}
         </p>
-        <p v-if="!payment && !errorMessage" role="status" class="mt-6 text-gray-700">
+        <p v-if="payment" class="mt-3 text-lg text-gray-700">
+          {{ formatThb(payment.amountSatang / 100) }}
+        </p>
+        <p v-if="loading" role="status" class="mt-6 text-gray-700">
           Checking with the payment provider…
         </p>
-        <p v-if="errorMessage" role="alert" class="mt-6 text-red-700">{{ errorMessage }}</p>
+        <p v-if="errorMessage || redirectError" role="alert" class="mt-6 text-red-700">
+          {{ errorMessage || redirectError }}
+        </p>
+        <p
+          v-if="payment?.status === 'creating' || payment?.status === 'review'"
+          role="status"
+          class="mt-6 text-gray-700"
+        >
+          We are checking your payment. Please do not pay again. You can return to this page later.
+        </p>
         <p v-if="payment?.status === 'pending'" role="status" class="mt-6 text-gray-700">
           This page will update automatically.
         </p>
         <p v-if="payment?.failureMessage" class="mt-4 text-sm text-red-700">
           {{ payment.failureMessage }}
         </p>
-        <RouterLink
-          to="/payment"
-          class="mt-8 inline-block font-semibold text-blue-600 hover:text-blue-900"
-          >Back to payment</RouterLink
+        <button
+          v-if="payment?.authorizeUrl"
+          type="button"
+          class="mt-6 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white"
+          @click="verifyCard"
         >
+          Continue card verification
+        </button>
+        <RouterLink
+          v-if="payment?.status === 'successful'"
+          to="/my-courses"
+          class="mt-8 block font-semibold text-blue-600"
+        >
+          View my courses
+        </RouterLink>
+        <RouterLink
+          v-else-if="payment && ['failed', 'expired'].includes(payment.status)"
+          :to="{ name: 'payment', query: { courseId: payment.courseId } }"
+          class="mt-8 block font-semibold text-blue-600"
+        >
+          Try another payment
+        </RouterLink>
+        <RouterLink to="/" class="mt-6 block text-sm text-blue-600">Back to home</RouterLink>
       </section>
     </main>
     <CheckoutFooter />

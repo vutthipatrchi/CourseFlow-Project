@@ -1,9 +1,3 @@
-export const subscription = {
-  title: 'Service Design Essentials Course',
-  subtotal: 3559,
-  defaultDiscount: 200,
-} as const
-
 export function formatThb(amount: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

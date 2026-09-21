@@ -20,3 +20,7 @@ class PaymentProviderException extends RuntimeException {
 class PaymentProviderUnavailableException extends RuntimeException {
     PaymentProviderUnavailableException() { super("Payment provider is not configured"); }
 }
+
+class PaymentProviderRejectedException extends PaymentProviderException {
+    PaymentProviderRejectedException(Throwable cause) { super("Payment rejected by provider", cause); }
+}

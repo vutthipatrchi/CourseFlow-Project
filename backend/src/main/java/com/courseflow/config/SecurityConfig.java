@@ -18,8 +18,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/health",
-                                "/api/payments/**",
-                                "/api/orders/**",
+                                "/api/payments/config",
                                 "/api/webhooks/opn"
                         ).permitAll()
                         .anyRequest().authenticated())

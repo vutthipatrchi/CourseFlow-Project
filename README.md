@@ -92,7 +92,13 @@ following values to `backend/.env.properties`:
 ```properties
 OMISE_PUBLIC_KEY=pkey_test_...
 OMISE_SECRET_KEY=skey_test_...
+CHECKOUT_BASE_URL=http://localhost:5173
 ```
+
+Use a matching test-key pair while developing; test mode does not move real
+money. `CHECKOUT_BASE_URL` is the frontend origin that Opn returns to after
+3-D Secure authentication. Set it to the production HTTPS origin when
+deploying.
 
 Configure the Opn webhook endpoint as
 `https://your-api-host.example/api/webhooks/opn`. The webhook handler does not
@@ -100,10 +106,17 @@ trust the posted status: it retrieves the charge from Opn with the secret key,
 checks amount and currency, deduplicates event IDs, and only then activates the
 subscription. Keep `OMISE_SECRET_KEY` on the backend only.
 
-The checkout token is stored in browser session storage and sent in the
-`X-Checkout-Token` header; it is never placed in a URL. Payment creation also
-requires an `Idempotency-Key`. PromptPay QR images are proxied by the backend so
-the Save QR image action can download the provider-generated PNG securely.
+Checkout, payment status, QR image, and subscription requests require the
+signed-in user's Clerk bearer token. The backend owns the course price and
+promotion calculation, binds each order to the Clerk user ID, and reuses an
+open order to prevent duplicate charges. Payment creation also requires a UUID
+`Idempotency-Key`. Unknown provider outcomes enter review and are reconciled by
+the webhook and scheduled recovery job instead of being submitted again.
+
+Card details are tokenized directly by Opn in the browser and card charges
+request 3-D Secure authentication. PromptPay QR images are proxied by the
+backend so the Save QR image action can download the provider-generated PNG
+without exposing provider credentials.
 
 ## Checks
 

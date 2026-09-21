@@ -212,19 +212,21 @@ amount from its own course and promotion records.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/payments/config` | Return provider availability and the publishable key used for browser tokenization. |
-| `POST` | `/api/orders` | Create a 30-minute checkout and return an opaque checkout token. |
+| `POST` | `/api/orders` | Return a server-priced checkout for the signed-in buyer, reusing an open order when possible. |
 | `POST` | `/api/orders/{orderId}/payments/card` | Charge a provider card token. |
 | `POST` | `/api/orders/{orderId}/payments/promptpay` | Create a provider PromptPay charge and QR image. |
 | `GET` | `/api/payments/{paymentId}` | Refresh a charge from the provider and return its verified status. |
 | `GET` | `/api/payments/{paymentId}/qr` | Download the provider QR image through the authenticated proxy. |
+| `GET` | `/api/me/subscriptions` | List paid course subscriptions owned by the signed-in buyer. |
 | `POST` | `/api/webhooks/opn` | Receive an Opn event and reconcile it after retrieving the charge from Opn. |
 
-The order response contains `accessToken`. Send it as `X-Checkout-Token` on
-payment, status, and QR requests. Send a UUID as `Idempotency-Key` on both
-payment-creation endpoints. Card requests contain only `{ "cardToken":
-"tokn_test_..." }`; raw card numbers and security codes must never reach this
-API.
+Send the Clerk bearer token on order, payment, status, QR, and subscription
+requests. Send a UUID as `Idempotency-Key` on both payment-creation endpoints.
+Card requests contain only `{ "cardToken": "tokn_test_..." }`; raw card numbers
+and security codes must never reach this API.
 
-The current checkout is guest-capable and authorizes access through the opaque
-checkout token. User-account authentication can be added independently when
-the account model is implemented.
+The backend binds orders and subscriptions to the Clerk JWT subject. It trusts
+only its own course and promotion records for the amount, verifies provider
+amount/currency/metadata before activating access, and never resubmits a charge
+whose provider outcome is unknown. Webhooks and the scheduled reconciliation
+job recover those attempts safely.

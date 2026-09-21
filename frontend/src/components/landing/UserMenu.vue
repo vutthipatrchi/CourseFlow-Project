@@ -16,7 +16,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { label: 'Profile', icon: iconPerson, href: '#' },
-  { label: 'My Courses', icon: iconBook, href: '#' },
+  { label: 'My Courses', icon: iconBook, href: '/my-courses' },
   { label: 'My Assignments', icon: iconChecklist, href: '#' },
   { label: 'My Wishlist', icon: iconStar, href: '#' },
 ]
@@ -51,7 +51,11 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 <template>
   <div ref="rootRef" class="relative">
     <button type="button" class="flex items-center gap-2" @click="toggle">
-      <img :src="user?.imageUrl" :alt="user?.fullName ?? 'User'" class="h-9 w-9 rounded-full object-cover" />
+      <img
+        :src="user?.imageUrl"
+        :alt="user?.fullName ?? 'User'"
+        class="h-9 w-9 rounded-full object-cover"
+      />
       <span class="text-sm font-medium text-darkblue-500">{{ user?.fullName }}</span>
       <svg
         viewBox="0 0 24 24"
@@ -59,7 +63,13 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
         :class="{ 'rotate-180': isOpen }"
         fill="none"
       >
-        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path
+          d="M6 9l6 6 6-6"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
       </svg>
     </button>
 
