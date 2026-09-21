@@ -4,6 +4,8 @@ The frontend calls relative `/api` URLs. Vite proxies them to
 `http://localhost:8080` during development. Production hosting must route
 `/api/*` to the backend and serve the frontend build separately.
 
+Authenticated endpoints expect a Clerk JWT (`Authorization: Bearer …`).
+
 ## GET /api/health
 
 Returns HTTP 200 and `{"status":"UP","application":"CourseFlow"}`.
@@ -27,7 +29,128 @@ percentage discount cannot exceed 100. Promo fields are required when
 
 The current UI stores uploaded file names in `imageName`, `videoName`, and
 `resourceName`; binary file upload/storage is not part of these JSON endpoints.
-Authentication and authorization still need to be added before production.
+`lessonItems` must contain at least one lesson. Each item may include an optional
+`id` for an existing lesson. On update the backend upserts by id (preserving
+nested `sub_lessons` and assignments) and deletes lessons omitted from the list.
+Do not omit `id` for existing lessons when saving a course, or those lessons will
+be re-created and their sub-lessons will be lost.
+
+## Admin video uploads
+
+These endpoints require a database-backed profile (`local`). Uploaded files are
+stored on the **backend host filesystem** (`courseflow.upload.dir`, default
+`uploads/` under the backend working directory). This is intended for local
+development and a single backend instance with persistent disk.
+
+Production note: a multi-instance or serverless frontend (e.g. Vercel-only)
+cannot rely on this path — move binary storage to object storage (S3 / Supabase
+Storage) in a follow-up. Until then, run the Spring Boot `local` profile on a
+host that keeps the `uploads/` directory.
+
+### POST /api/admin/uploads/videos
+
+Multipart form field `file` (mp4, webm, mov, m4v). Requires admin JWT.
+
+```json
+{
+  "url": "/api/uploads/videos/<uuid>.mp4",
+  "contentType": "video/mp4",
+  "originalName": "intro.mp4"
+}
+```
+
+### GET /api/uploads/videos/{filename}
+
+Public read of a previously uploaded video (no auth). Used by `<video>` tags.
+
+## Admin lessons and sub-lessons
+
+These endpoints require a database-backed profile (`local`). They are not
+available under the default `standalone` profile.
+
+Hierarchy: `courses` → `course_lessons` → `sub_lessons` (each sub-lesson has a
+`videoUrl`). Create/update lesson payloads send the nested sub-lesson list;
+order in the array becomes `position`. On update, sub-lessons omitted from
+the list are deleted; items without `id` are created; items with `id` are
+updated. The `course_lessons.sub_lessons` count column is kept in sync.
+
+### GET /api/admin/courses/{courseId}/lessons
+
+Lesson table for a course (includes sub-lesson counts).
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Introduction",
+    "position": 1,
+    "subLessonCount": 4
+  }
+]
+```
+
+### POST /api/admin/courses/{courseId}/lessons
+
+Create a lesson with nested sub-lessons.
+
+```json
+{
+  "name": "Introduction",
+  "subLessons": [
+    {
+      "name": "Welcome to the Course",
+      "videoUrl": "https://cdn.example/welcome.mp4"
+    }
+  ]
+}
+```
+
+`201 Created` with `Location: /api/admin/lessons/{id}` and the lesson detail
+body (same shape as GET below).
+
+### GET /api/admin/lessons/{lessonId}
+
+```json
+{
+  "id": 1,
+  "courseId": 1,
+  "name": "Introduction",
+  "position": 1,
+  "subLessons": [
+    {
+      "id": 10,
+      "name": "Welcome to the Course",
+      "videoUrl": "https://cdn.example/welcome.mp4",
+      "position": 1
+    }
+  ]
+}
+```
+
+### PUT /api/admin/lessons/{lessonId}
+
+Replace lesson name and sync sub-lessons.
+
+```json
+{
+  "name": "Introduction",
+  "subLessons": [
+    {
+      "id": 10,
+      "name": "Welcome to the Course",
+      "videoUrl": "https://cdn.example/welcome.mp4"
+    },
+    {
+      "name": "Course Overview",
+      "videoUrl": "https://cdn.example/overview.mp4"
+    }
+  ]
+}
+```
+
+### DELETE /api/admin/lessons/{lessonId}
+
+`204 No Content`. Cascades to sub-lessons.
 
 ## Admin assignments
 
