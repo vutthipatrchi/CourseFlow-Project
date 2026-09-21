@@ -41,4 +41,53 @@ describe('AssignmentForm', () => {
 
     expect(wrapper.emitted('submit')).toBeUndefined()
   })
+
+  it('pre-fills course/lesson/sub-lesson/description from initialValue', async () => {
+    const wrapper = mount(AssignmentForm, {
+      props: {
+        subLessonOptions: options,
+        submitting: false,
+        initialValue: { subLessonId: 1, description: 'Existing assignment' },
+      },
+    })
+
+    expect((wrapper.get('#course').element as HTMLSelectElement).value).toBe('Web Development')
+    expect((wrapper.get('#lesson').element as HTMLSelectElement).value).toBe('Vue Basics')
+    expect((wrapper.get('#sub-lesson').element as HTMLSelectElement).value).toBe('1')
+    expect((wrapper.get('#description').element as HTMLInputElement).value).toBe(
+      'Existing assignment',
+    )
+
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.emitted('submit')![0]![0]).toEqual({
+      subLessonId: 1,
+      description: 'Existing assignment',
+    })
+  })
+
+  it('still resets lesson/sub-lesson when the user changes course after a pre-fill', async () => {
+    const multiCourseOptions: SubLessonOption[] = [
+      ...options,
+      {
+        subLessonId: 2,
+        subLessonName: 'Routing',
+        lessonName: 'Vue Router',
+        courseName: 'Advanced Vue',
+      },
+    ]
+    const wrapper = mount(AssignmentForm, {
+      props: {
+        subLessonOptions: multiCourseOptions,
+        submitting: false,
+        initialValue: { subLessonId: 1, description: 'Existing assignment' },
+      },
+    })
+
+    await wrapper.get('#course').setValue('Advanced Vue')
+
+    expect((wrapper.get('#lesson').element as HTMLSelectElement).value).toBe('Select a lesson')
+    expect((wrapper.get('#sub-lesson').element as HTMLSelectElement).value).toBe(
+      'Select a sub-lesson',
+    )
+  })
 })

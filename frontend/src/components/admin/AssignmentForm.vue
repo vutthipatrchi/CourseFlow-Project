@@ -6,6 +6,7 @@ const props = defineProps<{
   subLessonOptions: SubLessonOption[]
   submitting: boolean
   fieldErrors?: Record<string, string>
+  initialValue?: { subLessonId: number; description: string } | null
 }>()
 
 const emit = defineEmits<{
@@ -34,14 +35,32 @@ const subLessons = computed(() =>
   ),
 )
 
-watch(selectedCourse, () => {
+// Bound to the <select>s' native `change` event rather than a `watch` on the
+// refs, so hydrating an existing assignment (below) can set course/lesson/
+// sub-lesson together without this cascade wiping out what it just set.
+function handleCourseChange() {
   selectedLesson.value = null
   subLessonId.value = null
-})
+}
 
-watch(selectedLesson, () => {
+function handleLessonChange() {
   subLessonId.value = null
-})
+}
+
+watch(
+  () => [props.subLessonOptions, props.initialValue] as const,
+  ([options, initialValue]) => {
+    if (!initialValue) return
+    const match = options.find((option) => option.subLessonId === initialValue.subLessonId)
+    if (match) {
+      selectedCourse.value = match.courseName
+      selectedLesson.value = match.lessonName
+      subLessonId.value = match.subLessonId
+    }
+    description.value = initialValue.description
+  },
+  { immediate: true },
+)
 
 function handleSubmit() {
   localError.value = null
@@ -72,6 +91,7 @@ function handleSubmit() {
         id="course"
         v-model="selectedCourse"
         class="h-12 rounded-lg border border-[#D6D9E4] pt-3 pr-11 pb-3 pl-3 text-base text-black"
+        @change="handleCourseChange"
       >
         <option :value="null" disabled>Select a course</option>
         <option v-for="course in courses" :key="course" :value="course">{{ course }}</option>
@@ -86,6 +106,7 @@ function handleSubmit() {
           v-model="selectedLesson"
           :disabled="!selectedCourse"
           class="h-12 rounded-lg border border-[#D6D9E4] pt-3 pr-11 pb-3 pl-3 text-base text-black disabled:bg-gray-50"
+          @change="handleLessonChange"
         >
           <option :value="null" disabled>Select a lesson</option>
           <option v-for="lesson in lessons" :key="lesson" :value="lesson">{{ lesson }}</option>
