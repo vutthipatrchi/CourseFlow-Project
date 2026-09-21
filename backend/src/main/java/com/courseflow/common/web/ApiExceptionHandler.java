@@ -1,5 +1,6 @@
 package com.courseflow.common.web;
 
+import com.courseflow.promocode.DuplicatePromoCodeException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -29,5 +30,13 @@ public class ApiExceptionHandler {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(DuplicatePromoCodeException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicatePromoCode(DuplicatePromoCodeException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", ex.getMessage());
+        body.put("fieldErrors", Map.of("code", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 }

@@ -49,6 +49,24 @@ const router = createRouter({
       component: () => import('../views/AdminAssignmentCreateView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
+    {
+      path: '/admin/promo-codes',
+      name: 'admin-promo-codes',
+      component: () => import('../views/AdminPromoCodeListView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/promo-codes/new',
+      name: 'admin-promo-code-create',
+      component: () => import('../views/AdminPromoCodeCreateView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/promo-codes/:id/edit',
+      name: 'admin-promo-code-edit',
+      component: () => import('../views/AdminPromoCodeCreateView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
   ],
 })
 
