@@ -125,10 +125,12 @@ public class CourseRepository {
 
     private Course loadCourse(CourseRow row) {
         var lessons = jdbc.query("""
-            SELECT id, name, sub_lessons
-              FROM courseflow.course_lessons
-             WHERE course_id = :courseId
-             ORDER BY position
+            SELECT cl.id,
+                   cl.name,
+                   (SELECT COUNT(*)::int FROM courseflow.sub_lessons sl WHERE sl.lesson_id = cl.id) AS sub_lessons
+              FROM courseflow.course_lessons cl
+             WHERE cl.course_id = :courseId
+             ORDER BY cl.position
             """, Map.of("courseId", row.id()), (resultSet, rowNumber) -> new CourseLesson(
                 resultSet.getLong("id"),
                 resultSet.getString("name"),

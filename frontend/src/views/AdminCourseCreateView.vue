@@ -22,7 +22,7 @@ const cachedCourse = Number.isInteger(courseId)
   : undefined
 const isEditing = route.name === 'admin-course-edit'
 const courseToEdit = ref<Course | undefined>(cachedCourse)
-const isLoadingCourse = ref(isEditing && !cachedCourse)
+const isLoadingCourse = ref(isEditing)
 const isSaving = ref(false)
 const apiError = ref('')
 
@@ -50,14 +50,19 @@ type CourseFormField =
   | 'summary'
   | 'description'
   | 'image'
+  | 'lessons'
 const fieldErrors = ref<Partial<Record<CourseFormField, string>>>({})
 const lessons = ref<CourseLesson[]>(
   cachedCourse?.lessonItems?.map((lesson) => ({ ...lesson })) ??
-    Array.from({ length: cachedCourse?.lessons ?? 1 }, (_, index) => ({
-      id: index + 1,
-      name: index === 0 ? 'Introduction' : `Lesson ${index + 1}`,
-      subLessons: 1,
-    })),
+    (isEditing
+      ? []
+      : [
+          {
+            id: 1,
+            name: 'Introduction',
+            subLessons: 0,
+          },
+        ]),
 )
 
 function populateForm(course: Course) {
@@ -80,9 +85,9 @@ function populateForm(course: Course) {
 }
 
 onMounted(async () => {
-  if (!isEditing || cachedCourse) return
+  if (!isEditing) return
   try {
-    populateForm(await getCourse(courseId))
+    populateForm(await getCourse(courseId, true))
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to load course.'
   } finally {
@@ -125,6 +130,7 @@ function editLesson(lesson: CourseLesson) {
 
 function removeLesson(id: number) {
   lessons.value = lessons.value.filter((lesson) => lesson.id !== id)
+  clearError('lessons')
 }
 
 function clearError(field: CourseFormField) {
@@ -138,6 +144,12 @@ function clearError(field: CourseFormField) {
     summary: summary.value,
     description: description.value,
     image: imageName.value,
+    lessons: lessons.value.length,
+  }
+
+  if (field === 'lessons') {
+    if (lessons.value.length >= 1) delete fieldErrors.value.lessons
+    return
   }
 
   if (!isEmpty(values[field])) delete fieldErrors.value[field]
@@ -226,6 +238,7 @@ function validateCourse() {
   if (!isEditing && isEmpty(summary.value)) errors.summary = 'Please fill out this field'
   if (!isEditing && isEmpty(description.value)) errors.description = 'Please fill out this field'
   if (!isEditing && isEmpty(imageName.value)) errors.image = 'Please fill out this field'
+  if (lessons.value.length < 1) errors.lessons = 'Course must have at least 1 lesson'
 
   fieldErrors.value = errors
   return Object.keys(errors).length === 0
@@ -583,12 +596,10 @@ async function saveCourse() {
               <div v-for="(lesson, index) in lessons" :key="lesson.id" class="lesson-row">
                 <span>{{ index + 1 }}</span>
                 <input v-model.trim="lesson.name" :aria-label="`Lesson ${index + 1} name`" />
-                <input
-                  v-model.number="lesson.subLessons"
-                  type="number"
-                  min="0"
+                <span
+                  class="sub-lesson-count"
                   :aria-label="`Lesson ${index + 1} sub-lessons`"
-                />
+                >{{ lesson.subLessons }}</span>
                 <div class="lesson-actions">
                   <button
                     class="lesson-delete"
@@ -625,6 +636,7 @@ async function saveCourse() {
                 </div>
               </div>
               <p v-if="lessons.length === 0" class="empty-lessons">No lessons added yet.</p>
+              <FormFieldError :message="fieldErrors.lessons" />
             </div>
           </section>
         </main>
@@ -1097,6 +1109,13 @@ fieldset .field-error {
 .lesson-row input:focus {
   border-color: #8dade0;
   outline: 0;
+}
+.sub-lesson-count {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: #2a2e3f;
+  font-size: 16px;
 }
 .lesson-actions {
   display: flex;

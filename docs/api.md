@@ -29,6 +29,28 @@ percentage discount cannot exceed 100. Promo fields are required when
 
 The current UI stores uploaded file names in `imageName`, `videoName`, and
 `resourceName`; binary file upload/storage is not part of these JSON endpoints.
+`lessonItems` must contain at least one lesson.
+
+## Admin video uploads
+
+These endpoints require a database-backed profile (`local`). Uploaded files are
+stored on the backend filesystem (`courseflow.upload.dir`, default `uploads/`).
+
+### POST /api/admin/uploads/videos
+
+Multipart form field `file` (mp4, webm, mov, m4v). Requires admin JWT.
+
+```json
+{
+  "url": "/api/uploads/videos/<uuid>.mp4",
+  "contentType": "video/mp4",
+  "originalName": "intro.mp4"
+}
+```
+
+### GET /api/uploads/videos/{filename}
+
+Public read of a previously uploaded video (no auth). Used by `<video>` tags.
 
 ## Admin lessons and sub-lessons
 

@@ -83,9 +83,9 @@ export async function loadCourses(force = false) {
   }
 }
 
-export async function getCourse(id: number) {
+export async function getCourse(id: number, force = false) {
   const cached = courses.value.find((course) => course.id === id)
-  if (cached?.lessonItems) return cached
+  if (!force && cached?.lessonItems) return cached
 
   const course = await request<Course>(`${API_URL}/${id}`)
   const index = courses.value.findIndex((item) => item.id === id)

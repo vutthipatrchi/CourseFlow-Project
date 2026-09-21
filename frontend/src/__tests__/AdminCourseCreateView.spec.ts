@@ -156,6 +156,7 @@ describe('admin add course', () => {
 describe('admin edit course', () => {
   it('loads the existing course and saves changes from the full edit page', async () => {
     const { router, wrapper } = await mountView('/admin/courses/1/edit')
+    await flushPromises()
 
     expect(wrapper.get('h1').text()).toContain('Course')
     expect(wrapper.get('h1').text()).toContain('Service Design Essentials')
