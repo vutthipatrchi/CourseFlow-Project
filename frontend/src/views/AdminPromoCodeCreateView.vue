@@ -3,12 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import PromoCodeForm from '@/components/admin/PromoCodeForm.vue'
-import {
-  createPromoCode,
-  getPromoCode,
-  listPromoCodes,
-  updatePromoCode,
-} from '@/api/promoCodes'
+import { createPromoCode, getPromoCode, listPromoCodes, updatePromoCode } from '@/api/promoCodes'
 import { toApiError } from '@/api/client'
 import { courses, loadCourses } from '@/admin/courseStore'
 import type { PromoCode, PromoCodePayload } from '@/types/promoCode'

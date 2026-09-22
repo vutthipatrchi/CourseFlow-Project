@@ -713,10 +713,9 @@ async function saveCourse() {
                   </button>
                   <span>{{ index + 1 }}</span>
                   <input v-model.trim="lesson.name" :aria-label="`Lesson ${index + 1} name`" />
-                  <span
-                    class="sub-lesson-count"
-                    :aria-label="`Lesson ${index + 1} sub-lessons`"
-                  >{{ lesson.subLessons }}</span>
+                  <span class="sub-lesson-count" :aria-label="`Lesson ${index + 1} sub-lessons`">{{
+                    lesson.subLessons
+                  }}</span>
                   <div class="lesson-actions">
                     <button
                       class="lesson-delete"
