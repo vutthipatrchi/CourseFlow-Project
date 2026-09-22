@@ -14,6 +14,30 @@ const router = createRouter({
     },
     { path: '/admin', redirect: { name: 'admin-courses' } },
     {
+      path: '/payment',
+      name: 'payment',
+      component: () => import('../views/PaymentView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/my-courses',
+      name: 'my-courses',
+      component: () => import('../views/MyCoursesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/payment/qr',
+      name: 'payment-qr',
+      meta: { requiresAuth: true },
+      component: () => import('../views/PaymentQrView.vue'),
+    },
+    {
+      path: '/payment/status',
+      name: 'payment-status',
+      meta: { requiresAuth: true },
+      component: () => import('../views/PaymentStatusView.vue'),
+    },
+    {
       path: '/admin/courses',
       name: 'admin-courses',
       component: () => import('../views/AdminCourseListView.vue'),

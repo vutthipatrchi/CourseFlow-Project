@@ -325,3 +325,31 @@ success response shape. `404 Not Found` when `id` does not exist.
 
 Deletes a promo code. `204 No Content` on success, `404 Not Found` when
 `id` does not exist.
+
+## Payment checkout
+
+Payment endpoints are enabled when the backend runs with a database profile.
+All monetary values are integer satang and the backend calculates the final
+amount from its own course and promotion records.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/payments/config` | Return provider availability and the publishable key used for browser tokenization. |
+| `POST` | `/api/orders` | Return a server-priced checkout for the signed-in buyer, reusing an open order when possible. |
+| `POST` | `/api/orders/{orderId}/payments/card` | Charge a provider card token. |
+| `POST` | `/api/orders/{orderId}/payments/promptpay` | Create a provider PromptPay charge and QR image. |
+| `GET` | `/api/payments/{paymentId}` | Refresh a charge from the provider and return its verified status. |
+| `GET` | `/api/payments/{paymentId}/qr` | Download the provider QR image through the authenticated proxy. |
+| `GET` | `/api/me/subscriptions` | List paid course subscriptions owned by the signed-in buyer. |
+| `POST` | `/api/webhooks/opn` | Receive an Opn event and reconcile it after retrieving the charge from Opn. |
+
+Send the Clerk bearer token on order, payment, status, QR, and subscription
+requests. Send a UUID as `Idempotency-Key` on both payment-creation endpoints.
+Card requests contain only `{ "cardToken": "tokn_test_..." }`; raw card numbers
+and security codes must never reach this API.
+
+The backend binds orders and subscriptions to the Clerk JWT subject. It trusts
+only its own course and promotion records for the amount, verifies provider
+amount/currency/metadata before activating access, and never resubmits a charge
+whose provider outcome is unknown. Webhooks and the scheduled reconciliation
+job recover those attempts safely.
