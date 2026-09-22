@@ -56,7 +56,9 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
         :alt="user?.fullName ?? 'User'"
         class="h-9 w-9 rounded-full object-cover"
       />
-      <span class="text-sm font-medium text-darkblue-500">{{ user?.fullName }}</span>
+      <span class="hidden text-sm font-medium text-darkblue-500 sm:inline">{{
+        user?.fullName
+      }}</span>
       <svg
         viewBox="0 0 24 24"
         class="h-4 w-4 text-gray-400 transition-transform"
