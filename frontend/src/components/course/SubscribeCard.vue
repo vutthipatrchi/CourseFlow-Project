@@ -33,7 +33,7 @@ const addToWishlist = () => {
 
 <template>
   <aside
-    class="sticky top-24 flex w-full max-w-89.25 flex-col gap-6 rounded-lg bg-white p-6 shadow-[4px_4px_24px_rgba(0,0,0,0.08)]"
+    class="sticky top-24 flex w-full max-w-102.5 flex-col gap-10 rounded-lg bg-white p-7 shadow-[4px_4px_24px_rgba(0,0,0,0.08)]"
   >
     <p class="text-sm text-orange-500">{{ category }}</p>
     <div class="flex flex-col gap-2">
@@ -43,7 +43,7 @@ const addToWishlist = () => {
     <p class="text-2xl leading-tight font-medium tracking-[-0.02em] text-[#646D89]">
       THB {{ price.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
     </p>
-    <div class="flex flex-col gap-4 border-t border-[#D6D9E4] pt-10">
+    <div class="flex flex-col gap-4 border-t border-[#D6D9E4] pt-16">
       <button
         type="button"
         class="cursor-pointer rounded-xl border border-orange-500 bg-white px-8 py-4.5 text-base font-bold text-orange-500 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-orange-500 hover:text-white active:scale-95"
