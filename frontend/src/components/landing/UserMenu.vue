@@ -18,7 +18,7 @@ const menuItems: MenuItem[] = [
   { label: 'Profile', icon: iconPerson, href: '#' },
   { label: 'My Courses', icon: iconBook, href: '/my-courses' },
   { label: 'My Assignments', icon: iconChecklist, href: '#' },
-  { label: 'My Wishlist', icon: iconStar, href: '#' },
+  { label: 'My Wishlist', icon: iconStar, href: '/wishlist' },
 ]
 
 const router = useRouter()
