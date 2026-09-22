@@ -3,11 +3,20 @@
 // Guest-facing page listing all available courses in a grid
 // แก้ไขได้: heading text, search placeholder, grid columns, course data source
 
+import { computed, ref } from 'vue'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import CtaBanner from '@/components/landing/CtaBanner.vue'
 import CourseCard from '@/components/course/CourseCard.vue'
 import { courses } from '@/data/courses'
+
+const searchQuery = ref('')
+
+const filteredCourses = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return courses
+  return courses.filter((course) => course.title.toLowerCase().includes(query))
+})
 </script>
 
 <template>
@@ -49,7 +58,7 @@ import { courses } from '@/data/courses'
           Our Courses
         </h1>
         <div
-          class="flex w-full max-w-89.25 items-center gap-2.5 rounded-lg border border-[#CCD0D7] bg-white px-4 py-3"
+          class="flex w-full max-w-92.5 items-center gap-2.5 rounded-lg border border-[#CCD0D7] bg-white px-4 py-3"
         >
           <svg class="h-6 w-6 text-[#646D89]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -59,12 +68,20 @@ import { courses } from '@/data/courses'
               d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
             />
           </svg>
-          <span class="text-base text-[#9AA1B9]">Search...</span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search..."
+            class="w-full text-base text-gray-900 outline-none placeholder:text-[#9AA1B9]"
+          />
         </div>
       </section>
-      <section class="mx-auto grid max-w-279.75 grid-cols-3 gap-x-6 gap-y-15 pb-20">
+      <section
+        v-if="filteredCourses.length > 0"
+        class="mx-auto grid max-w-289.5 grid-cols-3 gap-x-6 gap-y-15 pb-20"
+      >
         <CourseCard
-          v-for="course in courses"
+          v-for="course in filteredCourses"
           :key="course.id"
           :id="course.id"
           :category="course.category"
@@ -75,6 +92,7 @@ import { courses } from '@/data/courses'
           :hour-count="course.hourCount"
         />
       </section>
+      <p v-else class="pb-20 text-base text-[#646D89]">No courses match your search.</p>
     </main>
     <CtaBanner />
     <AppFooter />

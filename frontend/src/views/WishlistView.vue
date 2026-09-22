@@ -51,7 +51,7 @@ import { wishlistCourses } from '@/data/wishlist'
       </section>
       <section
         v-if="wishlistCourses.length > 0"
-        class="mx-auto grid max-w-279.75 grid-cols-3 gap-x-6 gap-y-15 pb-20"
+        class="mx-auto grid max-w-289.5 grid-cols-3 gap-x-6 gap-y-15 pb-20"
       >
         <CourseCard
           v-for="course in wishlistCourses"
