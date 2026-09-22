@@ -40,6 +40,28 @@ class PaymentRepository {
 
     long findPromotionDiscount(Long courseId, String code) {
         if (code == null || code.isBlank()) return 0;
+
+        var managedPromotion = queryOne("""
+            SELECT CASE
+                     WHEN c.price < p.minimum_purchase THEN 0
+                     WHEN EXISTS (
+                       SELECT 1 FROM courseflow.promo_code_courses assigned
+                       WHERE assigned.promo_code_id = p.id
+                     ) AND NOT EXISTS (
+                       SELECT 1 FROM courseflow.promo_code_courses assigned
+                       WHERE assigned.promo_code_id = p.id AND assigned.course_id = c.id
+                     ) THEN 0
+                     WHEN p.discount_type = 'fixed' THEN ROUND(p.discount_value * 100)::BIGINT
+                     WHEN p.discount_type = 'percent' THEN ROUND(c.price * p.discount_value)::BIGINT
+                     ELSE 0
+                   END
+            FROM courseflow.promo_codes p
+            JOIN courseflow.courses c ON c.id = ?
+            WHERE UPPER(p.code) = UPPER(?)
+            """, (rs, row) -> rs.getLong(1), courseId, code);
+        if (managedPromotion.isPresent()) return managedPromotion.get();
+
+        // Keep course-level promotions working while the legacy course fields are phased out.
         return queryOne("""
             SELECT CASE WHEN discount_type = 'fixed' THEN ROUND(discount * 100)::BIGINT
                         WHEN discount_type = 'percentage' THEN ROUND(price * discount)::BIGINT ELSE 0 END

@@ -44,8 +44,7 @@ const cardValid = computed(() => {
   if (!expiry) return false
   const lastDay = new Date(2000 + Number(expiry[2]), Number(expiry[1]), 1)
   return (
-    digits.value.length >= 13 &&
-    digits.value.length <= 19 &&
+    digits.value.length === 16 &&
     card.owner.trim().length >= 2 &&
     lastDay.getTime() > Date.now() &&
     /^\d{3,4}$/.test(card.cvv)
@@ -100,7 +99,7 @@ onMounted(initialize)
 function formatCardNumber(event: Event) {
   card.number = (event.target as HTMLInputElement).value
     .replace(/\D/g, '')
-    .slice(0, 19)
+    .slice(0, 16)
     .replace(/(.{4})/g, '$1 ')
     .trim()
 }
@@ -250,7 +249,7 @@ async function confirmPayment() {
                         :value="card.number"
                         inputmode="numeric"
                         autocomplete="cc-number"
-                        maxlength="23"
+                        maxlength="19"
                         placeholder="1234 1234 1234 1234"
                         class="h-12 rounded-lg border border-gray-400 bg-white px-4 text-base placeholder:text-gray-600 focus:border-blue-600 focus:outline-none"
                         @input="formatCardNumber"
