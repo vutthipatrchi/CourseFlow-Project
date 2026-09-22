@@ -88,9 +88,15 @@ const collabFeatures: Feature[] = [
         </div>
       </div>
 
-      <!-- block 2: text left, image right -->
+      <!-- block 2: image first on mobile (matches block 1's stacking order),
+           text left / image right from md up -->
       <div class="grid grid-cols-1 items-center gap-12 md:grid-cols-2">
-        <div class="md:order-1">
+        <img
+          :src="featurePhotoCollab"
+          alt="Tutor's laptop screen showing a course website mockup"
+          class="order-1 w-full rounded-lg shadow-lg md:order-2"
+        />
+        <div class="order-2 md:order-1">
           <h2 class="text-2xl font-bold text-gray-900 md:text-3xl">
             Interaction between the tutor and the learners
           </h2>
@@ -104,11 +110,6 @@ const collabFeatures: Feature[] = [
             </li>
           </ul>
         </div>
-        <img
-          :src="featurePhotoCollab"
-          alt="Tutor's laptop screen showing a course website mockup"
-          class="w-full rounded-lg shadow-lg md:order-2"
-        />
       </div>
     </div>
   </section>
