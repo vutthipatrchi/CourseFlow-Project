@@ -33,7 +33,7 @@ import dotRingGreen from '@/assets/landing/dot-ring-green.svg'
         </Show>
         <Show when="signed-in">
           <a
-            href="#"
+            href="/courses"
             class="mt-6 inline-block rounded-lg border-2 border-orange-500 bg-white px-7 py-3 text-sm font-semibold text-orange-500 hover:bg-orange-500 hover:text-white"
           >
             Check out our courses
