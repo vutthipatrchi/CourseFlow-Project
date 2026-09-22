@@ -12,13 +12,13 @@ import UserMenu from './UserMenu.vue'
       </a>
 
       <div class="flex items-center gap-4 sm:gap-8">
-        <a href="#" class="text-sm font-medium text-darkblue-500 hover:text-blue-600"
+        <a href="#" class="whitespace-nowrap text-sm font-medium text-darkblue-500 hover:text-blue-600"
           >Our Courses</a
         >
         <Show when="signed-out">
           <a
             href="/sign-in"
-            class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+            class="whitespace-nowrap rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
           >
             Log in
           </a>
