@@ -19,7 +19,7 @@ defineProps<Props>()
 <template>
   <RouterLink
     :to="`/courses/${id}`"
-    class="flex w-full max-w-89.25 flex-col rounded-lg bg-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)]"
+    class="flex w-full max-w-89.25 cursor-pointer flex-col rounded-lg bg-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-95"
   >
     <img :src="imageUrl" :alt="title" class="h-60 w-full rounded-t-lg bg-gray-100 object-cover" />
     <div class="flex flex-col gap-2 px-4 pb-4">

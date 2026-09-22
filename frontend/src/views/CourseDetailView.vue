@@ -23,7 +23,7 @@ const course = computed(() => courses.find((item) => item.id === route.params.id
     <div class="px-40 pt-13">
       <RouterLink
         to="/courses"
-        class="inline-flex items-center gap-2 rounded-full px-2 py-1 text-base font-bold text-blue-500"
+        class="inline-flex cursor-pointer items-center gap-2 rounded-full px-2 py-1 text-base font-bold text-blue-500 transition-colors duration-200 hover:bg-blue-50 active:scale-95"
       >
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z" />

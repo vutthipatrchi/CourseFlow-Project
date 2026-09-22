@@ -1,4 +1,7 @@
 import type { Course, Module } from '@/types/course'
+import serviceDesignImage from '@/assets/admin/courses/service-design.jpg'
+import softwareDeveloperImage from '@/assets/admin/courses/software-developer.jpg'
+import uxUiDesignImage from '@/assets/admin/courses/ux-ui-design.jpg'
 
 const modules: Module[] = [
   {
@@ -48,15 +51,27 @@ const modules: Module[] = [
 const longDescription =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Elementum aenean fermentum, velit vel, scelerisque morbi accumsan. Nec, tellus leo id leo id felis egestas. Quam sit lorem quis vitae ut mus imperdiet. Volutpat placerat dignissim dolor faucibus elit ornare fringilla. Vivamus amet risus ullamcorper auctor nibh. Maecenas morbi nec vestibulum ac tempus vehicula.'
 
-export const courses: Course[] = Array.from({ length: 12 }, (_, index) => ({
-  id: `course-${index + 1}`,
-  category: 'Course',
-  title: 'Service Design Essentials',
-  description: 'Lorem ipsum dolor sit amet, conse ctetur adipiscing elit.',
-  longDescription,
-  imageUrl: '',
-  lessonCount: 6,
-  hourCount: 6,
-  price: 3559,
-  modules,
-}))
+const courseTemplates = [
+  { title: 'Service Design Essentials', imageUrl: serviceDesignImage },
+  { title: 'Software Developer', imageUrl: softwareDeveloperImage },
+  { title: 'UX/UI Design Beginner', imageUrl: uxUiDesignImage },
+  { title: 'UX/UI Design Beginner', imageUrl: uxUiDesignImage },
+  { title: 'Service Design Essentials', imageUrl: serviceDesignImage },
+  { title: 'Software Developer', imageUrl: softwareDeveloperImage },
+]
+
+export const courses: Course[] = Array.from({ length: 12 }, (_, index) => {
+  const template = courseTemplates[index % courseTemplates.length]!
+  return {
+    id: `course-${index + 1}`,
+    category: 'Course',
+    title: template.title,
+    description: 'Lorem ipsum dolor sit amet, conse ctetur adipiscing elit.',
+    longDescription,
+    imageUrl: template.imageUrl,
+    lessonCount: 6,
+    hourCount: 6,
+    price: 3559,
+    modules,
+  }
+})

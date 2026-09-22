@@ -23,7 +23,11 @@ const toggle = () => {
 
 <template>
   <div class="border-b border-[#D6D9E4] py-6">
-    <button type="button" class="flex w-full items-start gap-6 text-left" @click="toggle">
+    <button
+      type="button"
+      class="flex w-full cursor-pointer items-start gap-6 rounded-lg text-left transition-colors duration-200 hover:bg-gray-50 active:scale-[0.99]"
+      @click="toggle"
+    >
       <span class="text-2xl leading-tight font-medium tracking-[-0.02em] text-[#646D89]">
         {{ String(index + 1).padStart(2, '0') }}
       </span>
@@ -39,8 +43,13 @@ const toggle = () => {
         <path d="M7 10l5 5 5-5z" />
       </svg>
     </button>
-    <ul v-if="isOpen" class="flex flex-col gap-2 px-10 pt-2 text-base text-[#646D89]">
-      <li v-for="subLesson in module.subLessons" :key="subLesson">{{ subLesson }}</li>
-    </ul>
+    <div
+      class="grid transition-[grid-template-rows] duration-300 ease-in-out"
+      :class="isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+    >
+      <ul class="flex min-h-0 flex-col gap-2 overflow-hidden px-10 pt-2 text-base text-[#646D89]">
+        <li v-for="subLesson in module.subLessons" :key="subLesson">{{ subLesson }}</li>
+      </ul>
+    </div>
   </div>
 </template>
