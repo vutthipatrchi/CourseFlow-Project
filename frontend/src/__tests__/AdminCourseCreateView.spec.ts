@@ -1,38 +1,55 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { courses, resetCourses } from '../admin/courseStore'
+import { createCourse, updateCourse } from '@/api/courses'
+import { useCourseStore } from '@/stores/course'
+import type { AdminCourse, AdminCoursePayload } from '@/types/course'
+import { makeCourseFixtures } from './courseFixtures'
 import AdminCourseCreateView from '../views/AdminCourseCreateView.vue'
+
+vi.mock('@/api/courses')
 
 vi.mock('@clerk/vue', () => ({
   getToken: vi.fn<() => Promise<string>>(async () => 'test-clerk-token'),
   SignOutButton: { template: '<div><slot /></div>' },
 }))
 
+const pinia = createPinia()
+
+function savedCourse(
+  payload: AdminCoursePayload,
+  id: number,
+  existing?: AdminCourse,
+): AdminCourse {
+  return {
+    ...existing,
+    ...payload,
+    id,
+    lessons: payload.lessonItems.length,
+    createdAt: existing?.createdAt ?? '2026-09-17T12:00:00+07:00',
+    updatedAt: '2026-09-17T12:00:00+07:00',
+    accent: payload.accent ?? existing?.accent ?? '#dce8fb',
+    lessonItems: payload.lessonItems.map((lesson, index) => ({ ...lesson, id: index + 1 })),
+  }
+}
+
 beforeEach(() => {
-  resetCourses()
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input)
-      const payload = init?.body ? JSON.parse(String(init.body)) : undefined
-      const segments = url.split('/')
-      const id = Number(segments[segments.length - 1]) || 9
-      const existing = courses.value.find((course) => course.id === id)
-      const course = {
-        ...existing,
-        ...payload,
-        id,
-        lessons: payload?.lessonItems?.length ?? existing?.lessons ?? 0,
-        createdAt: existing?.createdAt ?? '2026-09-17T12:00:00+07:00',
-        updatedAt: '2026-09-17T12:00:00+07:00',
-        accent: payload?.accent ?? existing?.accent ?? '#dce8fb',
-      }
-      return new Response(JSON.stringify(course), {
-        status: init?.method === 'POST' ? 201 : 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }),
+  setActivePinia(pinia)
+  const courseStore = useCourseStore()
+  courseStore.$patch({
+    courses: makeCourseFixtures(),
+    loading: false,
+    error: '',
+    loaded: true,
+  })
+  vi.mocked(createCourse).mockImplementation(async (payload) => savedCourse(payload, 9))
+  vi.mocked(updateCourse).mockImplementation(async (id, payload) =>
+    savedCourse(
+      payload,
+      id,
+      courseStore.courses.find((course) => course.id === id),
+    ),
   )
 })
 
@@ -57,7 +74,10 @@ async function mountView(path = '/admin/courses/new') {
   await router.push(path)
   await router.isReady()
 
-  return { router, wrapper: mount(AdminCourseCreateView, { global: { plugins: [router] } }) }
+  return {
+    router,
+    wrapper: mount(AdminCourseCreateView, { global: { plugins: [pinia, router] } }),
+  }
 }
 
 describe('admin add course', () => {
@@ -99,7 +119,7 @@ describe('admin add course', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(courses.value[0]?.name).toBe('Payment Fundamentals')
+    expect(useCourseStore().courses[0]?.name).toBe('Payment Fundamentals')
     expect(router.currentRoute.value.name).toBe('admin-courses')
     expect(router.currentRoute.value.query.created).toBe('Payment Fundamentals')
   })
@@ -170,8 +190,10 @@ describe('admin edit course', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(courses.value.find((course) => course.id === 1)?.name).toBe('Advanced Service Design')
-    expect(courses.value.find((course) => course.id === 1)?.price).toBe(4990)
+    expect(useCourseStore().courses.find((course) => course.id === 1)?.name).toBe(
+      'Advanced Service Design',
+    )
+    expect(useCourseStore().courses.find((course) => course.id === 1)?.price).toBe(4990)
     expect(router.currentRoute.value.name).toBe('admin-courses')
     expect(router.currentRoute.value.query.updated).toBe('Advanced Service Design')
   })

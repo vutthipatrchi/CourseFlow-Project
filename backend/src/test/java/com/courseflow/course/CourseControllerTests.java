@@ -33,11 +33,11 @@ class CourseControllerTests {
     private MockMvc mvc;
 
     @MockitoBean
-    private CourseRepository courses;
+    private CourseService courseService;
 
     @Test
-    void listsCoursesFromRepository() throws Exception {
-        when(courses.findAll()).thenReturn(List.of(sampleCourse()));
+    void listsCoursesFromService() throws Exception {
+        when(courseService.findAll()).thenReturn(List.of(sampleCourse()));
 
         mvc.perform(get("/api/admin/courses"))
             .andExpect(status().isOk())
@@ -48,7 +48,7 @@ class CourseControllerTests {
 
     @Test
     void createsAValidatedCourse() throws Exception {
-        when(courses.create(any(CourseRequest.class))).thenReturn(sampleCourse());
+        when(courseService.create(any(CourseRequest.class))).thenReturn(sampleCourse());
 
         mvc.perform(post("/api/admin/courses")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -67,7 +67,7 @@ class CourseControllerTests {
     }
 
     @Test
-    void rejectsNegativePriceBeforeCallingRepository() throws Exception {
+    void rejectsNegativePriceBeforeCallingService() throws Exception {
         mvc.perform(post("/api/admin/courses")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -80,7 +80,7 @@ class CourseControllerTests {
                     """))
             .andExpect(status().isBadRequest());
 
-        verify(courses, never()).create(any(CourseRequest.class));
+        verify(courseService, never()).create(any(CourseRequest.class));
     }
 
     private Course sampleCourse() {

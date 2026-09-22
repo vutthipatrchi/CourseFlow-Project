@@ -1,28 +1,29 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { SignOutButton } from '@clerk/vue'
 import courseFlowLogo from '../assets/admin/courseflow-sidebar-logo.svg'
-import {
-  addCourse,
-  courses,
-  getCourse,
-  removeCourse,
-  updateCourse,
-  type Course,
-  type CourseLesson,
-  type CoursePayload,
-} from '../admin/courseStore'
+import { useCourseStore } from '@/stores/course'
+import type { AdminCourse, AdminCourseLesson, AdminCoursePayload } from '@/types/course'
 import FormFieldError from '../components/admin/FormFieldError.vue'
 
 const router = useRouter()
 const route = useRoute()
+const courseStore = useCourseStore()
+const { courses } = storeToRefs(courseStore)
+const {
+  add: addCourse,
+  find: getCourse,
+  remove: removeCourse,
+  update: updateCourse,
+} = courseStore
 const courseId = Number(route.params.id)
 const cachedCourse = Number.isInteger(courseId)
   ? courses.value.find((course) => course.id === courseId)
   : undefined
 const isEditing = route.name === 'admin-course-edit'
-const courseToEdit = ref<Course | undefined>(cachedCourse)
+const courseToEdit = ref<AdminCourse | undefined>(cachedCourse)
 const isLoadingCourse = ref(isEditing)
 const isSaving = ref(false)
 const apiError = ref('')
@@ -53,7 +54,7 @@ type CourseFormField =
   | 'image'
   | 'lessons'
 const fieldErrors = ref<Partial<Record<CourseFormField, string>>>({})
-const lessons = ref<CourseLesson[]>(
+const lessons = ref<AdminCourseLesson[]>(
   cachedCourse?.lessonItems?.map((lesson) => ({ ...lesson })) ??
     (isEditing
       ? []
@@ -66,7 +67,7 @@ const lessons = ref<CourseLesson[]>(
         ]),
 )
 
-function populateForm(course: Course) {
+function populateForm(course: AdminCourse) {
   courseToEdit.value = course
   name.value = course.name
   category.value = course.category ?? ''
@@ -109,7 +110,7 @@ function rememberCoverImage(event: Event) {
   clearError('image')
 }
 
-function buildCoursePayload(): CoursePayload {
+function buildCoursePayload(): AdminCoursePayload {
   return {
     name: name.value.trim(),
     price: Number(price.value),
@@ -167,7 +168,7 @@ async function addLesson() {
   }
 }
 
-function editLesson(lesson: CourseLesson) {
+function editLesson(lesson: AdminCourseLesson) {
   const targetCourseId =
     isEditing && Number.isInteger(courseId) && courseId > 0
       ? String(courseId)
@@ -349,7 +350,7 @@ function validateCourse() {
   return Object.keys(errors).length === 0
 }
 
-function onLessonEditClick(_event: MouseEvent, lesson: CourseLesson) {
+function onLessonEditClick(_event: MouseEvent, lesson: AdminCourseLesson) {
   editLesson(lesson)
 }
 
