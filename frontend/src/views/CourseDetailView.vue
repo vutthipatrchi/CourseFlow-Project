@@ -20,7 +20,7 @@ const course = computed(() => courses.find((item) => item.id === route.params.id
 <template>
   <div v-if="course">
     <AppNavbar />
-    <div class="px-40 pt-13">
+    <div class="detail-container pr-24 pt-13">
       <RouterLink
         to="/courses"
         class="inline-flex cursor-pointer items-center gap-2 rounded-full px-2 py-1 text-base font-bold text-blue-500 transition-colors duration-200 hover:bg-blue-50 active:scale-95"
@@ -31,13 +31,13 @@ const course = computed(() => courses.find((item) => item.id === route.params.id
         Back
       </RouterLink>
     </div>
-    <main class="flex flex-col gap-6 px-40 pt-6 pb-25 lg:flex-row lg:items-start">
-      <div class="flex flex-1 flex-col gap-25">
-        <div class="relative">
+    <main class="detail-container flex flex-col gap-6 pr-24 pt-6 pb-25 lg:flex-row lg:items-start">
+      <div class="flex max-w-200 flex-1 flex-col gap-25">
+        <div class="relative w-full">
           <img
             :src="course.imageUrl"
             :alt="course.title"
-            class="h-115 w-full rounded-lg bg-gray-100 object-cover"
+            class="aspect-739/460 w-full rounded-lg bg-gray-100 object-cover"
           />
           <div
             class="absolute top-1/2 left-1/2 flex h-26 w-26 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/50"
@@ -79,3 +79,12 @@ const course = computed(() => courses.find((item) => item.id === route.params.id
     <AppFooter />
   </div>
 </template>
+
+<style scoped>
+/* Tailwind's arbitrary-value parser can't handle calc() nested inside max() with
+   a division operator, so this mirrors AppNavbar's mx-auto max-w-6xl centering
+   as a plain padding calc instead of guessing a fixed px value. */
+.detail-container {
+  padding-left: max(1.5rem, calc((100vw - 72rem) / 2 + 1.5rem));
+}
+</style>
