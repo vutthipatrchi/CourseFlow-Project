@@ -2,12 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import AdminPromoCodeCreateView from '../views/AdminPromoCodeCreateView.vue'
-import {
-  createPromoCode,
-  getPromoCode,
-  listPromoCodes,
-  updatePromoCode,
-} from '@/api/promoCodes'
+import { createPromoCode, getPromoCode, listPromoCodes, updatePromoCode } from '@/api/promoCodes'
 import { resetCourses } from '@/admin/courseStore'
 import type { PromoCode } from '@/types/promoCode'
 

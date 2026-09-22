@@ -25,7 +25,9 @@ import heroIllustration from '@/assets/landing/hero-illustration.svg'
       <!-- decorative shapes: positions/sizes measured directly off a 1440px-wide reference
            export of the design (percentages for left/right so they track viewport width,
            fixed px for top since the section's height doesn't scale the same way) -->
-      <span class="absolute -left-[35px] top-[76px] h-[104px] w-[104px] rounded-full bg-blue-200"></span>
+      <span
+        class="absolute -left-[35px] top-[76px] h-[104px] w-[104px] rounded-full bg-blue-200"
+      ></span>
       <img
         :src="heroRing"
         alt=""

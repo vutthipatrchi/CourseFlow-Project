@@ -61,9 +61,7 @@ describe('PromoCodeForm', () => {
 
     await wrapper.get('input[placeholder="Percent"]').setValue('20')
     await radios[0]!.setValue(true) // back to fixed
-    expect((wrapper.get('input[placeholder="Percent"]').element as HTMLInputElement).value).toBe(
-      '',
-    )
+    expect((wrapper.get('input[placeholder="Percent"]').element as HTMLInputElement).value).toBe('')
   })
 
   it('clamps a percent discount above 100 back to 100 on blur', async () => {
@@ -113,9 +111,7 @@ describe('PromoCodeForm', () => {
     const wrapper = mountForm({ ...existingPromoCode, courseIds: [1] })
     expect((wrapper.get('#promo-code').element as HTMLInputElement).value).toBe('NEWYEAR200')
     expect((wrapper.get('#minimum-purchase').element as HTMLInputElement).value).toBe('500')
-    expect((wrapper.find('input[placeholder="THB"]').element as HTMLInputElement).value).toBe(
-      '200',
-    )
+    expect((wrapper.find('input[placeholder="THB"]').element as HTMLInputElement).value).toBe('200')
     expect(wrapper.text()).toContain('Service Design Essentials')
   })
 

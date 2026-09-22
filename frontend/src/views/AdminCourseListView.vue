@@ -20,11 +20,7 @@ const search = ref('')
 const route = useRoute()
 const coursePendingDeletion = ref<Course | null>(null)
 const deleting = ref(false)
-const courseThumbnails = [
-  serviceDesignThumbnail,
-  softwareDeveloperThumbnail,
-  uxUiDesignThumbnail,
-]
+const courseThumbnails = [serviceDesignThumbnail, softwareDeveloperThumbnail, uxUiDesignThumbnail]
 const feedback = ref(
   typeof route.query.created === 'string'
     ? `${route.query.created} was created.`
@@ -179,11 +175,7 @@ async function deleteCourse() {
       </table>
     </div>
 
-    <div
-      v-if="coursePendingDeletion"
-      class="modal-backdrop"
-      @click.self="cancelDeletion"
-    >
+    <div v-if="coursePendingDeletion" class="modal-backdrop" @click.self="cancelDeletion">
       <section
         class="modal-card confirmation-card"
         role="alertdialog"

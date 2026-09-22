@@ -21,7 +21,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/health",
                     "/api/payments/config",
-                    "/api/webhooks/open",
+                    "/api/webhooks/opn",
                     "/api/uploads/**"
                 ).permitAll()
                 .anyRequest().authenticated()

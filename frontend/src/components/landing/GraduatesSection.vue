@@ -97,7 +97,12 @@ function goTo(index: number) {
           <img :src="quoteMarkSm" alt="" aria-hidden="true" class="h-4 w-auto" />
           <p class="mt-1 font-semibold text-blue-600">{{ graduate.name }}</p>
           <p class="mt-2 text-sm text-gray-500">{{ graduate.quote }}</p>
-          <img :src="quoteMarkLg" alt="" aria-hidden="true" class="mt-2 ml-auto h-4 w-auto rotate-180" />
+          <img
+            :src="quoteMarkLg"
+            alt=""
+            aria-hidden="true"
+            class="mt-2 ml-auto h-4 w-auto rotate-180"
+          />
         </div>
       </article>
     </div>

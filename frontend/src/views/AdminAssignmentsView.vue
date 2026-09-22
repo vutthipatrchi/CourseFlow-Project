@@ -113,7 +113,12 @@ async function confirmDeletion() {
             Confirmation
           </h2>
           <button type="button" aria-label="Close" @click="cancelDeletion">
-            <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6 stroke-[#646D89]" stroke-width="1.5">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              class="h-6 w-6 stroke-[#646D89]"
+              stroke-width="1.5"
+            >
               <path d="m7 7 10 10M17 7 7 17" stroke-linecap="round" />
             </svg>
           </button>

@@ -5,11 +5,7 @@ import AdminLayout from '../components/admin/AdminLayout.vue'
 import { getCourse } from '../admin/courseStore'
 import { createLesson, deleteLesson, fetchLesson, updateLesson } from '../api/lessons'
 import { uploadVideo } from '../api/uploads'
-import {
-  emptySubLesson,
-  toFormSubLessons,
-  type SubLessonFormItem,
-} from '../types/lesson'
+import { emptySubLesson, toFormSubLessons, type SubLessonFormItem } from '../types/lesson'
 
 const route = useRoute()
 const router = useRouter()
@@ -140,8 +136,7 @@ async function onVideoSelected(item: SubLessonFormItem, event: Event) {
     const uploaded = await uploadVideo(file)
     item.videoUrl = uploaded.url
   } catch (error) {
-    errorMessage.value =
-      error instanceof Error ? error.message : 'Video upload failed'
+    errorMessage.value = error instanceof Error ? error.message : 'Video upload failed'
   } finally {
     uploadingKey.value = null
   }
@@ -303,11 +298,7 @@ async function onDeleteLesson() {
             v-for="(item, index) in subLessons"
             :key="item.localKey"
             class="flex gap-4 rounded-xl border bg-[#F6F7FC] p-6 transition-colors"
-            :class="
-              dragOverIndex === index
-                ? 'border-[#2F5FAC] bg-[#EEF3FB]'
-                : 'border-[#E4E6ED]'
-            "
+            :class="dragOverIndex === index ? 'border-[#2F5FAC] bg-[#EEF3FB]' : 'border-[#E4E6ED]'"
             @dragover="onDragOver(index, $event)"
             @drop="onDrop(index, $event)"
             @dragleave="dragOverIndex = dragOverIndex === index ? null : dragOverIndex"

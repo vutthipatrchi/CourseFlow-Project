@@ -8,7 +8,7 @@ import AdminCourseListView from '../views/AdminCourseListView.vue'
 vi.mock('@clerk/vue', () => ({
   getToken: vi.fn<() => Promise<string>>(async () => 'test-clerk-token'),
   SignOutButton: { template: '<div><slot /></div>' },
-  useClerk: () => ({ value: { signOut: vi.fn() } }),
+  useClerk: () => ({ value: { signOut: vi.fn<() => Promise<void>>() } }),
 }))
 
 beforeEach(() => {
@@ -16,7 +16,7 @@ beforeEach(() => {
   resetCourses()
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => new Response(null, { status: 204 })),
+    vi.fn<() => Promise<Response>>(async () => new Response(null, { status: 204 })),
   )
 })
 

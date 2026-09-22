@@ -18,7 +18,9 @@ import dotRingGreen from '@/assets/landing/dot-ring-green.svg'
       </svg>
     </span>
 
-    <div class="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-16 md:grid-cols-2">
+    <div
+      class="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-16 md:grid-cols-2"
+    >
       <div>
         <h2 class="text-2xl font-bold text-white md:text-3xl">Want to start learning?</h2>
         <Show when="signed-out">

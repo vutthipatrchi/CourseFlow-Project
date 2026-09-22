@@ -19,7 +19,9 @@ const instructors: Instructor[] = [
 
 <template>
   <section class="mx-auto max-w-6xl px-6 py-16">
-    <h2 class="text-center text-2xl font-bold text-gray-900 md:text-3xl">Our Professional Instructors</h2>
+    <h2 class="text-center text-2xl font-bold text-gray-900 md:text-3xl">
+      Our Professional Instructors
+    </h2>
 
     <div class="relative mt-12 grid grid-cols-1 gap-6 sm:grid-cols-3">
       <div v-for="instructor in instructors" :key="instructor.name">

@@ -36,9 +36,7 @@ export function emptySubLesson(): SubLessonFormItem {
   return { name: '', videoUrl: '', localKey: newLocalKey() }
 }
 
-export function toFormSubLessons(
-  subLessons: LessonDetail['subLessons'],
-): SubLessonFormItem[] {
+export function toFormSubLessons(subLessons: LessonDetail['subLessons']): SubLessonFormItem[] {
   return subLessons.map((item) => ({
     id: item.id,
     name: item.name,

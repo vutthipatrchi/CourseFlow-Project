@@ -39,7 +39,9 @@ async function logOut() {
         <RouterLink
           :to="{ name: 'admin-courses' }"
           class="flex h-14 items-center gap-4 px-6 text-base font-medium"
-          :class="isCourseActive() ? 'bg-[#F1F2F6] text-[#424C6B]' : 'text-[#424C6B] hover:bg-[#F1F2F6]'"
+          :class="
+            isCourseActive() ? 'bg-[#F1F2F6] text-[#424C6B]' : 'text-[#424C6B] hover:bg-[#F1F2F6]'
+          "
         >
           <img :src="courseIcon" alt="" class="h-6 w-6 flex-none" />
           <span>Course</span>
@@ -107,7 +109,9 @@ async function logOut() {
         </RouterLink>
         <div class="flex min-w-0 flex-1 flex-col gap-1">
           <p v-if="breadcrumb" class="truncate text-sm text-[#9AA1B9]">{{ breadcrumb }}</p>
-          <h1 class="truncate text-2xl leading-[1.25] font-medium tracking-[-0.02em] text-[#2A2E3F]">
+          <h1
+            class="truncate text-2xl leading-[1.25] font-medium tracking-[-0.02em] text-[#2A2E3F]"
+          >
             {{ title }}
           </h1>
         </div>
