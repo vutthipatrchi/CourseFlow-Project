@@ -5,7 +5,7 @@ import courseIcon from '@/assets/admin/course.svg'
 import assignmentIcon from '@/assets/admin/assignment.svg'
 import promoCodeIcon from '@/assets/admin/promo-code.svg'
 import logoutIcon from '@/assets/admin/logout.svg'
-import logo from '@/assets/landing/logo.svg'
+import logo from '@/assets/admin/courseflow-sidebar-logo.svg'
 
 defineProps<{
   title: string
@@ -42,7 +42,7 @@ async function logOut() {
           :class="isCourseActive() ? 'bg-[#F1F2F6] text-[#424C6B]' : 'text-[#424C6B] hover:bg-[#F1F2F6]'"
         >
           <img :src="courseIcon" alt="" class="h-6 w-6 flex-none" />
-          <span>Courses</span>
+          <span>Course</span>
         </RouterLink>
 
         <RouterLink
@@ -57,7 +57,7 @@ async function logOut() {
           "
         >
           <img :src="assignmentIcon" alt="" class="h-6 w-6 flex-none" />
-          <span>Assignments</span>
+          <span>Assignment</span>
         </RouterLink>
 
         <RouterLink
