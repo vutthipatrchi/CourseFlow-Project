@@ -65,12 +65,12 @@ import heroIllustration from '@/assets/landing/hero-illustration.svg'
             Welcome to Schooler! The one-stop online class management system that caters to all your
             educational needs!
           </p>
-          <button
-            type="button"
-            class="mt-16 rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white shadow-md hover:bg-blue-700"
+          <RouterLink
+            to="/courses"
+            class="mt-16 inline-block rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white shadow-md hover:bg-blue-700"
           >
             Explore Courses
-          </button>
+          </RouterLink>
         </div>
 
         <div class="relative flex justify-center md:justify-end">
