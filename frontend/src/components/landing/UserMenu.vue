@@ -15,10 +15,11 @@ interface MenuItem {
   href: string
 }
 
+
 const isAdmin = ref(false)
 
 const menuItems = computed<MenuItem[]>(() => [
-  { label: 'Profile', icon: iconPerson, href: '#' },
+  { label: 'Profile', icon: iconPerson, href: '/profile' },
   {
     label: 'My Courses',
     icon: iconBook,
