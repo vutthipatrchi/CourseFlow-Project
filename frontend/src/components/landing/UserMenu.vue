@@ -50,7 +50,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 
 <template>
   <div ref="rootRef" class="relative">
-    <button type="button" class="flex items-center gap-2" @click="toggle">
+    <button type="button" class="flex cursor-pointer items-center gap-2" @click="toggle">
       <img
         :src="user?.imageUrl"
         :alt="user?.fullName ?? 'User'"
@@ -61,7 +61,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
       }}</span>
       <svg
         viewBox="0 0 24 24"
-        class="h-4 w-4 text-gray-400 transition-transform"
+        class="h-4 w-4 text-gray-400 transition-transform duration-200"
         :class="{ 'rotate-180': isOpen }"
         fill="none"
       >
@@ -75,28 +75,35 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
       </svg>
     </button>
 
-    <div
-      v-if="isOpen"
-      class="absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-100 bg-white py-2 shadow-lg"
+    <Transition
+      enter-active-class="transition-all duration-150 ease-out"
+      leave-active-class="transition-all duration-100 ease-in"
+      enter-from-class="opacity-0 scale-95 -translate-y-1"
+      leave-to-class="opacity-0 scale-95 -translate-y-1"
     >
-      <a
-        v-for="item in menuItems"
-        :key="item.label"
-        :href="item.href"
-        class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+      <div
+        v-if="isOpen"
+        class="absolute right-0 top-full mt-2 w-52 origin-top-right rounded-xl border border-gray-100 bg-white py-2 shadow-lg"
       >
-        <img :src="item.icon" alt="" aria-hidden="true" class="h-4 w-4" />
-        {{ item.label }}
-      </a>
-      <hr class="my-2 border-gray-100" />
-      <button
-        type="button"
-        class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-        @click="handleLogout"
-      >
-        <img :src="iconLogout" alt="" aria-hidden="true" class="h-4 w-4" />
-        Log out
-      </button>
-    </div>
+        <a
+          v-for="item in menuItems"
+          :key="item.label"
+          :href="item.href"
+          class="flex cursor-pointer items-center gap-3 px-4 py-2 text-sm text-gray-700 transition-colors duration-150 hover:bg-gray-50"
+        >
+          <img :src="item.icon" alt="" aria-hidden="true" class="h-4 w-4" />
+          {{ item.label }}
+        </a>
+        <hr class="my-2 border-gray-100" />
+        <button
+          type="button"
+          class="flex w-full cursor-pointer items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 transition-colors duration-150 hover:bg-gray-50"
+          @click="handleLogout"
+        >
+          <img :src="iconLogout" alt="" aria-hidden="true" class="h-4 w-4" />
+          Log out
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>
