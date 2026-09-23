@@ -16,6 +16,12 @@ const router = createRouter({
       component: () => import('../views/CourseDetailView.vue'),
     },
     { path: '/wishlist', name: 'wishlist', component: () => import('../views/WishlistView.vue') },
+    {
+      path: '/courses/:id/learn/:subLessonId',
+      name: 'course-player',
+      component: () => import('../views/CoursePlayerView.vue'),
+      meta: { requiresAuth: true },
+    },
     { path: '/sign-in', name: 'sign-in', component: () => import('../views/sign-in.vue') },
     {
       path: '/sign-up/:pathMatch(.*)*',

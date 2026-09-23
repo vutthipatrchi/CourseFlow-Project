@@ -1,7 +1,28 @@
+export type SubLessonProgress = 'not-started' | 'in-progress' | 'completed'
+
+export type AssignmentStatus = 'pending' | 'submitted'
+
+export type Assignment = {
+  id: string
+  question: string
+  status: AssignmentStatus
+  answer?: string
+  deadlineLabel: string
+}
+
+export type SubLesson = {
+  id: string
+  title: string
+  description: string
+  videoUrl: string
+  progress: SubLessonProgress
+  assignment?: Assignment
+}
+
 export type Module = {
   id: string
   title: string
-  subLessons: string[]
+  subLessons: SubLesson[]
 }
 
 export type Course = {
