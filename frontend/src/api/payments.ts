@@ -39,6 +39,27 @@ export interface SubscriptionView {
   courseTitle: string
   reference: string
   activatedAt: string
+  completedLessons: number
+  totalLessons: number
+  progressPercent: number
+  status: 'in-progress' | 'completed'
+}
+export interface CourseProgressView {
+  courseId: number
+  completedLessons: number
+  totalLessons: number
+  progressPercent: number
+  status: 'in-progress' | 'completed'
+  subLessons: CourseProgressSubLesson[]
+}
+export interface CourseProgressSubLesson {
+  id: number
+  title: string
+  videoUrl: string | null
+  lessonPosition: number
+  lessonTitle: string
+  subLessonPosition: number
+  completed: boolean
 }
 export interface CardDetails {
   name: string
@@ -92,6 +113,21 @@ export function downloadQr(paymentId: string) {
 }
 export function getSubscriptions() {
   return request<SubscriptionView[]>({ url: '/me/subscriptions' })
+}
+
+export function getCourseProgress(courseId: number) {
+  return request<CourseProgressView>({ url: `/me/courses/${courseId}/progress` })
+}
+
+export function completeSubLesson(
+  courseId: number,
+  lessonPosition: number,
+  subLessonPosition: number,
+) {
+  return request<CourseProgressView>({
+    method: 'PUT',
+    url: `/me/courses/${courseId}/lessons/${lessonPosition}/sub-lessons/${subLessonPosition}/complete`,
+  })
 }
 
 export function continueCardAuthentication(authorizeUrl: string) {

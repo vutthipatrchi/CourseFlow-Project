@@ -3,13 +3,14 @@
 // Course learning page: sidebar progress/module tree, video + assignment, prev/next nav
 // แก้ไขได้: progress bar calc, play/complete simulation, assignment submit handler
 
-import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import CoursePlayerSidebar from '@/components/course/CoursePlayerSidebar.vue'
 import AssignmentCard from '@/components/course/AssignmentCard.vue'
 import { courses } from '@/data/courses'
+import { completeSubLesson, getCourseProgress, type CourseProgressView } from '@/api/payments'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,13 +32,44 @@ const currentEntry = computed(() =>
   currentIndex.value >= 0 ? flatSubLessons.value[currentIndex.value] : undefined,
 )
 
-const progressPercent = computed(() => {
-  if (flatSubLessons.value.length === 0) return 0
-  const completed = flatSubLessons.value.filter(
-    (entry) => entry.subLesson.progress === 'completed',
-  ).length
-  return Math.round((completed / flatSubLessons.value.length) * 100)
+const progressPercent = ref(0)
+const progressError = ref('')
+const backendCourseId = computed(() => {
+  const match = /^course-(\d+)$/.exec(String(route.params.id ?? ''))
+  return match ? Number(match[1]) : null
 })
+
+function applyProgress(progress: CourseProgressView) {
+  if (!course.value) return
+  const lessonPositions = [...new Set(progress.subLessons.map((item) => item.lessonPosition))]
+  course.value.modules = lessonPositions.map((lessonPosition) => {
+    const items = progress.subLessons.filter((item) => item.lessonPosition === lessonPosition)
+    return {
+      id: `module-${lessonPosition}`,
+      title: items[0]?.lessonTitle ?? `Lesson ${lessonPosition}`,
+      subLessons: items.map((item) => ({
+        id: `sub-${item.lessonPosition}-${item.subLessonPosition}`,
+        title: item.title,
+        description: '',
+        videoUrl: item.videoUrl ?? '',
+        progress: item.completed ? ('completed' as const) : ('not-started' as const),
+      })),
+    }
+  })
+  progressPercent.value = progress.progressPercent
+}
+
+async function loadProgress() {
+  if (!backendCourseId.value) return
+  try {
+    applyProgress(await getCourseProgress(backendCourseId.value))
+    progressError.value = ''
+  } catch (error) {
+    progressError.value = error instanceof Error ? error.message : 'Unable to load course progress'
+  }
+}
+
+onMounted(loadProgress)
 
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(
@@ -84,10 +116,21 @@ const goNext = () => {
   if (hasNext.value) goToSubLesson(flatSubLessons.value[currentIndex.value + 1]!.subLesson.id)
 }
 
-const handlePlayClick = () => {
+const handlePlayClick = async () => {
   const subLesson = currentEntry.value?.subLesson
-  if (subLesson && subLesson.progress !== 'completed') {
-    subLesson.progress = 'completed'
+  if (!subLesson || subLesson.progress === 'completed' || !backendCourseId.value) return
+  const positions = /^sub-(\d+)-(\d+)$/.exec(subLesson.id)
+  if (!positions) return
+  try {
+    const progress = await completeSubLesson(
+      backendCourseId.value,
+      Number(positions[1]),
+      Number(positions[2]),
+    )
+    applyProgress(progress)
+    progressError.value = ''
+  } catch (error) {
+    progressError.value = error instanceof Error ? error.message : 'Unable to save course progress'
   }
 }
 
@@ -117,6 +160,9 @@ const handleAssignmentSubmit = (answer: string) => {
       />
 
       <div class="min-w-0 flex-1 flex flex-col gap-6">
+        <p v-if="progressError" role="alert" class="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+          {{ progressError }}
+        </p>
         <Transition
           name="fade"
           mode="out-in"

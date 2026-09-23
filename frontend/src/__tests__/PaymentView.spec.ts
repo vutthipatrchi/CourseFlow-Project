@@ -308,13 +308,40 @@ describe('payment status', () => {
         courseTitle: 'Purchased course',
         reference: 'CFPAID',
         activatedAt: '2026-09-20T00:00:00Z',
+        completedLessons: 6,
+        totalLessons: 6,
+        progressPercent: 100,
+        status: 'completed',
+      },
+      {
+        id: 'enrollment-in-progress',
+        courseId: 8,
+        courseTitle: 'Course in progress',
+        reference: 'CFSTARTED',
+        activatedAt: '2026-09-21T00:00:00Z',
+        completedLessons: 2,
+        totalLessons: 8,
+        progressPercent: 25,
+        status: 'in-progress',
       },
     ])
     const router = await createTestRouter('/my-courses')
     const wrapper = mount(MyCoursesView, { global: { plugins: [router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('Purchased course')
-    expect(wrapper.text()).toContain('Enrolled')
+    expect(wrapper.text()).toContain('Completed')
+    expect(wrapper.text()).toContain('6/6 lessons')
+    expect(wrapper.text()).toContain('Course in progress')
+    expect(wrapper.get('[data-testid="in-progress-count"]').text()).toBe('1')
+    expect(wrapper.get('[data-testid="completed-count"]').text()).toBe('1')
+    expect(wrapper.get('[data-testid="my-courses-profile"]').classes()).toContain('lg:sticky')
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Inprogress')!
+      .trigger('click')
+    expect(wrapper.text()).toContain('Course in progress')
+    expect(wrapper.text()).not.toContain('Purchased course')
     wrapper.unmount()
   })
 })

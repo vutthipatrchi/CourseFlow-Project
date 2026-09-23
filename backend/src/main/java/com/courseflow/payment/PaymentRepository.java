@@ -160,11 +160,82 @@ class PaymentRepository {
 
     List<SubscriptionView> findSubscriptions(String subject) {
         return jdbc.query("""
-            SELECT s.id, s.course_id, o.course_title, o.reference, s.activated_at
+            SELECT s.id, s.course_id, o.course_title, o.reference, s.activated_at,
+                   COUNT(DISTINCT sl.id)::int AS total_lessons,
+                   COUNT(DISTINCT progress.sub_lesson_id)::int AS completed_lessons
             FROM courseflow.subscriptions s JOIN courseflow.orders o ON o.id = s.order_id
-            WHERE o.customer_subject = ? AND s.status = 'active' ORDER BY s.activated_at DESC
-            """, (rs, row) -> new SubscriptionView(rs.getObject("id", UUID.class), rs.getLong("course_id"),
-            rs.getString("course_title"), rs.getString("reference"), rs.getTimestamp("activated_at").toInstant()), subject);
+            LEFT JOIN courseflow.course_lessons lesson ON lesson.course_id = s.course_id
+            LEFT JOIN courseflow.sub_lessons sl ON sl.lesson_id = lesson.id
+            LEFT JOIN courseflow.subscription_lesson_progress progress
+                   ON progress.subscription_id = s.id AND progress.sub_lesson_id = sl.id
+            WHERE o.customer_subject = ? AND s.status = 'active'
+            GROUP BY s.id, s.course_id, o.course_title, o.reference, s.activated_at
+            ORDER BY s.activated_at DESC
+            """, (rs, row) -> mapSubscription(rs), subject);
+    }
+
+    Optional<CourseProgressView> findCourseProgress(String subject, Long courseId) {
+        var subscription = queryOne("""
+            SELECT s.id, s.course_id, o.course_title, o.reference, s.activated_at,
+                   COUNT(DISTINCT sl.id)::int AS total_lessons,
+                   COUNT(DISTINCT progress.sub_lesson_id)::int AS completed_lessons
+            FROM courseflow.subscriptions s JOIN courseflow.orders o ON o.id = s.order_id
+            LEFT JOIN courseflow.course_lessons lesson ON lesson.course_id = s.course_id
+            LEFT JOIN courseflow.sub_lessons sl ON sl.lesson_id = lesson.id
+            LEFT JOIN courseflow.subscription_lesson_progress progress
+                   ON progress.subscription_id = s.id AND progress.sub_lesson_id = sl.id
+            WHERE o.customer_subject = ? AND s.course_id = ? AND s.status = 'active'
+            GROUP BY s.id, s.course_id, o.course_title, o.reference, s.activated_at
+            """, (rs, row) -> mapSubscription(rs), subject, courseId);
+        if (subscription.isEmpty()) return Optional.empty();
+
+        List<CourseSubLessonProgressView> subLessons = jdbc.query("""
+            SELECT sl.id, sl.name, sl.video_url, lesson.position AS lesson_position,
+                   lesson.name AS lesson_name, sl.position AS sub_lesson_position,
+                   (progress.sub_lesson_id IS NOT NULL) AS completed
+            FROM courseflow.subscriptions s
+            JOIN courseflow.orders o ON o.id = s.order_id
+            JOIN courseflow.course_lessons lesson ON lesson.course_id = s.course_id
+            JOIN courseflow.sub_lessons sl ON sl.lesson_id = lesson.id
+            LEFT JOIN courseflow.subscription_lesson_progress progress
+                   ON progress.subscription_id = s.id AND progress.sub_lesson_id = sl.id
+            WHERE o.customer_subject = ? AND s.course_id = ? AND s.status = 'active'
+            ORDER BY lesson.position, sl.position
+            """, (rs, row) -> new CourseSubLessonProgressView(rs.getLong("id"),
+                rs.getString("name"), rs.getString("video_url"), rs.getInt("lesson_position"),
+                rs.getString("lesson_name"), rs.getInt("sub_lesson_position"),
+                rs.getBoolean("completed")), subject, courseId);
+        SubscriptionView view = subscription.get();
+        return Optional.of(new CourseProgressView(view.courseId(), view.completedLessons(),
+            view.totalLessons(), view.progressPercent(), view.status(), subLessons));
+    }
+
+    void completeSubLesson(String subject, Long courseId, int lessonPosition, int subLessonPosition) {
+        int updated = jdbc.update("""
+            INSERT INTO courseflow.subscription_lesson_progress
+                (subscription_id, sub_lesson_id, completed_at)
+            SELECT s.id, sl.id, NOW()
+            FROM courseflow.subscriptions s
+            JOIN courseflow.orders o ON o.id = s.order_id
+            JOIN courseflow.course_lessons lesson ON lesson.course_id = s.course_id
+            JOIN courseflow.sub_lessons sl ON sl.lesson_id = lesson.id
+            WHERE o.customer_subject = ? AND s.course_id = ? AND s.status = 'active'
+              AND lesson.position = ? AND sl.position = ?
+            ON CONFLICT (subscription_id, sub_lesson_id)
+            DO UPDATE SET completed_at = EXCLUDED.completed_at
+            """, subject, courseId, lessonPosition, subLessonPosition);
+        if (updated == 0) throw new com.courseflow.common.web.ResourceNotFoundException(
+            "Active course or sub-lesson not found");
+    }
+
+    private SubscriptionView mapSubscription(ResultSet rs) throws SQLException {
+        int total = rs.getInt("total_lessons");
+        int completed = rs.getInt("completed_lessons");
+        int percent = total == 0 ? 0 : Math.min(100, (int) Math.round(completed * 100.0 / total));
+        String status = total > 0 && completed >= total ? "completed" : "in-progress";
+        return new SubscriptionView(rs.getObject("id", UUID.class), rs.getLong("course_id"),
+            rs.getString("course_title"), rs.getString("reference"),
+            rs.getTimestamp("activated_at").toInstant(), completed, total, percent, status);
     }
 
     List<PaymentRecord> claimReconciliationBatch(Instant now) {
