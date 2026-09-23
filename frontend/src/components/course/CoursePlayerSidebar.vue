@@ -20,7 +20,8 @@ defineEmits<{ select: [subLessonId: string] }>()
 
 <template>
   <aside
-    class="flex w-full shrink-0 flex-col gap-6 overflow-y-auto rounded-lg bg-white p-7 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-89.5"
+    class="no-scrollbar flex w-full shrink-0 flex-col gap-6 overflow-y-auto rounded-lg bg-white p-7 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] md:w-89.5"
+    style="position: sticky; top: 6rem; max-height: calc(100vh - 7rem)"
   >
     <p class="text-sm text-orange-500">{{ course.category }}</p>
     <div class="flex flex-col gap-2">
@@ -52,3 +53,14 @@ defineEmits<{ select: [subLessonId: string] }>()
     </div>
   </aside>
 </template>
+
+<style scoped>
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+</style>

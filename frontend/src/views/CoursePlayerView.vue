@@ -107,7 +107,7 @@ const handleAssignmentSubmit = (answer: string) => {
   <div v-if="course && currentEntry">
     <AppNavbar />
 
-    <main class="player-container flex flex-col gap-6 py-10 lg:flex-row lg:items-start">
+    <main class="player-container flex flex-col gap-6 py-10 md:flex-row md:items-start">
       <CoursePlayerSidebar
         :course="course"
         :active-module-id="currentEntry.module.id"
