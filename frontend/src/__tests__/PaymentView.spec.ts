@@ -215,6 +215,19 @@ describe('checkout', () => {
     expect(router.currentRoute.value.name).toBe('payment-status')
     wrapper.unmount()
   })
+
+  it('formats and limits the card number to exactly 16 digits', async () => {
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    const cardNumber = wrapper.get('input[autocomplete="cc-number"]')
+    await cardNumber.setValue('42424242424242429999')
+
+    expect((cardNumber.element as HTMLInputElement).value).toBe('4242 4242 4242 4242')
+    expect(cardNumber.attributes('maxlength')).toBe('19')
+    wrapper.unmount()
+  })
 })
 
 describe('payment status', () => {
