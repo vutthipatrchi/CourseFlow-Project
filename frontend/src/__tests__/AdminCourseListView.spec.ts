@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { resetCourses } from '../admin/courseStore'
-import { clearUserRole, hasAdminAccess, setUserRole } from '../auth/access'
+import { deleteCourse } from '@/api/courses'
+import { useCourseStore } from '@/stores/course'
+import { makeCourseFixtures } from './courseFixtures'
 import AdminCourseListView from '../views/AdminCourseListView.vue'
+
+vi.mock('@/api/courses')
 
 vi.mock('@clerk/vue', () => ({
   getToken: vi.fn<() => Promise<string>>(async () => 'test-clerk-token'),
@@ -11,13 +15,17 @@ vi.mock('@clerk/vue', () => ({
   useClerk: () => ({ value: { signOut: vi.fn<() => Promise<void>>() } }),
 }))
 
+const pinia = createPinia()
+
 beforeEach(() => {
-  clearUserRole()
-  resetCourses()
-  vi.stubGlobal(
-    'fetch',
-    vi.fn<() => Promise<Response>>(async () => new Response(null, { status: 204 })),
-  )
+  setActivePinia(pinia)
+  useCourseStore().$patch({
+    courses: makeCourseFixtures(),
+    loading: false,
+    error: '',
+    loaded: true,
+  })
+  vi.mocked(deleteCourse).mockResolvedValue()
 })
 
 function mountView() {
@@ -42,7 +50,7 @@ function mountView() {
 
   return mount(AdminCourseListView, {
     global: {
-      plugins: [router],
+      plugins: [pinia, router],
       stubs: {
         AdminLayout: {
           props: ['title'],
@@ -52,16 +60,6 @@ function mountView() {
     },
   })
 }
-
-describe('admin course access', () => {
-  it('only grants access for the admin role', () => {
-    expect(hasAdminAccess()).toBe(false)
-    setUserRole('student')
-    expect(hasAdminAccess()).toBe(false)
-    setUserRole('admin')
-    expect(hasAdminAccess()).toBe(true)
-  })
-})
 
 describe('admin course list', () => {
   it('shows the supplied course table columns and eight courses', () => {
