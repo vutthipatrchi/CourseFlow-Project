@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUser, useClerk } from '@clerk/vue'
+import { getToken, useUser, useClerk } from '@clerk/vue'
+import { getRoleFromToken } from '@/lib/jwt'
 import iconPerson from '@/assets/landing/icon-person.svg'
 import iconBook from '@/assets/landing/icon-book.svg'
 import iconChecklist from '@/assets/landing/icon-checklist.svg'
@@ -14,12 +15,18 @@ interface MenuItem {
   href: string
 }
 
-const menuItems: MenuItem[] = [
+const isAdmin = ref(false)
+
+const menuItems = computed<MenuItem[]>(() => [
   { label: 'Profile', icon: iconPerson, href: '#' },
-  { label: 'My Courses', icon: iconBook, href: '/my-courses' },
+  {
+    label: 'My Courses',
+    icon: iconBook,
+    href: isAdmin.value ? '/admin/courses' : '/my-courses',
+  },
   { label: 'My Assignments', icon: iconChecklist, href: '#' },
   { label: 'My Wishlist', icon: iconStar, href: '/wishlist' },
-]
+])
 
 const router = useRouter()
 const clerk = useClerk()
@@ -44,7 +51,10 @@ async function handleLogout() {
   router.push('/')
 }
 
-onMounted(() => document.addEventListener('click', handleClickOutside))
+onMounted(async () => {
+  document.addEventListener('click', handleClickOutside)
+  isAdmin.value = getRoleFromToken(await getToken()) === 'admin'
+})
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 </script>
 
@@ -79,15 +89,26 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
       v-if="isOpen"
       class="absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-100 bg-white py-2 shadow-lg"
     >
-      <a
-        v-for="item in menuItems"
-        :key="item.label"
-        :href="item.href"
-        class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-      >
-        <img :src="item.icon" alt="" aria-hidden="true" class="h-4 w-4" />
-        {{ item.label }}
-      </a>
+      <template v-for="item in menuItems" :key="item.label">
+        <RouterLink
+          v-if="item.href.startsWith('/')"
+          :to="item.href"
+          class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          @click="isOpen = false"
+        >
+          <img :src="item.icon" alt="" aria-hidden="true" class="h-4 w-4" />
+          {{ item.label }}
+        </RouterLink>
+        <a
+          v-else
+          :href="item.href"
+          class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          @click="isOpen = false"
+        >
+          <img :src="item.icon" alt="" aria-hidden="true" class="h-4 w-4" />
+          {{ item.label }}
+        </a>
+      </template>
       <hr class="my-2 border-gray-100" />
       <button
         type="button"

@@ -1,4 +1,5 @@
 import { clerkPlugin } from '@clerk/vue'
+import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
 import App from './App.vue'
@@ -32,5 +33,6 @@ app.use(clerkPlugin, {
     cssLayerName: 'clerk',
   },
 })
+app.use(createPinia())
 app.use(router)
 app.mount('#app')
