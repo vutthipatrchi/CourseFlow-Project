@@ -252,12 +252,36 @@ const longDescription =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Elementum aenean fermentum, velit vel, scelerisque morbi accumsan. Nec, tellus leo id leo id felis egestas. Quam sit lorem quis vitae ut mus imperdiet. Volutpat placerat dignissim dolor faucibus elit ornare fringilla. Vivamus amet risus ullamcorper auctor nibh. Maecenas morbi nec vestibulum ac tempus vehicula.'
 
 const courseTemplates = [
-  { title: 'Service Design Essentials', imageUrl: serviceDesignImage },
-  { title: 'Software Developer', imageUrl: softwareDeveloperImage },
-  { title: 'UX/UI Design Beginner', imageUrl: uxUiDesignImage },
-  { title: 'UX/UI Design Beginner', imageUrl: uxUiDesignImage },
-  { title: 'Service Design Essentials', imageUrl: serviceDesignImage },
-  { title: 'Software Developer', imageUrl: softwareDeveloperImage },
+  {
+    title: 'Service Design Essentials',
+    description: 'Learn the fundamentals of service design and apply them to real businesses.',
+    imageUrl: serviceDesignImage,
+  },
+  {
+    title: 'Software Developer',
+    description: 'Build a solid foundation in programming and modern software development.',
+    imageUrl: softwareDeveloperImage,
+  },
+  {
+    title: 'UX/UI Design Beginner',
+    description: 'Get started designing intuitive, user-friendly digital products from scratch.',
+    imageUrl: uxUiDesignImage,
+  },
+  {
+    title: 'UX/UI Design Beginner',
+    description: 'Get started designing intuitive, user-friendly digital products from scratch.',
+    imageUrl: uxUiDesignImage,
+  },
+  {
+    title: 'Service Design Essentials',
+    description: 'Learn the fundamentals of service design and apply them to real businesses.',
+    imageUrl: serviceDesignImage,
+  },
+  {
+    title: 'Software Developer',
+    description: 'Build a solid foundation in programming and modern software development.',
+    imageUrl: softwareDeveloperImage,
+  },
 ]
 
 export const courses: Course[] = Array.from({ length: 12 }, (_, index) => {
@@ -266,7 +290,7 @@ export const courses: Course[] = Array.from({ length: 12 }, (_, index) => {
     id: `course-${index + 1}`,
     category: 'Course',
     title: template.title,
-    description: 'Lorem ipsum dolor sit amet, conse ctetur adipiscing elit.',
+    description: template.description,
     longDescription,
     imageUrl: template.imageUrl,
     lessonCount: 6,
