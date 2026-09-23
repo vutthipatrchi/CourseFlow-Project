@@ -277,7 +277,7 @@ describe('payment status', () => {
     wrapper.unmount()
   })
 
-  it('continues polling review payments until confirmed and shows purchased courses', async () => {
+  it('continues polling review payments until confirmed and shows the course actions', async () => {
     vi.useFakeTimers()
     mocks.getPayment
       .mockResolvedValueOnce({ ...pending, status: 'review' })
@@ -288,10 +288,30 @@ describe('payment status', () => {
     expect(wrapper.text()).toContain('Please do not pay again')
     await vi.advanceTimersByTimeAsync(15000)
     await flushPromises()
-    expect(wrapper.get('h1').text()).toBe('Payment successful')
-    expect(wrapper.get('a[href="/my-courses"]').text()).toBe('View my courses')
+    expect(wrapper.get('h1').text()).toBe('Thank you for subscribing.')
+    expect(wrapper.text()).toContain(
+      'Your payment is complete. You can start learning the course now.',
+    )
+    expect(wrapper.get('a[href="/courses/course-7"]').text()).toBe('View Course detail')
+    expect(wrapper.get('a[href="/courses/course-7/learn/sub-1-1"]').text()).toBe('Start Learning')
     await vi.advanceTimersByTimeAsync(30000)
     expect(mocks.getPayment).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('shows the failed payment card with a link back to the same course checkout', async () => {
+    mocks.getPayment.mockResolvedValue({
+      ...pending,
+      status: 'failed',
+      failureMessage: 'The card was declined',
+    })
+    const router = await createTestRouter(`/payment/status?paymentId=${paymentId}`)
+    const wrapper = mount(PaymentStatusView, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(wrapper.get('h1').text()).toBe('Payment failed.')
+    expect(wrapper.text()).toContain('Please check your payment details and try again')
+    expect(wrapper.get('a[href="/payment?courseId=7"]').text()).toBe('Back to Payment')
     wrapper.unmount()
   })
 
