@@ -9,7 +9,8 @@ import AppFooter from '@/components/landing/AppFooter.vue'
 import AssignmentCard from '@/components/course/AssignmentCard.vue'
 import { listMyAssignments, submitAssignment } from '@/api/submissions'
 import { toApiError } from '@/api/client'
-import type { Assignment, AssignmentStatus } from '@/types/course'
+import { toCardAssignment } from '@/lib/assignmentCard'
+import type { AssignmentStatus } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
 
 type Tab = 'all' | 'in-progress' | 'submitted'
@@ -61,17 +62,6 @@ const filteredAssignments = computed(() => {
 // The course player addresses real courses as course-{id} and sub-lessons as sub-{lesson}-{sub-lesson} positions.
 function openInCourseHref(assignment: MyAssignment): string {
   return `/courses/course-${assignment.courseId}/learn/sub-${assignment.lessonPosition}-${assignment.subLessonPosition}`
-}
-
-function toCardAssignment(assignment: MyAssignment): Assignment {
-  const days = assignment.durationDays
-  return {
-    id: String(assignment.id),
-    question: assignment.description,
-    status: assignment.status,
-    answer: assignment.answer ?? undefined,
-    deadlineLabel: days ? `Assign within ${days} ${days === 1 ? 'day' : 'days'}` : '',
-  }
 }
 
 async function handleSubmit(assignment: MyAssignment, answer: string) {

@@ -19,7 +19,7 @@ const emit = defineEmits<{ submit: [answer: string] }>()
 
 const draftAnswer = ref(props.assignment.answer ?? '')
 
-const isEditable = props.assignment.status !== 'submitted'
+const isEditable = computed(() => props.assignment.status !== 'submitted')
 
 const handleSubmit = () => {
   if (!draftAnswer.value.trim()) return
@@ -33,9 +33,9 @@ const badgeClasses: Record<Assignment['status'], string> = {
   overdue: 'bg-[#FAE7F4] text-[#9B2FAC]',
 }
 
-// Figma sets the Submitted/Overdue badges at 14px on My Assignments; Pending/In progress stay 16px.
+// Figma sets the Submitted/Overdue badges at 14px (My Assignments and the course player); Pending/In progress stay 16px.
 const badgeTextSize = computed(() =>
-  props.openInCourseHref && ['submitted', 'overdue'].includes(props.assignment.status)
+  ['submitted', 'overdue'].includes(props.assignment.status)
     ? 'text-sm leading-normal'
     : 'text-base',
 )
@@ -148,9 +148,7 @@ const badgeLabel: Record<Assignment['status'], string> = {
 
     <div v-else class="flex flex-col gap-4">
       <p class="text-base text-black">{{ assignment.question }}</p>
-      <p class="rounded-lg border border-[#D6D9E4] bg-white p-3 text-base text-[#646D89]">
-        {{ assignment.answer }}
-      </p>
+      <p class="text-base whitespace-pre-wrap text-[#646D89]" v-text="assignment.answer"></p>
     </div>
   </div>
 </template>
