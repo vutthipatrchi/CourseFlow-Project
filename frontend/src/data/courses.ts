@@ -117,7 +117,7 @@ const modules: Module[] = [
         {
           id: 'assignment-2',
           question: 'Summarize the design principles covered and give one real-world example.',
-          status: 'submitted',
+          status: 'in-progress',
           answer:
             'Applied human-centered design to redesign the registration form, reducing steps from 6 to 3.',
           deadlineLabel: 'Assign within 2 days',
@@ -186,7 +186,7 @@ const modules: Module[] = [
         {
           id: 'assignment-4',
           question: 'Prioritize the opportunities you identified and explain your reasoning.',
-          status: 'pending',
+          status: 'overdue',
           deadlineLabel: 'Assign within 2 days',
         },
       ),

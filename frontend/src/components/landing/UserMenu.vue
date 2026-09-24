@@ -15,7 +15,6 @@ interface MenuItem {
   href: string
 }
 
-
 const isAdmin = ref(false)
 
 const menuItems = computed<MenuItem[]>(() => [
@@ -25,7 +24,7 @@ const menuItems = computed<MenuItem[]>(() => [
     icon: iconBook,
     href: isAdmin.value ? '/admin/courses' : '/my-courses',
   },
-  { label: 'My Assignments', icon: iconChecklist, href: '#' },
+  { label: 'My Assignments', icon: iconChecklist, href: '/my-assignments' },
   { label: 'My Wishlist', icon: iconStar, href: '/wishlist' },
 ])
 
