@@ -1,14 +1,16 @@
 <script setup lang="ts">
 // ── MyAssignmentsView ─────────────────────────────────────────────────────
-// Aggregates assignments across a user's enrolled courses with tab filtering
+// Aggregates the signed-in user's assignments (from /api/me/assignments) with tab filtering
 // แก้ไขได้: tab list, empty-state copy, assignment submit handler
 
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import AssignmentCard from '@/components/course/AssignmentCard.vue'
-import { myAssignments } from '@/data/assignments'
-import type { AssignmentStatus } from '@/types/course'
+import { listMyAssignments, submitAssignment } from '@/api/submissions'
+import { toApiError } from '@/api/client'
+import type { Assignment, AssignmentStatus } from '@/types/course'
+import type { MyAssignment } from '@/types/submission'
 
 type Tab = 'all' | 'in-progress' | 'submitted'
 
@@ -19,6 +21,23 @@ const tabs: { key: Tab; label: string }[] = [
 ]
 
 const activeTab = ref<Tab>('all')
+const assignments = ref<MyAssignment[]>([])
+const loading = ref(true)
+const loadError = ref('')
+const submitError = ref('')
+
+async function load() {
+  loading.value = true
+  loadError.value = ''
+  try {
+    assignments.value = await listMyAssignments()
+  } catch (failure) {
+    loadError.value = toApiError(failure).message
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(load)
 
 const statusOrder: Record<AssignmentStatus, number> = {
   pending: 0,
@@ -27,23 +46,38 @@ const statusOrder: Record<AssignmentStatus, number> = {
   overdue: 3,
 }
 
-const sortedAssignments = [...myAssignments].sort(
-  (a, b) => statusOrder[a.status] - statusOrder[b.status],
+const sortedAssignments = computed(() =>
+  [...assignments.value].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]),
 )
 
 const filteredAssignments = computed(() => {
-  if (activeTab.value === 'all') return sortedAssignments
+  if (activeTab.value === 'all') return sortedAssignments.value
   if (activeTab.value === 'submitted') {
-    return sortedAssignments.filter((assignment) => assignment.status === 'submitted')
+    return sortedAssignments.value.filter((assignment) => assignment.status === 'submitted')
   }
-  return sortedAssignments.filter((assignment) => assignment.status !== 'submitted')
+  return sortedAssignments.value.filter((assignment) => assignment.status !== 'submitted')
 })
 
-const handleSubmit = (assignmentId: string, answer: string) => {
-  const assignment = myAssignments.find((item) => item.id === assignmentId)
-  if (!assignment) return
-  assignment.status = 'submitted'
-  assignment.answer = answer
+function toCardAssignment(assignment: MyAssignment): Assignment {
+  const days = assignment.durationDays
+  return {
+    id: String(assignment.id),
+    question: assignment.description,
+    status: assignment.status,
+    answer: assignment.answer ?? undefined,
+    deadlineLabel: days ? `Assign within ${days} ${days === 1 ? 'day' : 'days'}` : '',
+  }
+}
+
+async function handleSubmit(assignment: MyAssignment, answer: string) {
+  submitError.value = ''
+  try {
+    const updated = await submitAssignment(assignment.id, answer)
+    const index = assignments.value.findIndex((item) => item.id === updated.id)
+    if (index !== -1) assignments.value[index] = updated
+  } catch (failure) {
+    submitError.value = toApiError(failure).message
+  }
 }
 </script>
 
@@ -103,18 +137,33 @@ const handleSubmit = (assignmentId: string, answer: string) => {
         </div>
       </section>
 
+      <p v-if="submitError" role="alert" class="pb-6 text-base text-red-600">{{ submitError }}</p>
+      <p v-if="loading" role="status" class="pb-20 text-base text-[#646D89]">
+        Loading your assignments…
+      </p>
+      <div v-else-if="loadError" class="flex flex-col items-center gap-3 pb-20">
+        <p role="alert" class="text-base text-red-600">{{ loadError }}</p>
+        <button
+          type="button"
+          class="cursor-pointer text-base font-bold text-blue-600 hover:text-blue-700"
+          @click="load"
+        >
+          Try again
+        </button>
+      </div>
       <section
-        v-if="filteredAssignments.length > 0"
+        v-else-if="filteredAssignments.length > 0"
         class="flex w-full max-w-280 flex-col gap-6 pb-20"
       >
+        <!-- Keyed by status so the card remounts read-only once its answer is saved. -->
         <AssignmentCard
           v-for="assignment in filteredAssignments"
-          :key="assignment.id"
-          :assignment="assignment"
-          :course-title="assignment.courseTitle"
-          :lesson-title="`${assignment.moduleTitle}: ${assignment.subLessonTitle}`"
+          :key="`${assignment.id}-${assignment.status}`"
+          :assignment="toCardAssignment(assignment)"
+          :course-title="assignment.courseName"
+          :lesson-title="`${assignment.lessonName}: ${assignment.subLessonName}`"
           :open-in-course-href="`/courses/${assignment.courseId}/learn/${assignment.subLessonId}`"
-          @submit="(answer) => handleSubmit(assignment.id, answer)"
+          @submit="(answer) => handleSubmit(assignment, answer)"
         />
       </section>
       <p v-else class="pb-20 text-base text-[#646D89]">No assignments in this tab yet.</p>
