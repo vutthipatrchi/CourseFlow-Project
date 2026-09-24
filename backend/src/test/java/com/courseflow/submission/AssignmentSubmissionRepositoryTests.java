@@ -96,6 +96,25 @@ class AssignmentSubmissionRepositoryTests {
     }
 
     @Test
+    void findsOnlyTheRequestedAssignmentWhenTheStudentHasSeveral() {
+        String subject = "test-" + UUID.randomUUID();
+        Target target = anySubLesson();
+        long first = insertAssignment(target.subLessonId(), 3, "now()");
+        long second = insertAssignment(target.subLessonId(), null, "now()");
+        long third = insertAssignment(target.subLessonId(), 1, "now() - interval '5 days'");
+        subscribe(subject, target.courseId(), "active");
+
+        assertThat(repository.findMyAssignmentById(second, subject)).get()
+            .extracting(MyAssignmentRow::id).isEqualTo(second);
+        assertThat(repository.findMyAssignmentById(first, subject)).get()
+            .extracting(MyAssignmentRow::id).isEqualTo(first);
+        assertThat(repository.findMyAssignmentById(third, subject)).get()
+            .extracting(MyAssignmentRow::id).isEqualTo(third);
+        assertThat(repository.findMyAssignments(subject))
+            .extracting(MyAssignmentRow::id).contains(first, second, third);
+    }
+
+    @Test
     void hidesAssignmentsFromOtherStudentsAndInactiveSubscriptions() {
         String subscriber = "test-" + UUID.randomUUID();
         String stranger = "test-" + UUID.randomUUID();

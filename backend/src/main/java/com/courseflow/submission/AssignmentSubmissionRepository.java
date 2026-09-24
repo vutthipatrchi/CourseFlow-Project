@@ -15,6 +15,7 @@ public class AssignmentSubmissionRepository {
 
     // Only assignments whose course has an active subscription for this subject are visible;
     // this is the single point that keeps "my assignments" scoped to courses the student paid for.
+    // Ends after the joins: callers append WHERE and/or ORDER BY (an AND here would join the LEFT JOIN's ON).
     private static final String SELECT_MY_ASSIGNMENTS = """
         SELECT a.id, a.description, c.id AS course_id, c.name AS course_name,
                l.name AS lesson_name, l.position AS lesson_position,
@@ -48,7 +49,7 @@ public class AssignmentSubmissionRepository {
 
     public Optional<MyAssignmentRow> findMyAssignmentById(long assignmentId, String subject) {
         return jdbcClient
-            .sql(SELECT_MY_ASSIGNMENTS + " AND a.id = :assignmentId")
+            .sql(SELECT_MY_ASSIGNMENTS + " WHERE a.id = :assignmentId")
             .param("subject", subject)
             .param("assignmentId", assignmentId)
             .query(this::mapRow)
