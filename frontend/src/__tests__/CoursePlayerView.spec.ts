@@ -8,7 +8,7 @@ import type { MyAssignment } from '@/types/submission'
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
   getCourseProgress: vi.fn<(courseId: number) => Promise<CourseProgressView>>(),
-  completeSubLesson: vi.fn(),
+  completeSubLesson: vi.fn<() => Promise<CourseProgressView>>(),
 }))
 vi.mock('@/api/payments', () => mocks)
 
