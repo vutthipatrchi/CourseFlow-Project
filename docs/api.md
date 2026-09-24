@@ -184,9 +184,14 @@ Request body:
 ```json
 {
   "subLessonId": 1,
-  "description": "Write a short essay"
+  "description": "Write a short essay",
+  "durationDays": 3
 }
 ```
+
+`durationDays` is optional: the number of days after the assignment is created
+that students have to submit it. Omit it or send `null` for no deadline. When
+present it must be a positive integer.
 
 Responses:
 
@@ -197,6 +202,7 @@ Responses:
     "id": 10,
     "subLessonId": 1,
     "description": "Write a short essay",
+    "durationDays": 3,
     "createdAt": "2026-09-16T10:00:00Z"
   }
   ```
@@ -229,6 +235,7 @@ first.
     "courseName": "Service Design Essentials",
     "lessonName": "Lesson 1",
     "subLessonName": "Sub-lesson 1",
+    "durationDays": 3,
     "createdAt": "2026-09-16T10:00:00Z"
   }
 ]
@@ -242,14 +249,94 @@ when `id` does not exist.
 
 ### PUT /api/admin/assignments/{id}
 
-Updates an assignment's sub-lesson and description. Same request body and
-validation as `POST`, same success response shape. `404 Not Found` when
+Updates an assignment's sub-lesson, description and deadline. Same request
+body and validation as `POST` (send `"durationDays": null` to remove the
+deadline), same success response shape. `404 Not Found` when
 either `id` or the request's `subLessonId` does not exist.
 
 ### DELETE /api/admin/assignments/{id}
 
 Deletes an assignment. `204 No Content` on success, `404 Not Found` when
 `id` does not exist.
+
+## My assignments
+
+Student-facing endpoints for the "My Assignments" page. They require the
+`local` (or another database-backed) profile and a valid Clerk-issued bearer
+token; the token's subject identifies the student.
+
+Only assignments of courses the caller has an **active subscription** for are
+returned or accepted (`subscriptions.status = 'active'`, matched to the caller
+through `orders.customer_subject`). A signed-in user with no subscription gets
+an empty list.
+
+### GET /api/me/assignments
+
+Returns the caller's assignments with their status, newest first.
+
+```json
+[
+  {
+    "id": 10,
+    "description": "What are the 4 elements of service design?",
+    "courseId": 1,
+    "courseName": "Service Design Essentials",
+    "lessonName": "Lesson 1",
+    "subLessonId": 7,
+    "subLessonName": "Sub-lesson 1",
+    "durationDays": 2,
+    "dueAt": "2026-09-26T10:00:00Z",
+    "status": "pending",
+    "answer": null,
+    "submittedAt": null
+  }
+]
+```
+
+`dueAt` is the assignment's creation time plus `durationDays`, or `null` when
+the assignment has no `durationDays`. `answer` and `submittedAt` are `null`
+until the caller submits. `submittedAt` is the time of the first submission and
+does not change when the answer is overwritten.
+
+`status` is derived on every request:
+
+| status | when |
+| --- | --- |
+| `submitted` | the caller has saved an answer (even if it was saved after `dueAt`) |
+| `overdue` | no answer yet and `dueAt` has passed |
+| `pending` | no answer yet and `dueAt` has not passed, or there is no `dueAt` |
+
+`in-progress` is not returned. It would need learning-progress data (whether
+the student has started the sub-lesson), which the backend does not store yet.
+
+### POST /api/me/assignments/{id}/submissions
+
+Saves the caller's answer. Submitting again overwrites the previous answer.
+
+Request body:
+
+```json
+{ "answer": "People, process, products and partners" }
+```
+
+`answer` must not be blank and is limited to 4000 characters.
+
+Responses:
+
+- `200 OK` with the refreshed assignment, same shape as a list item above with
+  `"status": "submitted"`.
+- `400 Bad Request` when validation fails:
+
+  ```json
+  {
+    "message": "Validation failed",
+    "fieldErrors": { "answer": "must not be blank" }
+  }
+  ```
+
+- `404 Not Found` when the assignment does not exist **or** belongs to a course
+  the caller is not subscribed to. The two cases are intentionally
+  indistinguishable.
 
 ## Admin promo codes
 
