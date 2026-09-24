@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import { courses } from '@/data/courses'
-
-const ASSIGNMENT_LESSON = '4 Levels of Service Design in an Organization'
-const assignmentQuestion = 'What are the 4 elements of service design?'
+import type { Assignment, SubLessonProgress } from '@/types/course'
 
 const route = useRoute()
 const course = computed(
@@ -16,55 +14,74 @@ const course = computed(
 type LessonItem = {
   id: string
   moduleId: string
-  moduleTitle: string
-  moduleIndex: number
   title: string
+  progress: SubLessonProgress
+  assignment?: Assignment
 }
 
 const lessons = computed<LessonItem[]>(() => {
   if (!course.value) return []
-  return course.value.modules.flatMap((module, moduleIndex) =>
-    module.subLessons.map((title, lessonIndex) => ({
-      id: `${module.id}-${lessonIndex}`,
+  return course.value.modules.flatMap((module) =>
+    module.subLessons.map((subLesson) => ({
+      id: subLesson.id,
       moduleId: module.id,
-      moduleTitle: module.title,
-      moduleIndex,
-      title,
+      title: subLesson.title,
+      progress: subLesson.progress,
+      assignment: subLesson.assignment,
     })),
   )
 })
 
-const completedIds = ref<string[]>(
-  lessons.value
-    .filter((lesson) => lesson.moduleId === 'module-1')
-    .slice(0, 5)
-    .map((lesson) => lesson.id),
-)
 const currentId = ref(
-  lessons.value.find((lesson) => lesson.title === ASSIGNMENT_LESSON)?.id ??
+  lessons.value.find((lesson) => lesson.progress === 'in-progress')?.id ??
     lessons.value[0]?.id ??
     '',
 )
-const openModuleIds = ref<string[]>(['module-1'])
+const openModuleIds = ref<string[]>([
+  lessons.value.find((lesson) => lesson.id === currentId.value)?.moduleId ?? 'module-1',
+])
 const draftAnswer = ref('')
 const submittedAnswers = ref<Record<string, string>>({})
+
+function progressStorageKey() {
+  return `courseflow.learning-progress.${course.value?.id ?? 'unknown'}`
+}
+
+function readCompletedIds() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(progressStorageKey()) ?? '[]') as unknown
+    if (!Array.isArray(saved)) return []
+    return saved.filter((id): id is string => typeof id === 'string')
+  } catch {
+    return []
+  }
+}
+
+const completedIds = ref<string[]>(readCompletedIds())
+
+watch(completedIds, (ids) => {
+  localStorage.setItem(progressStorageKey(), JSON.stringify(ids))
+})
+
+function lessonProgress(lesson: LessonItem): SubLessonProgress {
+  if (lesson.progress === 'completed' || completedIds.value.includes(lesson.id)) return 'completed'
+  return lesson.progress
+}
 
 const currentLesson = computed(() => lessons.value.find((lesson) => lesson.id === currentId.value))
 const currentIndex = computed(() =>
   lessons.value.findIndex((lesson) => lesson.id === currentId.value),
 )
 const progressPercent = computed(() => {
+  const completed = lessons.value.filter((lesson) => lessonProgress(lesson) === 'completed').length
   if (!lessons.value.length) return 0
-  return Math.round((completedIds.value.length / lessons.value.length) * 100)
+  return Math.round((completed / lessons.value.length) * 100)
 })
-const hasAssignment = computed(() => currentLesson.value?.title === ASSIGNMENT_LESSON)
-const submittedAnswer = computed(() =>
-  currentLesson.value ? submittedAnswers.value[currentLesson.value.id] : undefined,
-)
-
-function isCompleted(id: string) {
-  return completedIds.value.includes(id)
-}
+const submittedAnswer = computed(() => {
+  const lesson = currentLesson.value
+  if (!lesson) return undefined
+  return submittedAnswers.value[lesson.id] ?? lesson.assignment?.answer
+})
 
 function selectLesson(lesson: LessonItem) {
   currentId.value = lesson.id
@@ -92,6 +109,21 @@ function sendAssignment() {
   submittedAnswers.value = { ...submittedAnswers.value, [lesson.id]: answer }
   draftAnswer.value = ''
 }
+
+function markCurrentLessonComplete() {
+  const lesson = currentLesson.value
+  if (!lesson || lessonProgress(lesson) === 'completed') return
+  completedIds.value = [...completedIds.value, lesson.id]
+}
+
+function onScroll() {
+  const scrolled = window.scrollY + window.innerHeight
+  const pageHeight = document.documentElement.scrollHeight
+  if (pageHeight - scrolled <= 24) markCurrentLessonComplete()
+}
+
+onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <template>
@@ -169,7 +201,7 @@ function sendAssignment() {
                 >
                   <span class="mt-0.5 grid h-4 w-4 flex-none place-items-center" aria-hidden="true">
                     <svg
-                      v-if="isCompleted(lesson.id)"
+                      v-if="lessonProgress(lesson) === 'completed'"
                       viewBox="0 0 24 24"
                       class="h-4 w-4 text-[#2F9E44]"
                     >
@@ -209,7 +241,7 @@ function sendAssignment() {
           </button>
         </div>
 
-        <div v-if="hasAssignment" class="mt-6 rounded-xl bg-[#F6F7FC] p-6">
+        <div v-if="currentLesson.assignment" class="mt-6 rounded-xl bg-[#F6F7FC] p-6">
           <div class="flex items-center justify-between gap-4">
             <h3 class="text-lg font-medium text-black">Assignment</h3>
             <span
@@ -221,7 +253,9 @@ function sendAssignment() {
               {{ submittedAnswer ? 'Submitted' : 'Pending' }}
             </span>
           </div>
-          <p class="mt-4 text-sm font-medium text-[#2A2E3F]">{{ assignmentQuestion }}</p>
+          <p class="mt-4 text-sm font-medium text-[#2A2E3F]">
+            {{ currentLesson.assignment.question }}
+          </p>
 
           <p
             v-if="submittedAnswer"
@@ -247,7 +281,7 @@ function sendAssignment() {
               >
                 Send Assignment
               </button>
-              <p class="text-sm text-[#9AA1B9]">Assign within 2 days</p>
+              <p class="text-sm text-[#9AA1B9]">{{ currentLesson.assignment.deadlineLabel }}</p>
             </div>
           </form>
         </div>
