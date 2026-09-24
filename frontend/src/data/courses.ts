@@ -296,6 +296,12 @@ export const courses: Course[] = Array.from({ length: 12 }, (_, index) => {
     lessonCount: 6,
     hourCount: 6,
     price: 3559,
-    modules,
+    modules: modules.map((module) => ({
+      ...module,
+      subLessons: module.subLessons.map((item) => ({
+        ...item,
+        assignment: item.assignment ? { ...item.assignment } : undefined,
+      })),
+    })),
   }
 })

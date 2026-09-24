@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.courseflow.config.SecurityConfig;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -62,5 +63,24 @@ class PaymentControllerTests {
         mvc.perform(get("/api/me/subscriptions").with(jwt().jwt(j -> j.subject("user_buyer"))))
             .andExpect(status().isOk());
         verify(payments).subscriptions("user_buyer");
+    }
+
+    @Test
+    void courseProgressIsReadAndCompletedForTheSignedInBuyer() throws Exception {
+        var progress = new CourseProgressView(1L, 1, 6, 17, "in-progress", List.of(
+            new CourseSubLessonProgressView(10L, "Introduction", null, 1, "Lesson 1", 1, true)));
+        when(payments.courseProgress("user_buyer", 1L)).thenReturn(progress);
+        when(payments.completeSubLesson("user_buyer", 1L, 2, 1)).thenReturn(progress);
+
+        mvc.perform(get("/api/me/courses/1/progress")
+                .with(jwt().jwt(j -> j.subject("user_buyer"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.progressPercent").value(17));
+        mvc.perform(put("/api/me/courses/1/lessons/2/sub-lessons/1/complete")
+                .with(jwt().jwt(j -> j.subject("user_buyer"))))
+            .andExpect(status().isOk());
+
+        verify(payments).courseProgress("user_buyer", 1L);
+        verify(payments).completeSubLesson("user_buyer", 1L, 2, 1);
     }
 }

@@ -1,6 +1,7 @@
 package com.courseflow.payment;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 enum OrderStatus {
@@ -59,5 +60,16 @@ record PaymentView(
     String status, long amountSatang, String currency, String qrUrl, String authorizeUrl,
     String failureMessage, Instant expiresAt
 ) {}
-record SubscriptionView(UUID id, Long courseId, String courseTitle, String reference, Instant activatedAt) {}
+record SubscriptionView(
+    UUID id, Long courseId, String courseTitle, String reference, Instant activatedAt,
+    int completedLessons, int totalLessons, int progressPercent, String status
+) {}
+record CourseProgressView(
+    Long courseId, int completedLessons, int totalLessons, int progressPercent, String status,
+    List<CourseSubLessonProgressView> subLessons
+) {}
+record CourseSubLessonProgressView(
+    Long id, String title, String videoUrl, int lessonPosition, String lessonTitle,
+    int subLessonPosition, boolean completed
+) {}
 record DownloadedQr(byte[] bytes, String contentType) {}

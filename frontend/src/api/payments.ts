@@ -39,6 +39,37 @@ export interface SubscriptionView {
   courseTitle: string
   reference: string
   activatedAt: string
+  completedLessons: number
+  totalLessons: number
+  progressPercent: number
+  status: 'in-progress' | 'completed'
+  progressAvailable?: boolean
+}
+type SubscriptionResponse = Omit<
+  SubscriptionView,
+  'completedLessons' | 'totalLessons' | 'progressPercent' | 'status' | 'progressAvailable'
+> & {
+  completedLessons?: number
+  totalLessons?: number
+  progressPercent?: number
+  status: SubscriptionView['status'] | 'active'
+}
+export interface CourseProgressView {
+  courseId: number
+  completedLessons: number
+  totalLessons: number
+  progressPercent: number
+  status: 'in-progress' | 'completed'
+  subLessons: CourseProgressSubLesson[]
+}
+export interface CourseProgressSubLesson {
+  id: number
+  title: string
+  videoUrl: string | null
+  lessonPosition: number
+  lessonTitle: string
+  subLessonPosition: number
+  completed: boolean
 }
 export interface CardDetails {
   name: string
@@ -90,8 +121,50 @@ export function getPayment(paymentId: string) {
 export function downloadQr(paymentId: string) {
   return request<Blob>({ url: `/payments/${paymentId}/qr`, responseType: 'blob' })
 }
-export function getSubscriptions() {
-  return request<SubscriptionView[]>({ url: '/me/subscriptions' })
+export async function getSubscriptions(): Promise<SubscriptionView[]> {
+  const subscriptions = await request<SubscriptionResponse[]>({ url: '/me/subscriptions' })
+  return Promise.all(
+    subscriptions.map(async (subscription) => {
+      const hasProgress =
+        Number.isFinite(subscription.completedLessons) &&
+        Number.isFinite(subscription.totalLessons) &&
+        Number.isFinite(subscription.progressPercent)
+      let progress: CourseProgressView | undefined
+      if (!hasProgress) {
+        try {
+          progress = await getCourseProgress(subscription.courseId)
+        } catch {
+          // Older API responses may not expose course progress.
+        }
+      }
+      return {
+        ...subscription,
+        completedLessons: progress?.completedLessons ?? subscription.completedLessons ?? 0,
+        totalLessons: progress?.totalLessons ?? subscription.totalLessons ?? 0,
+        progressPercent: progress?.progressPercent ?? subscription.progressPercent ?? 0,
+        status:
+          progress?.status === 'completed' || subscription.status === 'completed'
+            ? 'completed'
+            : 'in-progress',
+        progressAvailable: hasProgress || !!progress,
+      }
+    }),
+  )
+}
+
+export function getCourseProgress(courseId: number) {
+  return request<CourseProgressView>({ url: `/me/courses/${courseId}/progress` })
+}
+
+export function completeSubLesson(
+  courseId: number,
+  lessonPosition: number,
+  subLessonPosition: number,
+) {
+  return request<CourseProgressView>({
+    method: 'PUT',
+    url: `/me/courses/${courseId}/lessons/${lessonPosition}/sub-lessons/${subLessonPosition}/complete`,
+  })
 }
 
 export function continueCardAuthentication(authorizeUrl: string) {

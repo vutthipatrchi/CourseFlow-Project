@@ -195,6 +195,17 @@ class PaymentServiceTests {
         verify(repository, times(1)).activateSubscription(order);
     }
 
+    @Test
+    void lessonCompletionUsesTheSignedInUsersSubscriptionAndReturnsUpdatedProgress() {
+        var progress = new CourseProgressView(1L, 1, 6, 17, "in-progress", List.of());
+        when(repository.findCourseProgress("user_buyer", 1L)).thenReturn(Optional.of(progress));
+
+        assertThat(service.completeSubLesson("user_buyer", 1L, 2, 1)).isEqualTo(progress);
+
+        verify(repository).completeSubLesson("user_buyer", 1L, 2, 1);
+        verify(repository).findCourseProgress("user_buyer", 1L);
+    }
+
     private PaymentRecord addPayment(PaymentStatus status, String chargeId) {
         PaymentRecord payment = new PaymentRecord(UUID.randomUUID(), order.id(), chargeId, UUID.randomUUID(),
             PaymentMethod.PROMPTPAY, 355900, "thb", status, null, null, null, order.expiresAt(), NOW);

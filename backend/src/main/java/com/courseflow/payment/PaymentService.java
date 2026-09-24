@@ -146,6 +146,24 @@ class PaymentService {
         return repository.findSubscriptions(subject);
     }
 
+    CourseProgressView courseProgress(String subject, Long courseId) {
+        requireSubject(subject);
+        return repository.findCourseProgress(subject, courseId)
+            .orElseThrow(() -> new com.courseflow.common.web.ResourceNotFoundException(
+                "Active course subscription not found"));
+    }
+
+    CourseProgressView completeSubLesson(
+        String subject, Long courseId, int lessonPosition, int subLessonPosition
+    ) {
+        requireSubject(subject);
+        if (lessonPosition < 1 || subLessonPosition < 1) {
+            throw new IllegalArgumentException("Lesson positions must be positive");
+        }
+        repository.completeSubLesson(subject, courseId, lessonPosition, subLessonPosition);
+        return courseProgress(subject, courseId);
+    }
+
     void handleWebhook(String eventId, String eventKey, String chargeId) {
         if (!eventKey.startsWith("charge.")) return;
         ProviderCharge charge = gateway.retrieveCharge(chargeId);

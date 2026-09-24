@@ -64,6 +64,17 @@ class PaymentController {
     @GetMapping("/me/subscriptions")
     List<SubscriptionView> subscriptions(@AuthenticationPrincipal Jwt jwt) { return payments.subscriptions(jwt.getSubject()); }
 
+    @GetMapping("/me/courses/{courseId}/progress")
+    CourseProgressView courseProgress(@PathVariable Long courseId, @AuthenticationPrincipal Jwt jwt) {
+        return payments.courseProgress(jwt.getSubject(), courseId);
+    }
+
+    @PutMapping("/me/courses/{courseId}/lessons/{lessonPosition}/sub-lessons/{subLessonPosition}/complete")
+    CourseProgressView completeSubLesson(@PathVariable Long courseId, @PathVariable int lessonPosition,
+        @PathVariable int subLessonPosition, @AuthenticationPrincipal Jwt jwt) {
+        return payments.completeSubLesson(jwt.getSubject(), courseId, lessonPosition, subLessonPosition);
+    }
+
     @PostMapping("/webhooks/opn")
     ResponseEntity<Void> webhook(@Valid @RequestBody WebhookRequest payload) {
         payments.handleWebhook(payload.id(), payload.key(), payload.data().id());
