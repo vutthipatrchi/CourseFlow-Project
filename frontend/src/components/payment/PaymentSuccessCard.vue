@@ -3,8 +3,8 @@ import { computed } from 'vue'
 
 const props = defineProps<{ courseId: number }>()
 
-const coursePath = computed(() => `/courses/course-${props.courseId}`)
-const learningPath = computed(() => `${coursePath.value}/learn/sub-1-1`)
+const coursePath = computed(() => `/my-courses/${props.courseId}`)
+const learningPath = computed(() => `/courses/course-${props.courseId}/learn/sub-1-1`)
 </script>
 
 <template>

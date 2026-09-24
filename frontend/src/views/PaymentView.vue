@@ -51,7 +51,7 @@ const cardValid = computed(() => {
   )
 })
 const courseId = computed(() => {
-  const value = Number(route.query.courseId ?? 1)
+  const value = Number(route.query.courseId)
   return Number.isSafeInteger(value) && value > 0 ? value : null
 })
 

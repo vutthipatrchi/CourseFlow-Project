@@ -117,6 +117,15 @@ describe('checkout', () => {
     wrapper.unmount()
   })
 
+  it('does not create an order when the course ID is missing', async () => {
+    const router = await createTestRouter('/payment')
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(mocks.createOrder).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Please select a valid course')
+    wrapper.unmount()
+  })
+
   it('uses the prepared order without creating another order at confirmation', async () => {
     const router = await createTestRouter()
     const wrapper = mount(PaymentView, { global: { plugins: [router] } })
@@ -292,7 +301,7 @@ describe('payment status', () => {
     expect(wrapper.text()).toContain(
       'Your payment is complete. You can start learning the course now.',
     )
-    expect(wrapper.get('a[href="/courses/course-7"]').text()).toBe('View Course detail')
+    expect(wrapper.get('a[href="/my-courses/7"]').text()).toBe('View Course detail')
     expect(wrapper.get('a[href="/courses/course-7/learn/sub-1-1"]').text()).toBe('Start Learning')
     await vi.advanceTimersByTimeAsync(30000)
     expect(mocks.getPayment).toHaveBeenCalledTimes(2)
