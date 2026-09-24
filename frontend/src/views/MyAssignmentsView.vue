@@ -98,28 +98,31 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
           <span
             class="absolute top-39.75 left-5.5 h-[26.35px] w-[26.35px] rounded-full bg-[#C6DCFF]"
           ></span>
+          <!-- Regular triangle in a 36.12px box, 3px stroke drawn inside the edge, rotated 51.33deg. -->
           <svg
             class="absolute top-31.5 right-[147.22px] h-[50.78px] w-[50.78px]"
             viewBox="0 0 50.78 50.78"
             fill="none"
           >
             <path
-              d="M25.39 7.33L43.45 43.45H7.33L25.39 7.33Z"
+              d="M25.39 10.33L38.43 32.92H12.35Z"
               transform="rotate(51.33 25.39 25.39)"
               stroke="#FBAA1C"
               stroke-width="3"
             />
           </svg>
+          <!-- Two corner-to-corner strokes of a 13.68px square, rotated -30deg. -->
           <svg
-            class="absolute top-58 left-64.75 h-[13.68px] w-[13.68px]"
+            class="absolute top-58 left-64.75 h-[13.68px] w-[13.68px] overflow-visible"
             viewBox="0 0 13.68 13.68"
             fill="none"
           >
             <path
-              d="M0 6.84H13.68M6.84 0V13.68"
+              d="M0 0L13.68 13.68M13.68 0L0 13.68"
               transform="rotate(-30 6.84 6.84)"
               stroke="#2FAC61"
               stroke-width="3"
+              stroke-linecap="round"
             />
           </svg>
         </div>
