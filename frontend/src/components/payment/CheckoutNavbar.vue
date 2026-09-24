@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import logo from '@/assets/landing/logo.svg'
+import UserMenu from '@/components/landing/UserMenu.vue'
 </script>
 
 <template>
@@ -19,19 +20,7 @@ import logo from '@/assets/landing/logo.svg'
         >
           Our Courses
         </RouterLink>
-        <button
-          type="button"
-          class="flex items-center gap-3 text-sm text-gray-700"
-          aria-label="Open account menu"
-        >
-          <span
-            class="grid h-10 w-10 place-items-center rounded-full bg-gray-100 text-sm font-semibold text-blue-600"
-            aria-hidden="true"
-            >MM</span
-          >
-          <span class="hidden sm:inline">Max Mayfield</span>
-          <span class="hidden text-gray-600 sm:inline" aria-hidden="true">▾</span>
-        </button>
+        <UserMenu />
       </div>
     </nav>
   </header>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   name: string
+  imageUrl?: string
   inProgress: number
   completed: number
 }>()
@@ -17,14 +18,20 @@ defineProps<{
         class="mx-auto grid h-24 w-24 place-items-center rounded-full bg-blue-100 text-2xl font-semibold text-blue-700"
         aria-hidden="true"
       >
-        {{
+        <img
+          v-if="imageUrl"
+          :src="imageUrl"
+          alt=""
+          class="h-full w-full rounded-full object-cover"
+        />
+        <template v-else>{{
           name
             .split(' ')
             .map((part) => part[0])
             .join('')
             .slice(0, 2)
             .toUpperCase()
-        }}
+        }}</template>
       </div>
 
       <h2 class="mt-6 text-xl font-medium text-[#4A5879]">{{ name }}</h2>

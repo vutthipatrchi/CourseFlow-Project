@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useUser } from '@clerk/vue'
 import MyCoursesProfileCard from '@/components/course/MyCoursesProfileCard.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import { getSubscriptions, type SubscriptionView } from '@/api/payments'
 
 const courses = ref<SubscriptionView[]>([])
+const { user } = useUser()
+const userName = computed(
+  () =>
+    user.value?.fullName ||
+    user.value?.username ||
+    user.value?.primaryEmailAddress?.emailAddress ||
+    'User',
+)
+const userImageUrl = computed(() => (user.value?.hasImage ? user.value.imageUrl : undefined))
 const loading = ref(true)
 const error = ref('')
 const activeFilter = ref<'all' | 'in-progress' | 'completed'>('all')
@@ -44,7 +54,8 @@ onMounted(load)
 
       <div class="mt-12 grid items-start gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
         <MyCoursesProfileCard
-          name="Max Mayfield"
+          :name="userName"
+          :image-url="userImageUrl"
           :in-progress="inProgressCourses.length"
           :completed="completedCourses.length"
         />
@@ -99,11 +110,19 @@ onMounted(load)
               >
                 {{ course.status === 'completed' ? 'Completed' : 'In progress' }}
               </span>
-              <h2 class="mt-2 text-xl font-medium">{{ course.courseTitle }}</h2>
-              <p class="mt-3 text-sm text-gray-600">
+              <h2 class="mt-2 text-xl font-medium">
+                <RouterLink
+                  :to="{ name: 'my-course-detail', params: { courseId: course.courseId } }"
+                  class="rounded text-gray-900 hover:text-blue-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                >
+                  {{ course.courseTitle }}
+                </RouterLink>
+              </h2>
+              <p v-if="course.progressAvailable !== false" class="mt-3 text-sm text-gray-600">
                 {{ course.completedLessons }}/{{ course.totalLessons }} lessons ·
                 {{ course.progressPercent }}%
               </p>
+              <p v-else class="mt-3 text-sm text-gray-600">Progress unavailable</p>
               <p class="mt-4 text-sm text-gray-600">Reference no. {{ course.reference }}</p>
               <p class="mt-1 text-sm text-gray-600">
                 Purchased {{ new Date(course.activatedAt).toLocaleDateString() }}

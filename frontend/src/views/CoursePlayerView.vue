@@ -10,12 +10,18 @@ import AppFooter from '@/components/landing/AppFooter.vue'
 import CoursePlayerSidebar from '@/components/course/CoursePlayerSidebar.vue'
 import AssignmentCard from '@/components/course/AssignmentCard.vue'
 import { courses } from '@/data/courses'
-import { completeSubLesson, getCourseProgress, type CourseProgressView } from '@/api/payments'
+import {
+  completeSubLesson,
+  getCourseProgress,
+  getSubscriptions,
+  type CourseProgressView,
+} from '@/api/payments'
+import type { Course } from '@/types/course'
 
 const route = useRoute()
 const router = useRouter()
 
-const course = computed(() => courses.find((item) => item.id === route.params.id))
+const course = ref<Course | undefined>(courses.find((item) => item.id === route.params.id))
 
 const flatSubLessons = computed(() => {
   if (!course.value) return []
@@ -38,6 +44,7 @@ const backendCourseId = computed(() => {
   const match = /^course-(\d+)$/.exec(String(route.params.id ?? ''))
   return match ? Number(match[1]) : null
 })
+const progressLoading = ref(Boolean(backendCourseId.value))
 
 function applyProgress(progress: CourseProgressView) {
   if (!course.value) return
@@ -62,10 +69,28 @@ function applyProgress(progress: CourseProgressView) {
 async function loadProgress() {
   if (!backendCourseId.value) return
   try {
-    applyProgress(await getCourseProgress(backendCourseId.value))
+    const [subscriptions, progress] = await Promise.all([
+      getSubscriptions(),
+      getCourseProgress(backendCourseId.value),
+    ])
+    const subscription = subscriptions.find((item) => item.courseId === backendCourseId.value)
+    if (subscription) {
+      const preview = courses.find((item) => item.title === subscription.courseTitle)
+      course.value = {
+        ...(preview ?? courses[0]!),
+        id: `course-${subscription.courseId}`,
+        title: subscription.courseTitle,
+        description:
+          preview?.description ?? 'Continue learning through the lessons in this course.',
+        modules: [],
+      }
+    }
+    applyProgress(progress)
     progressError.value = ''
   } catch (error) {
     progressError.value = error instanceof Error ? error.message : 'Unable to load course progress'
+  } finally {
+    progressLoading.value = false
   }
 }
 
@@ -94,7 +119,7 @@ watch(
 onUnmounted(() => clearTimeout(loadingTimer))
 
 watchEffect(() => {
-  if (!course.value || flatSubLessons.value.length === 0) return
+  if (progressLoading.value || !course.value || flatSubLessons.value.length === 0) return
   if (currentIndex.value === -1) {
     router.replace({
       name: 'course-player',

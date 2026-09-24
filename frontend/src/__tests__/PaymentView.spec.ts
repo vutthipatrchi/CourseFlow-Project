@@ -54,6 +54,14 @@ const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
 }))
 vi.mock('@/api/payments', () => mocks)
+vi.mock('@clerk/vue', async () => {
+  const { ref } = await import('vue')
+  return {
+    getToken: vi.fn<() => Promise<null>>().mockResolvedValue(null),
+    useClerk: () => ref(null),
+    useUser: () => ({ user: ref({ fullName: 'Student', imageUrl: '', hasImage: false }) }),
+  }
+})
 
 async function createTestRouter(path = '/payment?courseId=7') {
   const router = createRouter({
@@ -64,6 +72,11 @@ async function createTestRouter(path = '/payment?courseId=7') {
       { path: '/payment/qr', name: 'payment-qr', component: PaymentQrView },
       { path: '/payment/status', name: 'payment-status', component: PaymentStatusView },
       { path: '/my-courses', name: 'my-courses', component: MyCoursesView },
+      {
+        path: '/my-courses/:courseId',
+        name: 'my-course-detail',
+        component: { template: '<div>Course detail</div>' },
+      },
     ],
   })
   await router.push(path)
@@ -335,6 +348,7 @@ describe('payment status', () => {
     expect(wrapper.get('[data-testid="in-progress-count"]').text()).toBe('1')
     expect(wrapper.get('[data-testid="completed-count"]').text()).toBe('1')
     expect(wrapper.get('[data-testid="my-courses-profile"]').classes()).toContain('lg:sticky')
+    expect(wrapper.get('a[href="/my-courses/7"]').text()).toBe('Purchased course')
 
     await wrapper
       .findAll('button')
@@ -342,6 +356,9 @@ describe('payment status', () => {
       .trigger('click')
     expect(wrapper.text()).toContain('Course in progress')
     expect(wrapper.text()).not.toContain('Purchased course')
+    await wrapper.get('a[href="/my-courses/8"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/my-courses/8')
     wrapper.unmount()
   })
 })

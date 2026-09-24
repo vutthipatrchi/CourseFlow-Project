@@ -43,6 +43,16 @@ export interface SubscriptionView {
   totalLessons: number
   progressPercent: number
   status: 'in-progress' | 'completed'
+  progressAvailable?: boolean
+}
+type SubscriptionResponse = Omit<
+  SubscriptionView,
+  'completedLessons' | 'totalLessons' | 'progressPercent' | 'status' | 'progressAvailable'
+> & {
+  completedLessons?: number
+  totalLessons?: number
+  progressPercent?: number
+  status: SubscriptionView['status'] | 'active'
 }
 export interface CourseProgressView {
   courseId: number
@@ -111,8 +121,35 @@ export function getPayment(paymentId: string) {
 export function downloadQr(paymentId: string) {
   return request<Blob>({ url: `/payments/${paymentId}/qr`, responseType: 'blob' })
 }
-export function getSubscriptions() {
-  return request<SubscriptionView[]>({ url: '/me/subscriptions' })
+export async function getSubscriptions(): Promise<SubscriptionView[]> {
+  const subscriptions = await request<SubscriptionResponse[]>({ url: '/me/subscriptions' })
+  return Promise.all(
+    subscriptions.map(async (subscription) => {
+      const hasProgress =
+        Number.isFinite(subscription.completedLessons) &&
+        Number.isFinite(subscription.totalLessons) &&
+        Number.isFinite(subscription.progressPercent)
+      let progress: CourseProgressView | undefined
+      if (!hasProgress) {
+        try {
+          progress = await getCourseProgress(subscription.courseId)
+        } catch {
+          // Older API responses may not expose course progress.
+        }
+      }
+      return {
+        ...subscription,
+        completedLessons: progress?.completedLessons ?? subscription.completedLessons ?? 0,
+        totalLessons: progress?.totalLessons ?? subscription.totalLessons ?? 0,
+        progressPercent: progress?.progressPercent ?? subscription.progressPercent ?? 0,
+        status:
+          progress?.status === 'completed' || subscription.status === 'completed'
+            ? 'completed'
+            : 'in-progress',
+        progressAvailable: hasProgress || !!progress,
+      }
+    }),
+  )
 }
 
 export function getCourseProgress(courseId: number) {
