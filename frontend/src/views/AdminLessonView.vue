@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { VueDraggable } from 'vue-draggable-plus'
 import AdminLayout from '../components/admin/AdminLayout.vue'
 import { getCourse } from '../admin/courseStore'
 import { createLesson, deleteLesson, fetchLesson, updateLesson } from '../api/lessons'
@@ -27,8 +28,6 @@ const saving = ref(false)
 const uploadingKey = ref<string | null>(null)
 const errorMessage = ref('')
 const usingDemoData = ref(false)
-const dragFromIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
 
 const pageTitle = computed(() => (isCreate.value ? 'Add Lesson' : 'Edit Lesson'))
 const breadcrumb = computed(() => {
@@ -124,6 +123,11 @@ function removeSubLesson(localKey: string) {
   subLessons.value = subLessons.value.filter((item) => item.localKey !== localKey)
 }
 
+// Fallback (non-native) dragging keeps mouse-wheel scrolling working, but loses the browser's drag cursor.
+function setGrabbingCursor(active: boolean) {
+  document.body.style.cursor = active ? 'grabbing' : ''
+}
+
 async function onVideoSelected(item: SubLessonFormItem, event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -140,39 +144,6 @@ async function onVideoSelected(item: SubLessonFormItem, event: Event) {
   } finally {
     uploadingKey.value = null
   }
-}
-
-function onDragStart(index: number, event: DragEvent) {
-  dragFromIndex.value = index
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', String(index))
-  }
-}
-
-function onDragOver(index: number, event: DragEvent) {
-  event.preventDefault()
-  dragOverIndex.value = index
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-}
-
-function onDrop(index: number, event: DragEvent) {
-  event.preventDefault()
-  const from = dragFromIndex.value
-  dragFromIndex.value = null
-  dragOverIndex.value = null
-  if (from === null || from === index) return
-
-  const next = [...subLessons.value]
-  const [moved] = next.splice(from, 1)
-  if (!moved) return
-  next.splice(index, 0, moved)
-  subLessons.value = next
-}
-
-function onDragEnd() {
-  dragFromIndex.value = null
-  dragOverIndex.value = null
 }
 
 function validate(): string | null {
@@ -293,23 +264,28 @@ async function onDeleteLesson() {
 
         <h2 class="mb-6 text-xl font-semibold text-[#2A2E3F]">Sub-Lesson</h2>
 
-        <div class="flex flex-col gap-4">
+        <VueDraggable
+          v-model="subLessons"
+          handle=".sub-lesson-drag-handle"
+          :animation="180"
+          ghost-class="sub-lesson--ghost"
+          chosen-class="sub-lesson--chosen"
+          drag-class="sub-lesson--dragging"
+          :force-fallback="true"
+          :fallback-on-body="true"
+          class="flex flex-col gap-4"
+          @start="setGrabbingCursor(true)"
+          @end="setGrabbingCursor(false)"
+        >
           <article
-            v-for="(item, index) in subLessons"
+            v-for="item in subLessons"
             :key="item.localKey"
-            class="flex gap-4 rounded-xl border bg-[#F6F7FC] p-6 transition-colors"
-            :class="dragOverIndex === index ? 'border-[#2F5FAC] bg-[#EEF3FB]' : 'border-[#E4E6ED]'"
-            @dragover="onDragOver(index, $event)"
-            @drop="onDrop(index, $event)"
-            @dragleave="dragOverIndex = dragOverIndex === index ? null : dragOverIndex"
+            class="flex gap-4 rounded-xl border border-[#E4E6ED] bg-[#F6F7FC] p-6 transition-colors"
           >
             <button
               type="button"
-              class="flex cursor-grab items-start pt-8 text-[#C8CCDB] active:cursor-grabbing"
-              draggable="true"
+              class="sub-lesson-drag-handle flex cursor-grab items-start pt-8 text-[#C8CCDB] hover:text-[#9AA1B9] active:cursor-grabbing"
               aria-label="Drag to reorder sub-lesson"
-              @dragstart="onDragStart(index, $event)"
-              @dragend="onDragEnd"
             >
               <svg viewBox="0 0 10 16" class="h-4 w-2.5 fill-current" aria-hidden="true">
                 <circle cx="2" cy="2" r="1.5" />
@@ -377,7 +353,7 @@ async function onDeleteLesson() {
               </div>
             </div>
           </article>
-        </div>
+        </VueDraggable>
 
         <button
           type="button"
@@ -396,3 +372,19 @@ async function onDeleteLesson() {
     </div>
   </AdminLayout>
 </template>
+
+<style scoped>
+.sub-lesson--ghost {
+  border: 1px dashed #8dade0;
+  background: #eef3fb;
+  opacity: 0.5;
+}
+.sub-lesson--chosen {
+  border-color: #2f5fac;
+  background: #eef3fb;
+}
+.sub-lesson--dragging {
+  box-shadow: 0 8px 24px rgba(42, 46, 63, 0.16);
+  cursor: grabbing;
+}
+</style>
