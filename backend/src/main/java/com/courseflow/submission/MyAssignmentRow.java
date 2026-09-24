@@ -1,14 +1,18 @@
-package com.courseflow.assignment;
+package com.courseflow.submission;
 
 import java.time.OffsetDateTime;
 
-public record AssignmentSummary(
+record MyAssignmentRow(
     Long id,
     String description,
+    Long courseId,
     String courseName,
     String lessonName,
+    Long subLessonId,
     String subLessonName,
     Integer durationDays,
-    OffsetDateTime createdAt
+    OffsetDateTime dueAt,
+    String answer,
+    OffsetDateTime submittedAt
 ) {
 }

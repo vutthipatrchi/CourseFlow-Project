@@ -29,16 +29,18 @@ public class AssignmentRepository {
     public AssignmentResponse insert(CreateAssignmentRequest request) {
         return jdbcClient
             .sql("""
-                INSERT INTO courseflow.assignments (sub_lesson_id, description)
-                VALUES (:subLessonId, :description)
-                RETURNING id, sub_lesson_id, description, created_at
+                INSERT INTO courseflow.assignments (sub_lesson_id, description, duration_days)
+                VALUES (:subLessonId, :description, :durationDays)
+                RETURNING id, sub_lesson_id, description, duration_days, created_at
                 """)
             .param("subLessonId", request.subLessonId())
             .param("description", request.description())
+            .param("durationDays", request.durationDays())
             .query((rs, rowNum) -> new AssignmentResponse(
                 rs.getLong("id"),
                 rs.getLong("sub_lesson_id"),
                 rs.getString("description"),
+                rs.getObject("duration_days", Integer.class),
                 rs.getObject("created_at", OffsetDateTime.class)
             ))
             .single();
@@ -46,12 +48,13 @@ public class AssignmentRepository {
 
     public Optional<AssignmentResponse> findById(long id) {
         return jdbcClient
-            .sql("SELECT id, sub_lesson_id, description, created_at FROM courseflow.assignments WHERE id = :id")
+            .sql("SELECT id, sub_lesson_id, description, duration_days, created_at FROM courseflow.assignments WHERE id = :id")
             .param("id", id)
             .query((rs, rowNum) -> new AssignmentResponse(
                 rs.getLong("id"),
                 rs.getLong("sub_lesson_id"),
                 rs.getString("description"),
+                rs.getObject("duration_days", Integer.class),
                 rs.getObject("created_at", OffsetDateTime.class)
             ))
             .optional();
@@ -63,17 +66,20 @@ public class AssignmentRepository {
                 UPDATE courseflow.assignments
                    SET sub_lesson_id = :subLessonId,
                        description = :description,
+                       duration_days = :durationDays,
                        updated_at = CURRENT_TIMESTAMP
                  WHERE id = :id
-                RETURNING id, sub_lesson_id, description, created_at
+                RETURNING id, sub_lesson_id, description, duration_days, created_at
                 """)
             .param("id", id)
             .param("subLessonId", request.subLessonId())
             .param("description", request.description())
+            .param("durationDays", request.durationDays())
             .query((rs, rowNum) -> new AssignmentResponse(
                 rs.getLong("id"),
                 rs.getLong("sub_lesson_id"),
                 rs.getString("description"),
+                rs.getObject("duration_days", Integer.class),
                 rs.getObject("created_at", OffsetDateTime.class)
             ))
             .optional();
@@ -90,7 +96,7 @@ public class AssignmentRepository {
     public List<AssignmentSummary> findAllWithContext() {
         return jdbcClient
             .sql("""
-                SELECT a.id, a.description, a.created_at,
+                SELECT a.id, a.description, a.duration_days, a.created_at,
                        c.name AS course_name, l.name AS lesson_name, sl.name AS sub_lesson_name
                 FROM courseflow.assignments a
                 JOIN courseflow.sub_lessons sl ON sl.id = a.sub_lesson_id
@@ -104,6 +110,7 @@ public class AssignmentRepository {
                 rs.getString("course_name"),
                 rs.getString("lesson_name"),
                 rs.getString("sub_lesson_name"),
+                rs.getObject("duration_days", Integer.class),
                 rs.getObject("created_at", OffsetDateTime.class)
             ))
             .list();
