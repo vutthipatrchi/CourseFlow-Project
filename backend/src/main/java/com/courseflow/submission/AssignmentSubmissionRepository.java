@@ -15,13 +15,15 @@ public class AssignmentSubmissionRepository {
 
     // Only assignments whose course has an active subscription for this subject are visible;
     // this is the single point that keeps "my assignments" scoped to courses the student paid for.
+    // due_at counts from the later of the assignment's creation and the student's subscription, so a student
+    // who joins late (or an assignment added later) still gets the full duration_days.
     // Ends after the joins: callers append WHERE and/or ORDER BY (an AND here would join the LEFT JOIN's ON).
     private static final String SELECT_MY_ASSIGNMENTS = """
         SELECT a.id, a.description, c.id AS course_id, c.name AS course_name,
                l.name AS lesson_name, l.position AS lesson_position,
                sl.id AS sub_lesson_id, sl.name AS sub_lesson_name, sl.position AS sub_lesson_position,
                a.duration_days,
-               a.created_at + (a.duration_days * INTERVAL '1 day') AS due_at,
+               GREATEST(a.created_at, s.activated_at) + (a.duration_days * INTERVAL '1 day') AS due_at,
                sub.answer, sub.submitted_at
         FROM courseflow.assignments a
         JOIN courseflow.sub_lessons sl ON sl.id = a.sub_lesson_id

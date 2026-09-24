@@ -189,9 +189,10 @@ Request body:
 }
 ```
 
-`durationDays` is optional: the number of days after the assignment is created
-that students have to submit it. Omit it or send `null` for no deadline. When
-present it must be a positive integer.
+`durationDays` is optional: the number of days students have to submit the
+assignment, counted from the later of the assignment's creation and the
+student's subscription (see `dueAt` under "My assignments"). Omit it or send
+`null` for no deadline. When present it must be a positive integer.
 
 Responses:
 
@@ -300,8 +301,13 @@ course and of the sub-lesson in its lesson, the same values the course progress
 API returns. The course player builds its URLs from them:
 `/courses/course-{courseId}/learn/sub-{lessonPosition}-{subLessonPosition}`.
 
-`dueAt` is the assignment's creation time plus `durationDays`, or `null` when
-the assignment has no `durationDays`. `answer` and `submittedAt` are `null`
+`dueAt` is `durationDays` after the later of the assignment's creation time and
+the time the caller's subscription was activated, or `null` when the assignment
+has no `durationDays`. A student who subscribes after the assignment was created
+therefore gets the full duration from their subscription, and an assignment
+added after the student subscribed counts from its creation. The deadline is
+exact (`durationDays` x 24 hours), not the end of a day, and is not stored:
+`status` changes the next time the list is requested. `answer` and `submittedAt` are `null`
 until the caller submits. `submittedAt` is the time of the first submission and
 does not change when the answer is overwritten.
 
@@ -309,7 +315,7 @@ does not change when the answer is overwritten.
 
 | status | when |
 | --- | --- |
-| `submitted` | the caller has saved an answer (even if it was saved after `dueAt`) |
+| `submitted` | the caller has saved an answer (even if it was saved after `dueAt`; late answers are accepted and can be overwritten, and nothing marks them as late) |
 | `overdue` | no answer yet and `dueAt` has passed |
 | `pending` | no answer yet and `dueAt` has not passed, or there is no `dueAt` |
 

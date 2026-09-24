@@ -2,6 +2,8 @@ package com.courseflow.submission;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -53,6 +55,10 @@ class AssignmentSubmissionRepositoryTests {
     }
 
     private void subscribe(String subject, long courseId, String subscriptionStatus) {
+        subscribe(subject, courseId, subscriptionStatus, "now()");
+    }
+
+    private void subscribe(String subject, long courseId, String subscriptionStatus, String activatedAtSql) {
         UUID orderId = UUID.randomUUID();
         jdbc.sql("""
                 INSERT INTO courseflow.orders (id, reference, course_id, subtotal_satang, total_satang,
@@ -67,8 +73,8 @@ class AssignmentSubmissionRepositoryTests {
             .update();
         jdbc.sql("""
                 INSERT INTO courseflow.subscriptions (id, order_id, course_id, status, activated_at)
-                VALUES (:id, :orderId, :courseId, :status, now())
-                """)
+                VALUES (:id, :orderId, :courseId, :status, %s)
+                """.formatted(activatedAtSql))
             .param("id", UUID.randomUUID())
             .param("orderId", orderId)
             .param("courseId", courseId)
@@ -93,6 +99,34 @@ class AssignmentSubmissionRepositoryTests {
         assertThat(mine.durationDays()).isEqualTo(3);
         assertThat(mine.dueAt()).isNotNull();
         assertThat(mine.answer()).isNull();
+    }
+
+    private Instant inDb(String expressionSql) {
+        return jdbc.sql("SELECT " + expressionSql).query(OffsetDateTime.class).single().toInstant();
+    }
+
+    @Test
+    void dueDateStartsAtTheSubscriptionWhenTheStudentSubscribedAfterTheAssignmentWasCreated() {
+        String subject = "test-" + UUID.randomUUID();
+        Target target = anySubLesson();
+        long assignmentId = insertAssignment(target.subLessonId(), 3, "now() - interval '10 days'");
+        subscribe(subject, target.courseId(), "active", "now()");
+
+        var mine = repository.findMyAssignmentById(assignmentId, subject).orElseThrow();
+
+        assertThat(mine.dueAt().toInstant()).isEqualTo(inDb("now() + interval '3 days'"));
+    }
+
+    @Test
+    void dueDateStartsAtCreationWhenTheAssignmentWasAddedAfterTheStudentSubscribed() {
+        String subject = "test-" + UUID.randomUUID();
+        Target target = anySubLesson();
+        long assignmentId = insertAssignment(target.subLessonId(), 3, "now()");
+        subscribe(subject, target.courseId(), "active", "now() - interval '10 days'");
+
+        var mine = repository.findMyAssignmentById(assignmentId, subject).orElseThrow();
+
+        assertThat(mine.dueAt().toInstant()).isEqualTo(inDb("now() + interval '3 days'"));
     }
 
     @Test

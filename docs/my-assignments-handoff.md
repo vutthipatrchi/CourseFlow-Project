@@ -22,6 +22,9 @@ My Assignments ทำเสร็จและทดสอบแล้ว (contra
 ## เรื่องที่จบแล้ว
 
 - **Schema (V12):** เพิ่ม `assignments.duration_days` (ไม่บังคับ ถ้าเป็น `NULL` จะไม่มีวัน overdue)
+  กำหนดส่งนับจากเวลาที่หลังกว่าระหว่างวันที่สร้าง assignment กับวันที่นักเรียน subscribe บวก N × 24 ชั่วโมงพอดี
+  (ไม่ใช่สิ้นวัน) นักเรียนที่ซื้อคอร์สทีหลังจึงได้เวลาเต็ม และ assignment ที่ admin เพิ่มทีหลังก็ไม่เลยกำหนดทันที
+  หลังหมดเขตยังส่งและแก้คำตอบได้ ไม่มีป้ายส่งช้า และการ์ดไม่แสดงวันที่หมดเขตจริง (Figma ไม่มี)
   และตาราง `assignment_submissions` (1 คนต่อ 1 assignment ส่งซ้ำแล้วทับคำตอบเดิม)
   ใช้เลข V12 เพราะ `dev` ใช้ V9 กับ profile fields, V10 กับ learning progress (PR #31) และ V11 กับคอร์สหน้าร้าน (PR #33) ไปแล้ว
 - **API:** `GET /api/me/assignments` และ `POST /api/me/assignments/{id}/submissions`
