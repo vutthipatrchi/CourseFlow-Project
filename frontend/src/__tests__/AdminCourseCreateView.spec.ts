@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { VueDraggable } from 'vue-draggable-plus'
 import { createCourse, updateCourse } from '@/api/courses'
 import { useCourseStore } from '@/stores/course'
 import type { AdminCourse, AdminCoursePayload } from '@/types/course'
@@ -17,11 +18,7 @@ vi.mock('@clerk/vue', () => ({
 
 const pinia = createPinia()
 
-function savedCourse(
-  payload: AdminCoursePayload,
-  id: number,
-  existing?: AdminCourse,
-): AdminCourse {
+function savedCourse(payload: AdminCoursePayload, id: number, existing?: AdminCourse): AdminCourse {
   return {
     ...existing,
     ...payload,
@@ -196,5 +193,45 @@ describe('admin edit course', () => {
     expect(useCourseStore().courses.find((course) => course.id === 1)?.price).toBe(4990)
     expect(router.currentRoute.value.name).toBe('admin-courses')
     expect(router.currentRoute.value.query.updated).toBe('Advanced Service Design')
+  })
+
+  it('only lets lessons be dragged from the grip handle', async () => {
+    const { wrapper } = await mountView('/admin/courses/1/edit')
+    await flushPromises()
+
+    const draggable = wrapper.getComponent(VueDraggable)
+    expect(draggable.props('handle')).toBe('.lesson-drag-handle')
+    // Native HTML5 drag blocks the mouse wheel; the fallback drag keeps page scrolling usable.
+    expect(draggable.props('forceFallback')).toBe(true)
+    const rows = wrapper.findAll('.lesson-row')
+    expect(rows.length).toBeGreaterThan(1)
+    for (const row of rows) {
+      expect(row.find('.lesson-drag-handle').exists()).toBe(true)
+    }
+  })
+
+  it('saves lessons in their dragged order', async () => {
+    const { wrapper } = await mountView('/admin/courses/1/edit')
+    await flushPromises()
+
+    const draggable = wrapper.getComponent(VueDraggable)
+    const original = draggable.props('modelValue') as { name: string }[]
+    const reordered = [...original].reverse()
+    draggable.vm.$emit('update:modelValue', reordered)
+    await flushPromises()
+
+    const nameInputs = wrapper.findAll<HTMLInputElement>('.lesson-row input')
+    expect(nameInputs.map((input) => input.element.value)).toEqual(
+      reordered.map((lesson) => lesson.name),
+    )
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    const calls = vi.mocked(updateCourse).mock.calls
+    const [, payload] = calls[calls.length - 1]!
+    expect(payload.lessonItems.map((lesson) => lesson.name)).toEqual(
+      reordered.map((lesson) => lesson.name),
+    )
   })
 })
