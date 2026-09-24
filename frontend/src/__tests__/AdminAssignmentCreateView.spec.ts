@@ -25,6 +25,7 @@ const existingAssignment: AssignmentDetail = {
   id: 5,
   subLessonId: 1,
   description: 'Existing assignment',
+  durationDays: null,
   createdAt: '2026-01-01T00:00:00Z',
 }
 
@@ -76,6 +77,7 @@ describe('AdminAssignmentCreateView', () => {
       courseName: 'Web Development',
       lessonName: 'Vue Basics',
       subLessonName: 'Components',
+      durationDays: null,
       createdAt: '2026-01-01T00:00:00Z',
     })
 
@@ -92,6 +94,7 @@ describe('AdminAssignmentCreateView', () => {
     expect(createAssignment).toHaveBeenCalledWith({
       subLessonId: 1,
       description: 'Build a todo app',
+      durationDays: null,
     })
     expect(updateAssignment).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-assignments')
@@ -114,7 +117,11 @@ describe('AdminAssignmentCreateView', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(updateAssignment).toHaveBeenCalledWith(5, { subLessonId: 1, description: 'Edited' })
+    expect(updateAssignment).toHaveBeenCalledWith(5, {
+      subLessonId: 1,
+      description: 'Edited',
+      durationDays: null,
+    })
     expect(createAssignment).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-assignments')
   })

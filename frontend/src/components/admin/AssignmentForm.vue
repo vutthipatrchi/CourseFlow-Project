@@ -6,7 +6,7 @@ const props = defineProps<{
   subLessonOptions: SubLessonOption[]
   submitting: boolean
   fieldErrors?: Record<string, string>
-  initialValue?: { subLessonId: number; description: string } | null
+  initialValue?: { subLessonId: number; description: string; durationDays: number | null } | null
 }>()
 
 const emit = defineEmits<{
@@ -17,6 +17,7 @@ const selectedCourse = ref<string | null>(null)
 const selectedLesson = ref<string | null>(null)
 const subLessonId = ref<number | null>(null)
 const description = ref('')
+const durationDays = ref<number | null>(null)
 const localError = ref<string | null>(null)
 
 const courses = computed(() => [...new Set(props.subLessonOptions.map((o) => o.courseName))])
@@ -58,6 +59,7 @@ watch(
       subLessonId.value = match.subLessonId
     }
     description.value = initialValue.description
+    durationDays.value = initialValue.durationDays
   },
   { immediate: true },
 )
@@ -77,6 +79,7 @@ function handleSubmit() {
   emit('submit', {
     subLessonId: subLessonId.value,
     description: description.value.trim(),
+    durationDays: durationDays.value || null,
   })
 }
 </script>
@@ -150,6 +153,20 @@ function handleSubmit() {
       />
       <p v-if="props.fieldErrors?.description" class="text-sm text-red-600">
         {{ props.fieldErrors.description }}
+      </p>
+    </div>
+
+    <div class="flex max-w-110 flex-col gap-1">
+      <label for="duration-days" class="text-base text-black">Due in (days, optional)</label>
+      <input
+        id="duration-days"
+        v-model.number="durationDays"
+        type="number"
+        min="1"
+        class="h-12 rounded-lg border border-[#D6D9E4] pt-3 pr-4 pb-3 pl-3 text-base text-black"
+      />
+      <p v-if="props.fieldErrors?.durationDays" class="text-sm text-red-600">
+        {{ props.fieldErrors.durationDays }}
       </p>
     </div>
   </form>
