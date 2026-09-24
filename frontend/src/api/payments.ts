@@ -6,6 +6,11 @@ export interface PaymentConfig {
   enabled: boolean
   publicKey: string
 }
+export interface CheckoutCourse {
+  id: number
+  name: string
+  price: number
+}
 export interface OrderCreated {
   orderId: string
   courseId: number
@@ -89,6 +94,9 @@ async function request<T>(config: AxiosRequestConfig): Promise<T> {
 
 export function getPaymentConfig() {
   return request<PaymentConfig>({ url: '/payments/config' })
+}
+export function getCheckoutCourses() {
+  return request<CheckoutCourse[]>({ url: '/catalog/courses' })
 }
 export function createOrder(courseId: number, promotionCode: string) {
   return request<OrderCreated>({

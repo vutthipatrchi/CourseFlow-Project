@@ -25,6 +25,9 @@ class PaymentController {
     private final PaymentService payments;
     PaymentController(PaymentService payments) { this.payments = payments; }
 
+    @GetMapping("/catalog/courses")
+    List<CheckoutCourse> checkoutCourses() { return payments.checkoutCourses(); }
+
     @GetMapping("/payments/config")
     Map<String, Object> config() {
         return Map.of("enabled", payments.providerEnabled(), "publicKey", payments.providerPublicKey());

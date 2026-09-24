@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
+import PaymentFailureCard from '@/components/payment/PaymentFailureCard.vue'
+import PaymentSuccessCard from '@/components/payment/PaymentSuccessCard.vue'
 import { continueCardAuthentication } from '@/api/payments'
 import { usePaymentStatus } from '@/lib/usePaymentStatus'
 import { formatThb } from '@/lib/payment'
@@ -36,7 +38,10 @@ function verifyCard() {
   <div class="flex min-h-screen flex-col bg-white">
     <CheckoutNavbar />
     <main class="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
+      <PaymentSuccessCard v-if="payment?.status === 'successful'" :course-id="payment.courseId" />
+      <PaymentFailureCard v-else-if="payment?.status === 'failed'" :course-id="payment.courseId" />
       <section
+        v-else
         class="w-full max-w-[460px] rounded-xl bg-white p-8 text-center shadow-[4px_4px_24px_rgba(0,0,0,0.08)]"
       >
         <h1 class="text-2xl font-medium text-black">{{ heading }}</h1>
@@ -74,14 +79,7 @@ function verifyCard() {
           Continue card verification
         </button>
         <RouterLink
-          v-if="payment?.status === 'successful'"
-          to="/my-courses"
-          class="mt-8 block font-semibold text-blue-600"
-        >
-          View my courses
-        </RouterLink>
-        <RouterLink
-          v-else-if="payment && ['failed', 'expired'].includes(payment.status)"
+          v-if="payment?.status === 'expired'"
           :to="{ name: 'payment', query: { courseId: payment.courseId } }"
           class="mt-8 block font-semibold text-blue-600"
         >

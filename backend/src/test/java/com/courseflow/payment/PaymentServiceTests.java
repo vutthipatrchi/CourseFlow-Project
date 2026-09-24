@@ -107,6 +107,26 @@ class PaymentServiceTests {
     }
 
     @Test
+    void promptPayGrantsAccessOnlyAfterTheProviderConfirmsSuccess() {
+        when(gateway.createPromptPayCharge(any(), any(), anyString(), anyLong(), anyString(), any()))
+            .thenAnswer(call -> new ProviderCharge("chrg_test_123", PaymentStatus.PENDING, 355900, "thb",
+                "https://api.omise.co/charges/chrg_test_123/documents/docu_test_123/downloads/QR",
+                null, null, order.id(), call.getArgument(1)));
+
+        PaymentView pending = service.createPromptPayPayment(order.id(), "user_buyer", UUID.randomUUID());
+        assertThat(pending.status()).isEqualTo("pending");
+        assertThat(pending.qrUrl()).isEqualTo("/api/payments/" + pending.paymentId() + "/qr");
+        verify(repository, never()).activateSubscription(any());
+
+        when(gateway.retrieveCharge("chrg_test_123"))
+            .thenReturn(charge(pending.paymentId(), PaymentStatus.SUCCESSFUL, 355900));
+        service.handleWebhook("evnt_test_promptpay_success", "charge.complete", "chrg_test_123");
+
+        assertThat(service.getPayment(pending.paymentId(), "user_buyer").status()).isEqualTo("successful");
+        verify(repository, times(1)).activateSubscription(order);
+    }
+
+    @Test
     void aTimeoutIsRecoverableAndCannotCauseAnotherChargeEvenWithANewKey() {
         when(gateway.createPromptPayCharge(any(), any(), anyString(), anyLong(), anyString(), any()))
             .thenThrow(new PaymentProviderException("timeout"));

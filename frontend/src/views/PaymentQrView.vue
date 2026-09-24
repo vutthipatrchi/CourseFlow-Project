@@ -3,6 +3,8 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
+import PaymentFailureCard from '@/components/payment/PaymentFailureCard.vue'
+import PaymentSuccessCard from '@/components/payment/PaymentSuccessCard.vue'
 import { downloadQr } from '@/api/payments'
 import { usePaymentStatus } from '@/lib/usePaymentStatus'
 import { formatThb } from '@/lib/payment'
@@ -62,10 +64,10 @@ function saveQrImage() {
   <div class="flex min-h-screen flex-col bg-white">
     <CheckoutNavbar />
     <main class="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
-      <section class="flex w-full max-w-[420px] flex-col items-center text-center">
-        <h1 class="text-xl font-medium text-black">
-          {{ payment?.status === 'successful' ? 'Payment successful' : 'Scan QR code' }}
-        </h1>
+      <PaymentSuccessCard v-if="payment?.status === 'successful'" :course-id="payment.courseId" />
+      <PaymentFailureCard v-else-if="payment?.status === 'failed'" :course-id="payment.courseId" />
+      <section v-else class="flex w-full max-w-[420px] flex-col items-center text-center">
+        <h1 class="text-xl font-medium text-black">Scan QR code</h1>
         <p v-if="payment" class="mt-1 text-xs text-gray-600">
           Reference no. {{ payment.reference }}
         </p>
@@ -98,21 +100,15 @@ function saveQrImage() {
             Save QR image
           </button>
         </template>
-        <RouterLink
-          v-if="payment?.status === 'successful'"
-          to="/my-courses"
-          class="mt-8 font-semibold text-blue-600"
-          >View my courses</RouterLink
-        >
         <p
-          v-else-if="payment && payment.status !== 'pending'"
+          v-if="payment && payment.status !== 'pending'"
           role="status"
           class="mt-6 text-sm text-gray-700"
         >
           {{ payment.failureMessage || `Payment status: ${payment.status}` }}
         </p>
         <RouterLink
-          v-if="payment && ['failed', 'expired'].includes(payment.status)"
+          v-if="payment?.status === 'expired'"
           :to="{ name: 'payment', query: { courseId: payment.courseId } }"
           class="mt-6 font-semibold text-blue-600"
           >Try another payment</RouterLink

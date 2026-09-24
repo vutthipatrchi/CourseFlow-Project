@@ -3,7 +3,7 @@
 // Course learning page: sidebar progress/module tree, video + assignment, prev/next nav
 // แก้ไขได้: progress bar calc, play/complete simulation, assignment submit handler
 
-import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
+import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
@@ -21,7 +21,7 @@ import type { Course } from '@/types/course'
 const route = useRoute()
 const router = useRouter()
 
-const course = ref<Course | undefined>(courses.find((item) => item.id === route.params.id))
+const course = ref<Course | undefined>()
 
 const flatSubLessons = computed(() => {
   if (!course.value) return []
@@ -44,7 +44,8 @@ const backendCourseId = computed(() => {
   const match = /^course-(\d+)$/.exec(String(route.params.id ?? ''))
   return match ? Number(match[1]) : null
 })
-const progressLoading = ref(Boolean(backendCourseId.value))
+const progressLoading = ref(true)
+let progressRequest = 0
 
 function applyProgress(progress: CourseProgressView) {
   if (!course.value) return
@@ -67,34 +68,44 @@ function applyProgress(progress: CourseProgressView) {
 }
 
 async function loadProgress() {
-  if (!backendCourseId.value) return
+  const request = ++progressRequest
+  const requestedCourseId = backendCourseId.value
+  progressLoading.value = true
+  progressError.value = ''
+  course.value = undefined
+  if (!requestedCourseId) {
+    progressError.value = 'Invalid course link.'
+    progressLoading.value = false
+    return
+  }
   try {
     const [subscriptions, progress] = await Promise.all([
       getSubscriptions(),
-      getCourseProgress(backendCourseId.value),
+      getCourseProgress(requestedCourseId),
     ])
-    const subscription = subscriptions.find((item) => item.courseId === backendCourseId.value)
-    if (subscription) {
-      const preview = courses.find((item) => item.title === subscription.courseTitle)
-      course.value = {
-        ...(preview ?? courses[0]!),
-        id: `course-${subscription.courseId}`,
-        title: subscription.courseTitle,
-        description:
-          preview?.description ?? 'Continue learning through the lessons in this course.',
-        modules: [],
-      }
+    if (request !== progressRequest) return
+    const subscription = subscriptions.find((item) => item.courseId === requestedCourseId)
+    if (!subscription) throw new Error('This course is not in your courses.')
+    const preview = courses.find((item) => item.title === subscription.courseTitle)
+    course.value = {
+      ...(preview ?? courses[0]!),
+      id: `course-${subscription.courseId}`,
+      title: subscription.courseTitle,
+      description: preview?.description ?? 'Continue learning through the lessons in this course.',
+      modules: [],
     }
     applyProgress(progress)
     progressError.value = ''
   } catch (error) {
-    progressError.value = error instanceof Error ? error.message : 'Unable to load course progress'
+    if (request === progressRequest)
+      progressError.value =
+        error instanceof Error ? error.message : 'Unable to load course progress'
   } finally {
-    progressLoading.value = false
+    if (request === progressRequest) progressLoading.value = false
   }
 }
 
-onMounted(loadProgress)
+watch(backendCourseId, loadProgress, { immediate: true })
 
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(
@@ -172,7 +183,26 @@ const handleAssignmentSubmit = (answer: string) => {
 </script>
 
 <template>
-  <div v-if="course && currentEntry">
+  <div
+    v-if="progressLoading"
+    class="grid min-h-screen place-items-center text-gray-700"
+    role="status"
+  >
+    Loading your course…
+  </div>
+  <div v-else-if="!course || !currentEntry" class="flex min-h-screen flex-col">
+    <AppNavbar />
+    <main class="player-container flex-1 py-10">
+      <p role="alert" class="text-red-700">
+        {{ progressError || 'Course lessons are unavailable.' }}
+      </p>
+      <RouterLink to="/my-courses" class="mt-4 inline-block font-semibold text-blue-600">
+        Back to My Courses
+      </RouterLink>
+    </main>
+    <AppFooter />
+  </div>
+  <div v-else>
     <AppNavbar />
 
     <main class="player-container flex flex-col gap-6 py-10 md:flex-row md:items-start">

@@ -19,6 +19,12 @@ class PaymentRepository {
     private final JdbcTemplate jdbc;
     PaymentRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
+    List<CheckoutCourse> listCheckoutCourses() {
+        return jdbc.query("SELECT id, name, price FROM courseflow.courses ORDER BY id",
+            (rs, row) -> new CheckoutCourse(rs.getLong("id"), rs.getString("name"),
+                rs.getBigDecimal("price")));
+    }
+
     void lockCheckout(String subject, Long courseId) {
         // Serialize creation across tabs and instances, including when there is no order yet.
         jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))",

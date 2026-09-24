@@ -134,13 +134,22 @@ final class OmisePaymentGateway implements PaymentGateway {
     public DownloadedQr downloadQr(String url) {
         URI uri = trustedProviderUri(url);
         try {
-            var response = httpClient.send(HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(15)).GET().build(),
-                HttpResponse.BodyHandlers.ofByteArray());
-            String contentType = response.headers().firstValue("content-type").orElse("").split(";")[0].trim();
-            if (response.statusCode() != 200 || !java.util.Set.of("image/png", "image/svg+xml", "image/jpeg").contains(contentType)) {
-                throw new PaymentProviderException("Unable to download QR image");
+            for (int redirects = 0; redirects <= 3; redirects++) {
+                var response = httpClient.send(HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(15)).GET().build(),
+                    HttpResponse.BodyHandlers.ofByteArray());
+                if (response.statusCode() >= 300 && response.statusCode() < 400 && redirects < 3) {
+                    String location = response.headers().firstValue("location")
+                        .orElseThrow(() -> new PaymentProviderException("QR image redirect is missing a location"));
+                    uri = trustedQrRedirectUri(uri.resolve(location));
+                    continue;
+                }
+                String contentType = response.headers().firstValue("content-type").orElse("").split(";")[0].trim();
+                if (response.statusCode() != 200 || !java.util.Set.of("image/png", "image/svg+xml", "image/jpeg").contains(contentType)) {
+                    throw new PaymentProviderException("Unable to download QR image");
+                }
+                return new DownloadedQr(response.body(), contentType);
             }
-            return new DownloadedQr(response.body(), contentType);
+            throw new PaymentProviderException("Too many QR image redirects");
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new PaymentProviderException("QR download interrupted", error);
@@ -167,6 +176,16 @@ final class OmisePaymentGateway implements PaymentGateway {
         if (!"https".equalsIgnoreCase(uri.getScheme()) || !"api.omise.co".equalsIgnoreCase(uri.getHost())
             || uri.getUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443)) {
             throw new PaymentProviderException("Unexpected provider URL");
+        }
+        return uri;
+    }
+
+    static URI trustedQrRedirectUri(URI uri) {
+        if (!"https".equalsIgnoreCase(uri.getScheme())
+            || !("api.omise.co".equalsIgnoreCase(uri.getHost())
+                || "omise-gateway-production.s3.ap-southeast-1.amazonaws.com".equalsIgnoreCase(uri.getHost()))
+            || uri.getUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443)) {
+            throw new PaymentProviderException("Unexpected QR image redirect");
         }
         return uri;
     }

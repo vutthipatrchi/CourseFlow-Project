@@ -72,7 +72,6 @@ const course = computed(() => courses.find((item) => item.id === route.params.id
         :category="course.category"
         :title="course.title"
         :description="course.description"
-        :price="course.price"
       />
     </main>
     <CtaBanner />

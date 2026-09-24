@@ -37,6 +37,8 @@ class PaymentService {
     boolean providerEnabled() { return gateway.enabled(); }
     String providerPublicKey() { return gateway.publicKey(); }
 
+    List<CheckoutCourse> checkoutCourses() { return repository.listCheckoutCourses(); }
+
     OrderCreated createOrder(String subject, Long courseId, String promotionCode) {
         requireSubject(subject);
         String code = promotionCode == null ? "" : promotionCode.trim().toUpperCase(Locale.ROOT);
