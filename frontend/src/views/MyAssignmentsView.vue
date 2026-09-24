@@ -58,6 +58,11 @@ const filteredAssignments = computed(() => {
   return sortedAssignments.value.filter((assignment) => assignment.status !== 'submitted')
 })
 
+// The course player addresses real courses as course-{id} and sub-lessons as sub-{lesson}-{sub-lesson} positions.
+function openInCourseHref(assignment: MyAssignment): string {
+  return `/courses/course-${assignment.courseId}/learn/sub-${assignment.lessonPosition}-${assignment.subLessonPosition}`
+}
+
 function toCardAssignment(assignment: MyAssignment): Assignment {
   const days = assignment.durationDays
   return {
@@ -170,7 +175,7 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
           :assignment="toCardAssignment(assignment)"
           :course-title="assignment.courseName"
           :lesson-title="`${assignment.lessonName}: ${assignment.subLessonName}`"
-          :open-in-course-href="`/courses/${assignment.courseId}/learn/${assignment.subLessonId}`"
+          :open-in-course-href="openInCourseHref(assignment)"
           @submit="(answer) => handleSubmit(assignment, answer)"
         />
       </section>

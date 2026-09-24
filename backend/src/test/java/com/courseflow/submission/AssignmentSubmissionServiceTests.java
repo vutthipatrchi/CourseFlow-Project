@@ -26,7 +26,7 @@ class AssignmentSubmissionServiceTests {
         new AssignmentSubmissionService(repository, Clock.fixed(NOW, ZoneOffset.UTC));
 
     private MyAssignmentRow row(long id, OffsetDateTime dueAt, String answer) {
-        return new MyAssignmentRow(id, "Question " + id, 1L, "Course", "Lesson", 7L, "Sub-lesson",
+        return new MyAssignmentRow(id, "Question " + id, 1L, "Course", "Lesson", 2, 7L, "Sub-lesson", 3,
             dueAt == null ? null : 2, dueAt, answer, answer == null ? null : NOW_ODT);
     }
 

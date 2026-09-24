@@ -6,8 +6,10 @@ export interface MyAssignment {
   courseId: number
   courseName: string
   lessonName: string
+  lessonPosition: number
   subLessonId: number
   subLessonName: string
+  subLessonPosition: number
   durationDays: number | null
   dueAt: string | null
   status: AssignmentStatus

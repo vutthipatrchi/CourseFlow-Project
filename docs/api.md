@@ -282,8 +282,10 @@ Returns the caller's assignments with their status, newest first.
     "courseId": 1,
     "courseName": "Service Design Essentials",
     "lessonName": "Lesson 1",
+    "lessonPosition": 1,
     "subLessonId": 7,
     "subLessonName": "Sub-lesson 1",
+    "subLessonPosition": 1,
     "durationDays": 2,
     "dueAt": "2026-09-26T10:00:00Z",
     "status": "pending",
@@ -292,6 +294,11 @@ Returns the caller's assignments with their status, newest first.
   }
 ]
 ```
+
+`lessonPosition` and `subLessonPosition` are the `position` of the lesson in its
+course and of the sub-lesson in its lesson, the same values the course progress
+API returns. The course player builds its URLs from them:
+`/courses/course-{courseId}/learn/sub-{lessonPosition}-{subLessonPosition}`.
 
 `dueAt` is the assignment's creation time plus `durationDays`, or `null` when
 the assignment has no `durationDays`. `answer` and `submittedAt` are `null`

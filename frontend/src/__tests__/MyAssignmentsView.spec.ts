@@ -13,8 +13,10 @@ const pending: MyAssignment = {
   courseId: 1,
   courseName: 'Service Design Essentials',
   lessonName: 'Introduction',
+  lessonPosition: 2,
   subLessonId: 7,
   subLessonName: '4 Levels of Service Design',
+  subLessonPosition: 3,
   durationDays: 2,
   dueAt: '2026-09-30T00:00:00Z',
   status: 'pending',
@@ -69,7 +71,7 @@ describe('MyAssignmentsView', () => {
     expect(wrapper.text()).toContain('Submitted')
     expect(wrapper.text()).toContain('Overdue')
     expect(wrapper.text()).toContain('Planning people, infrastructure and communication.')
-    expect(wrapper.find('a[href="/courses/1/learn/7"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/courses/course-1/learn/sub-2-3"]').exists()).toBe(true)
   })
 
   it('shows an empty state when there are no assignments', async () => {

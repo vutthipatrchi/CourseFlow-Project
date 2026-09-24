@@ -6,7 +6,7 @@
 
 Story "As a User, I can view my assignment status" ส่วนของเรา คือ backend API กับหน้า
 My Assignments ทำเสร็จและทดสอบแล้ว (contract อยู่ที่ [api.md](./api.md#my-assignments))
-ยังมี 8 เรื่องค้างอยู่ เป็นงานของ story อื่นหรือต้องให้ทีมตัดสินใจ มีแค่ข้อ 1 (ลำดับการเปิด PR)
+ยังมี 7 เรื่องค้างอยู่ เป็นงานของ story อื่นหรือต้องให้ทีมตัดสินใจ มีแค่ข้อ 1 (ลำดับการเปิด PR)
 ที่เกี่ยวกับการ merge ส่วนข้อที่เหลือไม่บล็อก
 
 ## รายการที่ยังรอ
@@ -16,11 +16,10 @@ My Assignments ทำเสร็จและทดสอบแล้ว (contra
 | 1 | เปิด PR | ตกลงกันว่ารองานที่เกี่ยวข้องจากคนอื่นเข้า `dev` ก่อน (งาน my-courses และ learning progress merge แล้ว) | ก่อนเปิดให้ rebase ทับ `dev` แล้วเช็คว่าเลข migration `V11` ยังว่าง ถ้ามีคนใช้ไปแล้วให้เปลี่ยนเป็นเลขถัดไป (เลข V3 ชนเคยทำให้ต้องรีเซ็ต DB กลางมาแล้ว) | **รอสั่งเปิด** |
 | 2 | Course player ใช้ข้อมูลจริงแค่ส่วน progress | PR #31 เพิ่ม `GET /api/me/courses/{courseId}/progress` และ player ใช้กับ URL แบบ `course-{id}` แต่ข้อมูลคอร์สส่วนที่เหลือยังมาจาก `data/courses.ts` (mock) และ sub-lesson ของคอร์สจริงยังไม่มี assignment | ให้เจ้าของ player ทำต่อ | **รอเจ้าของ player** |
 | 3 | Assignment widget ใต้วิดีโอใน player ยังไม่ต่อ API | `applyProgress` ใน `CoursePlayerView.vue` สร้าง sub-lesson ของคอร์สจริงโดยไม่ใส่ `assignment` | ไม่ต้องเพิ่ม endpoint เรียก `GET /api/me/assignments` แล้วจับคู่ด้วย `subLessonId` (ตรงกับ `id` ของ sub-lesson ใน progress API) ส่งงานด้วย `POST /api/me/assignments/{id}/submissions` | **ทำได้แล้ว รอเจ้าของ player** |
-| 4 | ปุ่ม "Open in Course" เปิดแล้วหน้าว่าง | ลิงก์ของเราใช้ `/courses/{courseId}/learn/{subLessonId}` (id ตัวเลข) แต่ player รับ `/courses/course-{courseId}/learn/sub-{lessonPosition}-{subLessonPosition}` และ API ของเรายังไม่ส่ง position มา | เพิ่ม `lessonPosition` กับ `subLessonPosition` ใน `GET /api/me/assignments` แล้วเปลี่ยนรูปแบบลิงก์ใน `MyAssignmentsView.vue` (อยู่ในส่วนของเรา) | **ทำได้เลย ยังไม่ได้ทำ** |
-| 5 | สถานะ `in-progress` | PR #31 บันทึกแค่ว่าเรียนจบ sub-lesson แล้ว (`completed`) ไม่มีข้อมูลว่าเริ่มเรียนหรือยัง | ต้องตกลงกับทีมว่า `in-progress` หมายถึงอะไร แล้วเพิ่มเงื่อนไขใน `AssignmentSubmissionService.toView` ตอนนี้คืนแค่ `pending` / `overdue` / `submitted` type ฝั่ง frontend รองรับค่า `in-progress` อยู่แล้ว | **รอตัดสินใจ** |
-| 6 | ข้อมูล assignment ซ้ำซ้อน 2 แหล่ง | `data/courses.ts` ยังมี assignment และสถานะ mock ส่งงานในหน้า player ของคอร์ส mock จึงไม่ไปโผล่ใน My Assignments | หายเมื่อทำข้อ 3 และเลิกใช้ mock | **ผลพวงของข้อ 3** |
-| 7 | Navbar สูง 76px แต่ Figma กำหนด 88px | `AppNavbar` เป็น component กลาง กระทบทุกหน้า ไม่ใช่ของ story นี้ | ให้เจ้าของ navbar ตัดสินใจและแก้ทีเดียว | **ยังไม่มีเจ้าของ** |
-| 8 | Figma ของหน้านี้มีจุดที่ไม่สม่ำเสมอ | ช่องกรอกของ Pending สูง 96px แต่ In progress และ Overdue สูง 120px ส่วน badge Submitted และ Overdue ใช้ตัวอักษร 14px แต่ Pending และ In progress ใช้ 16px | เราทำตาม Figma ตรงๆ ทั้งสองจุด ถ้าดีไซเนอร์บอกว่าเป็นความคลาดเคลื่อน ให้แก้ที่ `AssignmentCard.vue` (`h-24` / `h-30` ของช่องกรอก และ `badgeTextSize`) | **ทำตาม Figma แล้ว รอยืนยันกับดีไซเนอร์** |
+| 4 | สถานะ `in-progress` | PR #31 บันทึกแค่ว่าเรียนจบ sub-lesson แล้ว (`completed`) ไม่มีข้อมูลว่าเริ่มเรียนหรือยัง | ต้องตกลงกับทีมว่า `in-progress` หมายถึงอะไร แล้วเพิ่มเงื่อนไขใน `AssignmentSubmissionService.toView` ตอนนี้คืนแค่ `pending` / `overdue` / `submitted` type ฝั่ง frontend รองรับค่า `in-progress` อยู่แล้ว | **รอตัดสินใจ** |
+| 5 | ข้อมูล assignment ซ้ำซ้อน 2 แหล่ง | `data/courses.ts` ยังมี assignment และสถานะ mock ส่งงานในหน้า player ของคอร์ส mock จึงไม่ไปโผล่ใน My Assignments | หายเมื่อทำข้อ 3 และเลิกใช้ mock | **ผลพวงของข้อ 3** |
+| 6 | Navbar สูง 76px แต่ Figma กำหนด 88px | `AppNavbar` เป็น component กลาง กระทบทุกหน้า ไม่ใช่ของ story นี้ | ให้เจ้าของ navbar ตัดสินใจและแก้ทีเดียว | **ยังไม่มีเจ้าของ** |
+| 7 | Figma ของหน้านี้มีจุดที่ไม่สม่ำเสมอ | ช่องกรอกของ Pending สูง 96px แต่ In progress และ Overdue สูง 120px ส่วน badge Submitted และ Overdue ใช้ตัวอักษร 14px แต่ Pending และ In progress ใช้ 16px | เราทำตาม Figma ตรงๆ ทั้งสองจุด ถ้าดีไซเนอร์บอกว่าเป็นความคลาดเคลื่อน ให้แก้ที่ `AssignmentCard.vue` (`h-24` / `h-30` ของช่องกรอก และ `badgeTextSize`) | **ทำตาม Figma แล้ว รอยืนยันกับดีไซเนอร์** |
 
 ## เรื่องที่จบแล้ว
 
@@ -32,6 +31,9 @@ My Assignments ทำเสร็จและทดสอบแล้ว (contra
   ถ้าไม่มีสิทธิ์จะได้ `404` เหมือน assignment ที่ไม่มีอยู่จริง
 - **หน้า My Assignments:** ต่อ API แทนข้อมูล mock ใช้ `AssignmentCard` ของเพื่อนเหมือนเดิม
   แล้วปรับส่วนหัวและการ์ดให้ตรง Figma วัดขนาดจริงในเบราว์เซอร์ที่ความกว้าง 1440px
+- **ปุ่ม "Open in Course":** ลิงก์ตรงกับ URL ของ player (`/courses/course-{courseId}/learn/sub-{lessonPosition}-{subLessonPosition}`)
+  API ส่ง `lessonPosition` กับ `subLessonPosition` มาให้ ซึ่งเป็นค่าเดียวกับที่ progress API ของ PR #31 ใช้
+  เปิดหน้า player ได้ต่อเมื่อบัญชีนั้นมี subscription ของคอร์สนั้น
 - **ฟอร์ม admin:** เพิ่มช่อง "Due in (days, optional)" หน้า admin ใน Figma ไม่มีช่องนี้
   แต่จำเป็นต่อการคำนวณ deadline
 - **บั๊กที่แก้ระหว่างทำ:** `duration_days` เป็น `INT` แต่โค้ดแคสต์เป็น `Long` ทำให้หน้า admin

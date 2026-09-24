@@ -17,7 +17,8 @@ public class AssignmentSubmissionRepository {
     // this is the single point that keeps "my assignments" scoped to courses the student paid for.
     private static final String SELECT_MY_ASSIGNMENTS = """
         SELECT a.id, a.description, c.id AS course_id, c.name AS course_name,
-               l.name AS lesson_name, sl.id AS sub_lesson_id, sl.name AS sub_lesson_name,
+               l.name AS lesson_name, l.position AS lesson_position,
+               sl.id AS sub_lesson_id, sl.name AS sub_lesson_name, sl.position AS sub_lesson_position,
                a.duration_days,
                a.created_at + (a.duration_days * INTERVAL '1 day') AS due_at,
                sub.answer, sub.submitted_at
@@ -96,8 +97,10 @@ public class AssignmentSubmissionRepository {
             rs.getLong("course_id"),
             rs.getString("course_name"),
             rs.getString("lesson_name"),
+            rs.getInt("lesson_position"),
             rs.getLong("sub_lesson_id"),
             rs.getString("sub_lesson_name"),
+            rs.getInt("sub_lesson_position"),
             rs.getObject("duration_days", Integer.class),
             rs.getObject("due_at", OffsetDateTime.class),
             rs.getString("answer"),

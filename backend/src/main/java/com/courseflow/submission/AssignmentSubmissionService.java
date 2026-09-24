@@ -50,7 +50,7 @@ public class AssignmentSubmissionService {
             status = "pending";
         }
         return new MyAssignmentView(row.id(), row.description(), row.courseId(), row.courseName(),
-            row.lessonName(), row.subLessonId(), row.subLessonName(), row.durationDays(), row.dueAt(), status,
-            row.answer(), row.submittedAt());
+            row.lessonName(), row.lessonPosition(), row.subLessonId(), row.subLessonName(), row.subLessonPosition(),
+            row.durationDays(), row.dueAt(), status, row.answer(), row.submittedAt());
     }
 }

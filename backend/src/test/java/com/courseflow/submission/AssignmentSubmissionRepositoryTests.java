@@ -23,18 +23,20 @@ class AssignmentSubmissionRepositoryTests {
     @Autowired
     private JdbcClient jdbc;
 
-    private record Target(long courseId, long subLessonId) {
+    private record Target(long courseId, long subLessonId, int lessonPosition, int subLessonPosition) {
     }
 
     private Target anySubLesson() {
         return jdbc.sql("""
-                SELECT c.id AS course_id, sl.id AS sub_lesson_id
+                SELECT c.id AS course_id, sl.id AS sub_lesson_id,
+                       l.position AS lesson_position, sl.position AS sub_lesson_position
                 FROM courseflow.sub_lessons sl
                 JOIN courseflow.course_lessons l ON l.id = sl.lesson_id
                 JOIN courseflow.courses c ON c.id = l.course_id
                 ORDER BY sl.id LIMIT 1
                 """)
-            .query((rs, row) -> new Target(rs.getLong("course_id"), rs.getLong("sub_lesson_id")))
+            .query((rs, row) -> new Target(rs.getLong("course_id"), rs.getLong("sub_lesson_id"),
+                rs.getInt("lesson_position"), rs.getInt("sub_lesson_position")))
             .single();
     }
 
@@ -86,6 +88,8 @@ class AssignmentSubmissionRepositoryTests {
 
         assertThat(mine.courseId()).isEqualTo(target.courseId());
         assertThat(mine.subLessonId()).isEqualTo(target.subLessonId());
+        assertThat(mine.lessonPosition()).isEqualTo(target.lessonPosition());
+        assertThat(mine.subLessonPosition()).isEqualTo(target.subLessonPosition());
         assertThat(mine.durationDays()).isEqualTo(3);
         assertThat(mine.dueAt()).isNotNull();
         assertThat(mine.answer()).isNull();
