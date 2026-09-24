@@ -72,7 +72,8 @@ const badgeLabel: Record<Assignment['status'], string> = {
       </span>
     </div>
 
-    <!-- My Assignments context: textarea/answer + actions share one bordered card -->
+    <!-- My Assignments context: textarea/answer + actions share one bordered card.
+         Figma draws the Pending field at 96px and the other editable states at 120px. -->
     <template v-if="openInCourseHref">
       <template v-if="isEditable">
         <div class="flex items-end gap-6 rounded-lg bg-white p-6 ring-1 ring-[#D6D9E4] ring-inset">
@@ -82,7 +83,8 @@ const badgeLabel: Record<Assignment['status'], string> = {
               v-model="draftAnswer"
               rows="4"
               placeholder="Answer..."
-              class="h-30 w-full resize-none rounded-lg py-3 pr-4 pl-3 text-base text-black ring-1 ring-[#D6D9E4] outline-none ring-inset placeholder:text-[#9AA1B9] focus:ring-blue-500"
+              :class="assignment.status === 'pending' ? 'h-24' : 'h-30'"
+              class="w-full resize-none rounded-lg py-3 pr-4 pl-3 text-base text-black ring-1 ring-[#D6D9E4] outline-none ring-inset placeholder:text-[#9AA1B9] focus:ring-blue-500"
             ></textarea>
           </div>
           <div class="flex w-34.25 shrink-0 flex-col items-stretch gap-4">

@@ -20,7 +20,7 @@ My Assignments ทำเสร็จและทดสอบแล้ว (contra
 | 5 | สถานะ `in-progress` | backend ไม่มีข้อมูลว่าผู้เรียนเริ่มเรียน sub-lesson นั้นแล้วหรือยัง (learning progress) | เมื่อมี API progress ให้เพิ่มเงื่อนไขใน `AssignmentSubmissionService.toView` ตอนนี้คืนแค่ `pending` / `overdue` / `submitted` type ฝั่ง frontend รองรับค่า `in-progress` อยู่แล้ว | **รอการ์ด learning progress** |
 | 6 | ข้อมูล assignment ซ้ำซ้อน 2 แหล่ง | `data/courses.ts` ยังมี assignment และสถานะ mock ส่งงานในหน้า player จึงไม่ไปโผล่ใน My Assignments | หายเองเมื่อทำข้อ 2 และ 3 | **ผลพวงของข้อ 2** |
 | 7 | Navbar สูง 76px แต่ Figma กำหนด 88px | `AppNavbar` เป็น component กลาง กระทบทุกหน้า ไม่ใช่ของ story นี้ | ให้เจ้าของ navbar ตัดสินใจและแก้ทีเดียว | **ยังไม่มีเจ้าของ** |
-| 8 | Figma ของหน้านี้ไม่สม่ำเสมอ | ช่องกรอกของ Pending สูง 96px แต่ In progress และ Overdue สูง 120px ส่วน badge Submitted และ Overdue ใช้ตัวอักษร 14px แต่ Pending และ In progress ใช้ 16px | เราใช้ช่องกรอก 120px ทุกสถานะ และทำขนาด badge ตาม Figma ถ้าดีไซเนอร์ยืนยันว่า Pending ต้อง 96px ให้แก้ `h-30` ใน `AssignmentCard.vue` | **รอยืนยัน design** |
+| 8 | Figma ของหน้านี้มีจุดที่ไม่สม่ำเสมอ | ช่องกรอกของ Pending สูง 96px แต่ In progress และ Overdue สูง 120px ส่วน badge Submitted และ Overdue ใช้ตัวอักษร 14px แต่ Pending และ In progress ใช้ 16px | เราทำตาม Figma ตรงๆ ทั้งสองจุด ถ้าดีไซเนอร์บอกว่าเป็นความคลาดเคลื่อน ให้แก้ที่ `AssignmentCard.vue` (`h-24` / `h-30` ของช่องกรอก และ `badgeTextSize`) | **ทำตาม Figma แล้ว รอยืนยันกับดีไซเนอร์** |
 
 ## เรื่องที่จบแล้ว
 
