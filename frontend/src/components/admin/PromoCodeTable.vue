@@ -42,17 +42,17 @@ function formatDate(value: string): string {
   <div class="overflow-x-auto overflow-hidden rounded-lg bg-white">
     <table class="w-full table-fixed text-left">
       <colgroup>
-        <col class="w-[18%]" />
-        <col class="w-[19%]" />
+        <col class="w-[13%]" />
+        <col class="w-[22%]" />
         <col class="w-[16%]" />
         <col class="w-[20%]" />
-        <col class="w-[19%]" />
-        <col class="w-[10%]" />
+        <col class="w-[20%]" />
+        <col class="w-[7%]" />
       </colgroup>
       <thead class="h-[41px] bg-[#E4E6ED] text-sm text-[#424C6B]">
         <tr>
           <th class="truncate px-4 py-2.5 font-normal">Promo code</th>
-          <th class="truncate px-4 py-2.5 font-normal">Minimum purchase (THB)</th>
+          <th class="truncate px-4 py-2.5 text-center font-normal">Minimum purchase (THB)</th>
           <th class="truncate px-4 py-2.5 font-normal">Discount type</th>
           <th class="truncate px-4 py-2.5 font-normal">Courses Included</th>
           <th class="truncate px-4 py-2.5 font-normal">Created date</th>
@@ -75,7 +75,9 @@ function formatDate(value: string): string {
           class="border-b border-[#F1F2F6] text-base text-[#000000]"
         >
           <td class="truncate px-4 py-8">{{ promoCode.code }}</td>
-          <td class="truncate px-4 py-8">{{ formatMinimumPurchase(promoCode.minimumPurchase) }}</td>
+          <td class="truncate px-4 py-8 text-center">
+            {{ formatMinimumPurchase(promoCode.minimumPurchase) }}
+          </td>
           <td class="truncate px-4 py-8">{{ discountTypeLabel(promoCode.discountType) }}</td>
           <td class="truncate px-4 py-8" :title="coursesIncludedLabel(promoCode.courseIds)">
             {{ coursesIncludedLabel(promoCode.courseIds) }}
