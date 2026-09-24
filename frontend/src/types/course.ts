@@ -1,6 +1,6 @@
 export type SubLessonProgress = 'not-started' | 'in-progress' | 'completed'
 
-export type AssignmentStatus = 'pending' | 'submitted'
+export type AssignmentStatus = 'pending' | 'in-progress' | 'submitted' | 'overdue'
 
 export type Assignment = {
   id: string
