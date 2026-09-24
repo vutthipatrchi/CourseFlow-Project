@@ -6,25 +6,24 @@
 
 Story "As a User, I can view my assignment status" ส่วนของเรา คือ backend API กับหน้า
 My Assignments ทำเสร็จและทดสอบแล้ว (contract อยู่ที่ [api.md](./api.md#my-assignments))
-ยังมี 6 เรื่องค้างอยู่ เป็นงานของ story อื่นหรือต้องให้ทีมตัดสินใจ มีแค่ข้อ 1 (ลำดับการเปิด PR)
+ยังมี 5 เรื่องค้างอยู่ เป็นงานของ story อื่นหรือต้องให้ทีมตัดสินใจ มีแค่ข้อ 1 (ลำดับการเปิด PR)
 ที่เกี่ยวกับการ merge ส่วนข้อที่เหลือไม่บล็อก
 
 ## รายการที่ยังรอ
 
 | # | Item | Blocked on | Resume when / how | Status |
 | --- | --- | --- | --- | --- |
-| 1 | เปิด PR | ตกลงกันว่ารองานที่เกี่ยวข้องจากคนอื่นเข้า `dev` ก่อน (งาน my-courses และ learning progress merge แล้ว) | ก่อนเปิดให้ rebase ทับ `dev` แล้วเช็คว่าเลข migration `V11` ยังว่าง ถ้ามีคนใช้ไปแล้วให้เปลี่ยนเป็นเลขถัดไป (เลข V3 ชนเคยทำให้ต้องรีเซ็ต DB กลางมาแล้ว) | **รอสั่งเปิด** |
-| 2 | Course player ยังอ่านเนื้อหาคอร์สจาก mock เป็นส่วนใหญ่ | PR #31 เพิ่ม `GET /api/me/courses/{courseId}/progress` และ player ใช้กับ URL แบบ `course-{id}` แต่ข้อมูลคอร์สส่วนที่เหลือ (รูป, คำอธิบาย) ยังมาจาก `data/courses.ts` ส่วน assignment ของคอร์สจริงต่อ API แล้ว | ให้เจ้าของ player ทำต่อ | **รอเจ้าของ player** |
+| 1 | เปิด PR | ตกลงกันว่ารองานที่เกี่ยวข้องจากคนอื่นเข้า `dev` ก่อน (งาน my-courses และ learning progress merge แล้ว) | ก่อนเปิดให้ rebase ทับ `dev` แล้วเช็คว่าเลข migration `V12` ยังว่าง ถ้ามีคนใช้ไปแล้วให้เปลี่ยนเป็นเลขถัดไป (เลข V3 ชนเคยทำให้ต้องรีเซ็ต DB กลางมาแล้ว) | **รอสั่งเปิด** |
+| 2 | Course player ยังหยิบรูปและคำอธิบายคอร์สจาก mock | หลัง PR #33 หน้า player แสดงเฉพาะคอร์สจริงที่มี subscription (เนื้อหาและ progress มาจาก `GET /api/me/courses/{courseId}/progress`) แต่รูปกับคำอธิบายคอร์สยังหยิบจาก `data/courses.ts` (mock) โดยจับคู่ด้วยชื่อคอร์ส | ให้เจ้าของ player ทำต่อ | **รอเจ้าของ player** |
 | 3 | สถานะ `in-progress` | PR #31 บันทึกแค่ว่าเรียนจบ sub-lesson แล้ว (`completed`) ไม่มีข้อมูลว่าเริ่มเรียนหรือยัง | ต้องตกลงกับทีมว่า `in-progress` หมายถึงอะไร แล้วเพิ่มเงื่อนไขใน `AssignmentSubmissionService.toView` ตอนนี้คืนแค่ `pending` / `overdue` / `submitted` type ฝั่ง frontend รองรับค่า `in-progress` อยู่แล้ว | **รอตัดสินใจ** |
-| 4 | ข้อมูล assignment ของคอร์ส mock ยังแยกอยู่ | `data/courses.ts` ยังมี assignment และสถานะ mock ส่งงานในหน้า player ของคอร์ส mock (id แบบ `course-N` ที่ไม่มี subscription) จึงไม่ไปโผล่ใน My Assignments คอร์สจริงใช้ API ทั้งสองหน้าแล้ว | หายเมื่อเลิกใช้ข้อมูล mock ของคอร์ส | **ผลพวงของข้อ 2** |
-| 5 | Navbar สูง 76px แต่ Figma กำหนด 88px | `AppNavbar` เป็น component กลาง กระทบทุกหน้า ไม่ใช่ของ story นี้ | ให้เจ้าของ navbar ตัดสินใจและแก้ทีเดียว | **ยังไม่มีเจ้าของ** |
-| 6 | Figma ของหน้านี้มีจุดที่ไม่สม่ำเสมอ | ช่องกรอกของ Pending สูง 96px แต่ In progress และ Overdue สูง 120px ส่วน badge Submitted และ Overdue ใช้ตัวอักษร 14px แต่ Pending และ In progress ใช้ 16px | เราทำตาม Figma ตรงๆ ทั้งสองจุด ถ้าดีไซเนอร์บอกว่าเป็นความคลาดเคลื่อน ให้แก้ที่ `AssignmentCard.vue` (`h-24` / `h-30` ของช่องกรอก และ `badgeTextSize`) | **ทำตาม Figma แล้ว รอยืนยันกับดีไซเนอร์** |
+| 4 | Navbar สูง 76px แต่ Figma กำหนด 88px | `AppNavbar` เป็น component กลาง กระทบทุกหน้า ไม่ใช่ของ story นี้ | ให้เจ้าของ navbar ตัดสินใจและแก้ทีเดียว | **ยังไม่มีเจ้าของ** |
+| 5 | Figma ของหน้านี้มีจุดที่ไม่สม่ำเสมอ | ช่องกรอกของ Pending สูง 96px แต่ In progress และ Overdue สูง 120px ส่วน badge Submitted และ Overdue ใช้ตัวอักษร 14px แต่ Pending และ In progress ใช้ 16px | เราทำตาม Figma ตรงๆ ทั้งสองจุด ถ้าดีไซเนอร์บอกว่าเป็นความคลาดเคลื่อน ให้แก้ที่ `AssignmentCard.vue` (`h-24` / `h-30` ของช่องกรอก และ `badgeTextSize`) | **ทำตาม Figma แล้ว รอยืนยันกับดีไซเนอร์** |
 
 ## เรื่องที่จบแล้ว
 
-- **Schema (V11):** เพิ่ม `assignments.duration_days` (ไม่บังคับ ถ้าเป็น `NULL` จะไม่มีวัน overdue)
+- **Schema (V12):** เพิ่ม `assignments.duration_days` (ไม่บังคับ ถ้าเป็น `NULL` จะไม่มีวัน overdue)
   และตาราง `assignment_submissions` (1 คนต่อ 1 assignment ส่งซ้ำแล้วทับคำตอบเดิม)
-  ใช้เลข V11 เพราะ `dev` ใช้ V9 กับ profile fields และ V10 กับ learning progress (PR #31) ไปแล้ว
+  ใช้เลข V12 เพราะ `dev` ใช้ V9 กับ profile fields, V10 กับ learning progress (PR #31) และ V11 กับคอร์สหน้าร้าน (PR #33) ไปแล้ว
 - **API:** `GET /api/me/assignments` และ `POST /api/me/assignments/{id}/submissions`
   เห็นและส่งได้เฉพาะ assignment ของคอร์สที่ผู้เรียนมี subscription แบบ active
   ถ้าไม่มีสิทธิ์จะได้ `404` เหมือน assignment ที่ไม่มีอยู่จริง
@@ -35,7 +34,8 @@ My Assignments ทำเสร็จและทดสอบแล้ว (contra
   เปิดหน้า player ได้ต่อเมื่อบัญชีนั้นมี subscription ของคอร์สนั้น
 - **Widget assignment ในหน้า course player:** คอร์สจริงโหลด assignment จาก `GET /api/me/assignments` แล้วจับคู่กับ sub-lesson
   ด้วย `subLessonId` (ตรงกับ `id` ใน progress API) กดส่งแล้วบันทึกผ่าน `POST /api/me/assignments/{id}/submissions`
-  และการ์ดแสดงสถานะตามที่ server ตอบ คอร์ส mock ยังทำงานแบบเดิม
+  และการ์ดแสดงสถานะตามที่ server ตอบ (หลัง PR #33 player แสดงเฉพาะคอร์สจริง
+  ข้อมูล assignment mock ใน `data/courses.ts` จึงไม่ถูกแสดงอีก)
 - **การ์ด Submitted ในหน้า player ตรง Figma:** คำตอบเป็นข้อความเปล่าขึ้นบรรทัดใหม่ได้ (เดิมอยู่ในกล่องสีขาวและบรรทัดยุบรวมกัน)
   badge Submitted และ Overdue 14px วัดในเบราว์เซอร์ได้ Pending 739×314 และ Submitted 739×261 ตรง Figma
 - **แก้บั๊กของ `AssignmentCard`:** เมื่อสถานะเปลี่ยนเป็น Submitted ช่องกรอกยังค้าง (ค่า `isEditable` คำนวณครั้งเดียว) ตอนนี้เป็น computed
