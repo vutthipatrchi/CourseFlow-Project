@@ -11,7 +11,6 @@ export interface MyAssignment {
   subLessonName: string
   subLessonPosition: number
   durationDays: number | null
-  dueAt: string | null
   status: AssignmentStatus
   answer: string | null
   submittedAt: string | null

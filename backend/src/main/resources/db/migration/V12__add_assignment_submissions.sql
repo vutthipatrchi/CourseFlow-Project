@@ -1,4 +1,5 @@
--- Optional deadline: NULL means the assignment never becomes overdue.
+-- Optional suggested number of days to finish the assignment. It is only a hint: courses are
+-- self-paced, so nothing is enforced and an assignment never becomes overdue.
 ALTER TABLE courseflow.assignments
     ADD COLUMN duration_days INT CHECK (duration_days IS NULL OR duration_days > 0);
 

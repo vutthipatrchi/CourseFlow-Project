@@ -34,7 +34,7 @@ class AssignmentSubmissionControllerTests {
 
     private MyAssignmentView view(String status, String answer) {
         return new MyAssignmentView(5L, "What is service design?", 1L, "Service Design Essentials",
-            "Lesson 1", 2, 7L, "Sub-lesson 1", 3, 2, OffsetDateTime.now().plusDays(2), status, answer,
+            "Lesson 1", 2, 7L, "Sub-lesson 1", 3, 2, status, answer,
             answer == null ? null : OffsetDateTime.now());
     }
 

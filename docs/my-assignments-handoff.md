@@ -15,16 +15,15 @@ My Assignments ทำเสร็จและทดสอบแล้ว (contra
 | # | Item | Blocked on | Resume when / how | Status |
 | --- | --- | --- | --- | --- |
 | 1 | Course player ยังหยิบรูปและคำอธิบายคอร์สจาก mock | หลัง PR #33 หน้า player แสดงเฉพาะคอร์สจริงที่มี subscription (เนื้อหาและ progress มาจาก `GET /api/me/courses/{courseId}/progress`) แต่รูปกับคำอธิบายคอร์สยังหยิบจาก `data/courses.ts` (mock) โดยจับคู่ด้วยชื่อคอร์ส | ให้เจ้าของ player ทำต่อ | **รอเจ้าของ player** |
-| 2 | สถานะ `in-progress` | PR #31 บันทึกแค่ว่าเรียนจบ sub-lesson แล้ว (`completed`) ไม่มีข้อมูลว่าเริ่มเรียนหรือยัง | ต้องตกลงกับทีมว่า `in-progress` หมายถึงอะไร แล้วเพิ่มเงื่อนไขใน `AssignmentSubmissionService.toView` ตอนนี้คืนแค่ `pending` / `overdue` / `submitted` type ฝั่ง frontend รองรับค่า `in-progress` อยู่แล้ว | **รอตัดสินใจ** |
+| 2 | สถานะ `in-progress` | PR #31 บันทึกแค่ว่าเรียนจบ sub-lesson แล้ว (`completed`) ไม่มีข้อมูลว่าเริ่มเรียนหรือยัง | ต้องตกลงกับทีมว่า `in-progress` หมายถึงอะไร แล้วเพิ่มเงื่อนไขใน `AssignmentSubmissionService.toView` ตอนนี้คืนแค่ `pending` / `submitted` type ฝั่ง frontend รองรับค่า `in-progress` อยู่แล้ว | **รอตัดสินใจ** |
 | 3 | Navbar สูง 76px แต่ Figma กำหนด 88px | `AppNavbar` เป็น component กลาง กระทบทุกหน้า ไม่ใช่ของ story นี้ | ให้เจ้าของ navbar ตัดสินใจและแก้ทีเดียว | **ยังไม่มีเจ้าของ** |
 | 4 | Figma ของหน้านี้มีจุดที่ไม่สม่ำเสมอ | ช่องกรอกของ Pending สูง 96px แต่ In progress และ Overdue สูง 120px ส่วน badge Submitted และ Overdue ใช้ตัวอักษร 14px แต่ Pending และ In progress ใช้ 16px | เราทำตาม Figma ตรงๆ ทั้งสองจุด ถ้าดีไซเนอร์บอกว่าเป็นความคลาดเคลื่อน ให้แก้ที่ `AssignmentCard.vue` (`h-24` / `h-30` ของช่องกรอก และ `badgeTextSize`) | **ทำตาม Figma แล้ว รอยืนยันกับดีไซเนอร์** |
 
 ## เรื่องที่จบแล้ว
 
-- **Schema (V12):** เพิ่ม `assignments.duration_days` (ไม่บังคับ ถ้าเป็น `NULL` จะไม่มีวัน overdue)
-  กำหนดส่งนับจากเวลาที่หลังกว่าระหว่างวันที่สร้าง assignment กับวันที่นักเรียน subscribe บวก N × 24 ชั่วโมงพอดี
-  (ไม่ใช่สิ้นวัน) นักเรียนที่ซื้อคอร์สทีหลังจึงได้เวลาเต็ม และ assignment ที่ admin เพิ่มทีหลังก็ไม่เลยกำหนดทันที
-  หลังหมดเขตยังส่งและแก้คำตอบได้ ไม่มีป้ายส่งช้า และการ์ดไม่แสดงวันที่หมดเขตจริง (Figma ไม่มี)
+- **Schema (V12):** เพิ่ม `assignments.duration_days` (ไม่บังคับ) เป็นแค่คำแนะนำว่าควรทำภายในกี่วัน
+  แสดงบนการ์ดเป็น "Assign within N days" ไม่มีการบังคับและไม่มีสถานะ Overdue เพราะคอร์สเรียนตามจังหวะตัวเอง
+  ไม่มีกำหนดส่ง สถานะที่ API คืนมีแค่ `pending` กับ `submitted` (การ์ดของเพื่อนยังรองรับการวาด Overdue ไว้ ไม่ได้แตะ)
   และตาราง `assignment_submissions` (1 คนต่อ 1 assignment ส่งซ้ำแล้วทับคำตอบเดิม)
   ใช้เลข V12 เพราะ `dev` ใช้ V9 กับ profile fields, V10 กับ learning progress (PR #31) และ V11 กับคอร์สหน้าร้าน (PR #33) ไปแล้ว
 - **API:** `GET /api/me/assignments` และ `POST /api/me/assignments/{id}/submissions`
@@ -42,8 +41,8 @@ My Assignments ทำเสร็จและทดสอบแล้ว (contra
 - **การ์ด Submitted ในหน้า player ตรง Figma:** คำตอบเป็นข้อความเปล่าขึ้นบรรทัดใหม่ได้ (เดิมอยู่ในกล่องสีขาวและบรรทัดยุบรวมกัน)
   badge Submitted และ Overdue 14px วัดในเบราว์เซอร์ได้ Pending 739×314 และ Submitted 739×261 ตรง Figma
 - **แก้บั๊กของ `AssignmentCard`:** เมื่อสถานะเปลี่ยนเป็น Submitted ช่องกรอกยังค้าง (ค่า `isEditable` คำนวณครั้งเดียว) ตอนนี้เป็น computed
-- **ฟอร์ม admin:** เพิ่มช่อง "Due in (days, optional)" หน้า admin ใน Figma ไม่มีช่องนี้
-  แต่จำเป็นต่อการคำนวณ deadline
+- **ฟอร์ม admin:** เพิ่มช่อง "Assign within (days, optional)" หน้า admin ใน Figma ไม่มีช่องนี้
+  แต่ใช้แสดงข้อความแนะนำ "Assign within N days" บนการ์ด (ไม่บังคับ)
 - **บั๊กที่แก้ระหว่างทำ:** `duration_days` เป็น `INT` แต่โค้ดแคสต์เป็น `Long` ทำให้หน้า admin
   พังเมื่อกรอกจำนวนวัน ตอนนี้ใช้ `Integer` และมี test ที่ใช้ค่าจริง
 

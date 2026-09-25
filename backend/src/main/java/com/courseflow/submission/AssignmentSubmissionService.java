@@ -1,10 +1,7 @@
 package com.courseflow.submission;
 
 import com.courseflow.common.web.ResourceNotFoundException;
-import java.time.Clock;
-import java.time.OffsetDateTime;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -13,21 +10,13 @@ import org.springframework.stereotype.Service;
 public class AssignmentSubmissionService {
 
     private final AssignmentSubmissionRepository repository;
-    private final Clock clock;
 
-    @Autowired
     public AssignmentSubmissionService(AssignmentSubmissionRepository repository) {
-        this(repository, Clock.systemUTC());
-    }
-
-    AssignmentSubmissionService(AssignmentSubmissionRepository repository, Clock clock) {
         this.repository = repository;
-        this.clock = clock;
     }
 
     public List<MyAssignmentView> findMyAssignments(String subject) {
-        OffsetDateTime now = OffsetDateTime.now(clock);
-        return repository.findMyAssignments(subject).stream().map(row -> toView(row, now)).toList();
+        return repository.findMyAssignments(subject).stream().map(this::toView).toList();
     }
 
     public MyAssignmentView submit(long assignmentId, String subject, String answer) {
@@ -36,21 +25,15 @@ public class AssignmentSubmissionService {
         }
         repository.upsertSubmission(assignmentId, subject, answer);
         return repository.findMyAssignmentById(assignmentId, subject)
-            .map(row -> toView(row, OffsetDateTime.now(clock)))
+            .map(this::toView)
             .orElseThrow(() -> new ResourceNotFoundException("Assignment " + assignmentId + " not found"));
     }
 
-    private MyAssignmentView toView(MyAssignmentRow row, OffsetDateTime now) {
-        String status;
-        if (row.answer() != null) {
-            status = "submitted";
-        } else if (row.dueAt() != null && row.dueAt().isBefore(now)) {
-            status = "overdue";
-        } else {
-            status = "pending";
-        }
+    // Courses are self-paced, so there is no deadline and no "overdue": an assignment is pending until answered.
+    private MyAssignmentView toView(MyAssignmentRow row) {
+        String status = row.answer() != null ? "submitted" : "pending";
         return new MyAssignmentView(row.id(), row.description(), row.courseId(), row.courseName(),
             row.lessonName(), row.lessonPosition(), row.subLessonId(), row.subLessonName(), row.subLessonPosition(),
-            row.durationDays(), row.dueAt(), status, row.answer(), row.submittedAt());
+            row.durationDays(), status, row.answer(), row.submittedAt());
     }
 }

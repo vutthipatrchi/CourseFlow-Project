@@ -157,7 +157,7 @@ function handleSubmit() {
     </div>
 
     <div class="flex max-w-110 flex-col gap-1">
-      <label for="duration-days" class="text-base text-black">Due in (days, optional)</label>
+      <label for="duration-days" class="text-base text-black">Assign within (days, optional)</label>
       <input
         id="duration-days"
         v-model.number="durationDays"

@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.courseflow.common.web.ResourceNotFoundException;
-import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -22,51 +21,41 @@ class AssignmentSubmissionServiceTests {
     private static final OffsetDateTime NOW_ODT = OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC);
 
     private final AssignmentSubmissionRepository repository = mock(AssignmentSubmissionRepository.class);
-    private final AssignmentSubmissionService service =
-        new AssignmentSubmissionService(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+    private final AssignmentSubmissionService service = new AssignmentSubmissionService(repository);
 
-    private MyAssignmentRow row(long id, OffsetDateTime dueAt, String answer) {
+    private MyAssignmentRow row(long id, Integer durationDays, String answer) {
         return new MyAssignmentRow(id, "Question " + id, 1L, "Course", "Lesson", 2, 7L, "Sub-lesson", 3,
-            dueAt == null ? null : 2, dueAt, answer, answer == null ? null : NOW_ODT);
+            durationDays, answer, answer == null ? null : NOW_ODT);
     }
 
     @Test
-    void statusIsSubmittedWhenAnAnswerExistsEvenIfPastDue() {
-        when(repository.findMyAssignments("u1"))
-            .thenReturn(List.of(row(1, NOW_ODT.minusDays(3), "my answer")));
+    void statusIsSubmittedWhenAnAnswerExists() {
+        when(repository.findMyAssignments("u1")).thenReturn(List.of(row(1, 2, "my answer")));
 
         assertThat(service.findMyAssignments("u1")).singleElement()
             .satisfies(view -> assertThat(view.status()).isEqualTo("submitted"));
     }
 
     @Test
-    void statusIsOverdueWhenUnsubmittedAndPastDue() {
-        when(repository.findMyAssignments("u1"))
-            .thenReturn(List.of(row(1, NOW_ODT.minusMinutes(1), null)));
-
-        assertThat(service.findMyAssignments("u1").get(0).status()).isEqualTo("overdue");
-    }
-
-    @Test
-    void statusIsPendingWhenUnsubmittedAndNotYetDue() {
-        when(repository.findMyAssignments("u1"))
-            .thenReturn(List.of(row(1, NOW_ODT.plusDays(1), null)));
+    void statusIsPendingUntilAnAnswerExistsNoMatterHowLongAgoTheAssignmentWasSet() {
+        when(repository.findMyAssignments("u1")).thenReturn(List.of(row(1, 2, null)));
 
         assertThat(service.findMyAssignments("u1").get(0).status()).isEqualTo("pending");
     }
 
     @Test
-    void statusIsPendingWhenThereIsNoDeadline() {
-        when(repository.findMyAssignments("u1")).thenReturn(List.of(row(1, null, null)));
+    void durationIsPassedThroughAsAHintAndIsOptional() {
+        when(repository.findMyAssignments("u1")).thenReturn(List.of(row(1, 2, null), row(2, null, null)));
 
-        assertThat(service.findMyAssignments("u1").get(0).status()).isEqualTo("pending");
+        assertThat(service.findMyAssignments("u1")).extracting(MyAssignmentView::durationDays)
+            .containsExactly(2, null);
     }
 
     @Test
     void submitSavesTheAnswerAndReturnsTheRefreshedAssignment() {
         when(repository.isSubscribedToAssignment(5L, "u1")).thenReturn(true);
         when(repository.findMyAssignmentById(5L, "u1"))
-            .thenReturn(Optional.of(row(5, NOW_ODT.plusDays(1), "done")));
+            .thenReturn(Optional.of(row(5, 2, "done")));
 
         MyAssignmentView view = service.submit(5L, "u1", "done");
 

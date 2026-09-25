@@ -189,10 +189,10 @@ Request body:
 }
 ```
 
-`durationDays` is optional: the number of days students have to submit the
-assignment, counted from the later of the assignment's creation and the
-student's subscription (see `dueAt` under "My assignments"). Omit it or send
-`null` for no deadline. When present it must be a positive integer.
+`durationDays` is optional: the number of days suggested to finish the
+assignment. It is only a hint (students see "Assign within N days"): courses are
+self-paced, so nothing is enforced and an assignment never becomes overdue. Omit
+it or send `null` for no hint. When present it must be a positive integer.
 
 Responses:
 
@@ -288,7 +288,6 @@ Returns the caller's assignments with their status, newest first.
     "subLessonName": "Sub-lesson 1",
     "subLessonPosition": 1,
     "durationDays": 2,
-    "dueAt": "2026-09-26T10:00:00Z",
     "status": "pending",
     "answer": null,
     "submittedAt": null
@@ -301,26 +300,22 @@ course and of the sub-lesson in its lesson, the same values the course progress
 API returns. The course player builds its URLs from them:
 `/courses/course-{courseId}/learn/sub-{lessonPosition}-{subLessonPosition}`.
 
-`dueAt` is `durationDays` after the later of the assignment's creation time and
-the time the caller's subscription was activated, or `null` when the assignment
-has no `durationDays`. A student who subscribes after the assignment was created
-therefore gets the full duration from their subscription, and an assignment
-added after the student subscribed counts from its creation. The deadline is
-exact (`durationDays` x 24 hours), not the end of a day, and is not stored:
-`status` changes the next time the list is requested. `answer` and `submittedAt` are `null`
-until the caller submits. `submittedAt` is the time of the first submission and
-does not change when the answer is overwritten.
+`durationDays` is the admin's suggested number of days, or `null`. It is a hint
+for the UI, not a deadline. `answer` and `submittedAt` are `null` until the
+caller submits. `submittedAt` is the time of the first submission and does not
+change when the answer is overwritten.
 
 `status` is derived on every request:
 
 | status | when |
 | --- | --- |
-| `submitted` | the caller has saved an answer (even if it was saved after `dueAt`; late answers are accepted and can be overwritten, and nothing marks them as late) |
-| `overdue` | no answer yet and `dueAt` has passed |
-| `pending` | no answer yet and `dueAt` has not passed, or there is no `dueAt` |
+| `submitted` | the caller has saved an answer (it can still be overwritten) |
+| `pending` | no answer yet |
 
-`in-progress` is not returned. It would need learning-progress data (whether
-the student has started the sub-lesson), which the backend does not store yet.
+`overdue` is never returned: courses are self-paced, so there is no deadline.
+The card component still knows how to draw it. `in-progress` is not returned
+either. It would need learning-progress data (whether the student has started
+the sub-lesson), which the backend does not store yet.
 
 ### POST /api/me/assignments/{id}/submissions
 

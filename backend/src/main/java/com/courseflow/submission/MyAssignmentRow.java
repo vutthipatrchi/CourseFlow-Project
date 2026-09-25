@@ -13,7 +13,6 @@ record MyAssignmentRow(
     String subLessonName,
     int subLessonPosition,
     Integer durationDays,
-    OffsetDateTime dueAt,
     String answer,
     OffsetDateTime submittedAt
 ) {

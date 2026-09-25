@@ -13,7 +13,6 @@ public record MyAssignmentView(
     String subLessonName,
     int subLessonPosition,
     Integer durationDays,
-    OffsetDateTime dueAt,
     String status,
     String answer,
     OffsetDateTime submittedAt

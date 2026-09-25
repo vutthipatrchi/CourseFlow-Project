@@ -142,7 +142,6 @@ const assignment: MyAssignment = {
   subLessonName: '4 Levels of Service Design',
   subLessonPosition: 1,
   durationDays: 2,
-  dueAt: '2026-09-30T00:00:00Z',
   status: 'pending',
   answer: null,
   submittedAt: null,
