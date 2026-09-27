@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import LearningProgressView from '../views/LearningProgressView.vue'
 
-async function mountView() {
+async function mountView(path = '/learn/course-1') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -14,7 +14,7 @@ async function mountView() {
       },
     ],
   })
-  await router.push('/learn/course-1')
+  await router.push(path)
   await router.isReady()
 
   return mount(LearningProgressView, {
@@ -38,6 +38,17 @@ describe('learning progress', () => {
     expect(wrapper.text()).not.toContain('"videoUrl"')
     expect(wrapper.get('h2').text()).toBe('4 Levels of Service Design in an Organization')
     expect(wrapper.text()).toContain('Pending')
+  })
+
+  it('opens the course and lesson selected from the course list', async () => {
+    const software = await mountView('/learn/course-2')
+    expect(software.text()).toContain('Software Developer')
+    expect(software.get('h2').text()).toBe('Git Basics for Beginners')
+    expect(software.text()).toContain('Programming Fundamentals')
+
+    const scoped = await mountView('/learn/course-1?lesson=sub-1-7')
+    expect(scoped.text()).toContain('Service Design Essentials')
+    expect(scoped.get('h2').text()).toBe('Scope of Service Design')
   })
 
   it('moves to the next lesson', async () => {

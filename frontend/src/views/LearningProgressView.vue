@@ -32,14 +32,22 @@ const lessons = computed<LessonItem[]>(() => {
   )
 })
 
-const currentId = ref(
-  lessons.value.find((lesson) => lesson.progress === 'in-progress')?.id ??
-    lessons.value[0]?.id ??
-    '',
-)
-const openModuleIds = ref<string[]>([
-  lessons.value.find((lesson) => lesson.id === currentId.value)?.moduleId ?? 'module-1',
-])
+function requestedLessonId() {
+  const requested = route.query.lesson
+  return typeof requested === 'string' ? requested : ''
+}
+
+function startingLesson() {
+  const requested = requestedLessonId()
+  return (
+    lessons.value.find((lesson) => lesson.id === requested) ??
+    lessons.value.find((lesson) => lesson.progress === 'in-progress') ??
+    lessons.value[0]
+  )
+}
+
+const currentId = ref(startingLesson()?.id ?? '')
+const openModuleIds = ref<string[]>([startingLesson()?.moduleId ?? 'module-1'])
 const draftAnswer = ref('')
 const submittedAnswers = ref<Record<string, string>>({})
 
@@ -62,6 +70,20 @@ const completedIds = ref<string[]>(readCompletedIds())
 watch(completedIds, (ids) => {
   localStorage.setItem(progressStorageKey(), JSON.stringify(ids))
 })
+
+watch(
+  () => `${course.value?.id ?? ''}::${requestedLessonId()}`,
+  (next, previous) => {
+    if (previous === undefined) return
+    const [nextCourseId] = next.split('::')
+    const [previousCourseId] = previous.split('::')
+    if (nextCourseId !== previousCourseId) completedIds.value = readCompletedIds()
+    const start = startingLesson()
+    currentId.value = start?.id ?? ''
+    openModuleIds.value = [start?.moduleId ?? 'module-1']
+    draftAnswer.value = ''
+  },
+)
 
 function lessonProgress(lesson: LessonItem): SubLessonProgress {
   if (lesson.progress === 'completed' || completedIds.value.includes(lesson.id)) return 'completed'

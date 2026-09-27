@@ -39,13 +39,15 @@ const course = computed(() => courses.find((item) => item.id === route.params.id
             :alt="course.title"
             class="aspect-739/460 w-full rounded-lg bg-gray-100 object-cover"
           />
-          <div
+          <RouterLink
+            :to="{ name: 'learning-progress', params: { courseId: course.id } }"
+            :aria-label="`Start learning ${course.title}`"
             class="absolute top-1/2 left-1/2 flex h-26 w-26 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/50"
           >
             <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8 5v14l11-7z" />
             </svg>
-          </div>
+          </RouterLink>
         </div>
         <div class="flex flex-col gap-6">
           <h1 class="text-4xl leading-tight font-medium tracking-[-0.02em] text-black">
@@ -64,6 +66,7 @@ const course = computed(() => courses.find((item) => item.id === route.params.id
               :module="module"
               :index="index"
               :default-open="index === 0"
+              :course-id="course.id"
             />
           </div>
         </div>

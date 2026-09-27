@@ -90,6 +90,7 @@ const filteredCourses = computed(() => {
           :image-url="course.imageUrl"
           :lesson-count="course.lessonCount"
           :hour-count="course.hourCount"
+          :to="{ name: 'learning-progress', params: { courseId: course.id } }"
         />
       </section>
       <p v-else class="pb-20 text-base text-[#646D89]">No courses match your search.</p>
