@@ -3,7 +3,7 @@
 // Single collapsible module row: number, title, arrow toggle, sub-lesson list
 // แก้ไขได้: default open state, arrow icon, sub-lesson list layout, progress icon
 
-import { ref } from 'vue'
+import { ref, useId } from 'vue'
 import type { Module } from '@/types/course'
 
 type Props = {
@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), { defaultOpen: false, interacti
 defineEmits<{ select: [subLessonId: string] }>()
 
 const isOpen = ref(props.defaultOpen)
+const contentId = useId()
 
 const toggle = () => {
   isOpen.value = !isOpen.value
@@ -29,6 +30,8 @@ const toggle = () => {
   <div class="border-b border-[#D6D9E4] py-6">
     <button
       type="button"
+      :aria-expanded="isOpen"
+      :aria-controls="contentId"
       class="flex w-full cursor-pointer items-start gap-6 rounded-lg text-left transition-colors duration-200 hover:bg-gray-50 active:scale-[0.99]"
       @click="toggle"
     >
@@ -48,10 +51,14 @@ const toggle = () => {
       </svg>
     </button>
     <div
+      :id="contentId"
       class="grid transition-[grid-template-rows] duration-300 ease-in-out"
       :class="isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
     >
-      <ul class="flex min-h-0 flex-col gap-2 overflow-hidden px-10 pt-2 text-base text-[#646D89]">
+      <ul
+        v-if="isOpen"
+        class="flex min-h-0 flex-col gap-2 overflow-hidden px-2 pt-2 text-base text-[#646D89] sm:px-10"
+      >
         <li v-for="subLesson in module.subLessons" :key="subLesson.id">
           <button
             v-if="interactive"
@@ -83,7 +90,9 @@ const toggle = () => {
             </svg>
             <span class="flex-1">{{ subLesson.title }}</span>
           </button>
-          <span v-else>{{ subLesson.title }}</span>
+          <slot v-else name="lesson" :sub-lesson="subLesson">
+            <span>{{ subLesson.title }}</span>
+          </slot>
         </li>
       </ul>
     </div>

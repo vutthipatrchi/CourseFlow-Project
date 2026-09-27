@@ -10,6 +10,7 @@ import {
   type SubscriptionView,
 } from '@/api/payments'
 import { courses } from '@/data/courses'
+import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
 
 const route = useRoute()
 const courseId = computed(() => Number(route.params.courseId))
@@ -22,7 +23,10 @@ const coursePreview = computed(() =>
   courses.find((course) => course.title === subscription.value?.courseTitle),
 )
 const modules = computed(() => {
-  const lessons = progress.value?.subLessons ?? []
+  const lessons = (progress.value?.subLessons ?? []).map((lesson) => ({
+    ...lesson,
+    ...getDemoLessonLabels(lesson, getDemoLesson(subscription.value?.courseTitle ?? '', lesson)),
+  }))
   const positions = [...new Set(lessons.map((lesson) => lesson.lessonPosition))]
   return positions.map((position) => {
     const subLessons = lessons.filter((lesson) => lesson.lessonPosition === position)
