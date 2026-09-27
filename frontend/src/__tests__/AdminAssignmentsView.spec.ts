@@ -39,6 +39,7 @@ const sampleAssignment: Assignment = {
   courseName: 'Web Development',
   lessonName: 'Vue Basics',
   subLessonName: 'Components',
+  durationDays: null,
   createdAt: '2026-01-01T00:00:00Z',
 }
 

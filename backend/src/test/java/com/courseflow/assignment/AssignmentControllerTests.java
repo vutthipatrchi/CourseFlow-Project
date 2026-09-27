@@ -44,8 +44,8 @@ class AssignmentControllerTests {
 
     @Test
     void createsAssignmentAndReturns201WithLocation() throws Exception {
-        var request = new CreateAssignmentRequest(1L, "Write a short essay");
-        var response = new AssignmentResponse(10L, 1L, "Write a short essay", OffsetDateTime.now());
+        var request = new CreateAssignmentRequest(1L, "Write a short essay", null);
+        var response = new AssignmentResponse(10L, 1L, "Write a short essay", null, OffsetDateTime.now());
         when(assignmentService.create(any())).thenReturn(response);
 
         mvc.perform(post("/api/admin/assignments")
@@ -59,7 +59,7 @@ class AssignmentControllerTests {
 
     @Test
     void rejectsBlankDescription() throws Exception {
-        var request = new CreateAssignmentRequest(1L, "");
+        var request = new CreateAssignmentRequest(1L, "", null);
 
         mvc.perform(post("/api/admin/assignments")
                 .with(jwt())
@@ -74,7 +74,7 @@ class AssignmentControllerTests {
         var summary = new AssignmentSummary(
             1L, "Write a short essay",
             "Introduction to Web Development", "HTML Basics", "Structuring a Page",
-            OffsetDateTime.now());
+            null, OffsetDateTime.now());
         when(assignmentService.findAll()).thenReturn(List.of(summary));
 
         mvc.perform(get("/api/admin/assignments").with(jwt()))
@@ -85,7 +85,7 @@ class AssignmentControllerTests {
 
     @Test
     void returnsOneAssignmentById() throws Exception {
-        var response = new AssignmentResponse(10L, 1L, "Write a short essay", OffsetDateTime.now());
+        var response = new AssignmentResponse(10L, 1L, "Write a short essay", null, OffsetDateTime.now());
         when(assignmentService.findById(10L)).thenReturn(response);
 
         mvc.perform(get("/api/admin/assignments/10").with(jwt()))
@@ -104,8 +104,8 @@ class AssignmentControllerTests {
 
     @Test
     void updatesAssignmentAndReturnsIt() throws Exception {
-        var request = new CreateAssignmentRequest(1L, "Updated description");
-        var response = new AssignmentResponse(10L, 1L, "Updated description", OffsetDateTime.now());
+        var request = new CreateAssignmentRequest(1L, "Updated description", null);
+        var response = new AssignmentResponse(10L, 1L, "Updated description", null, OffsetDateTime.now());
         when(assignmentService.update(eq(10L), any())).thenReturn(response);
 
         mvc.perform(put("/api/admin/assignments/10")
@@ -118,7 +118,7 @@ class AssignmentControllerTests {
 
     @Test
     void returns404WhenUpdatingMissingAssignment() throws Exception {
-        var request = new CreateAssignmentRequest(1L, "Updated description");
+        var request = new CreateAssignmentRequest(1L, "Updated description", null);
         when(assignmentService.update(eq(999L), any()))
             .thenThrow(new ResourceNotFoundException("Assignment 999 not found"));
 

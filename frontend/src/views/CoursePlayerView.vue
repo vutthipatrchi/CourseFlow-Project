@@ -16,7 +16,11 @@ import {
   getSubscriptions,
   type CourseProgressView,
 } from '@/api/payments'
+import { listMyAssignments, submitAssignment } from '@/api/submissions'
+import { toApiError } from '@/api/client'
+import { toCardAssignment } from '@/lib/assignmentCard'
 import type { Course } from '@/types/course'
+import type { MyAssignment } from '@/types/submission'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,21 +51,31 @@ const backendCourseId = computed(() => {
 const progressLoading = ref(true)
 let progressRequest = 0
 
+// The caller's assignments for this course, keyed by sub-lesson id (the id the progress API returns).
+const myAssignments = ref<Record<number, MyAssignment>>({})
+const assignmentError = ref('')
+let lastProgress: CourseProgressView | null = null
+
 function applyProgress(progress: CourseProgressView) {
   if (!course.value) return
+  lastProgress = progress
   const lessonPositions = [...new Set(progress.subLessons.map((item) => item.lessonPosition))]
   course.value.modules = lessonPositions.map((lessonPosition) => {
     const items = progress.subLessons.filter((item) => item.lessonPosition === lessonPosition)
     return {
       id: `module-${lessonPosition}`,
       title: items[0]?.lessonTitle ?? `Lesson ${lessonPosition}`,
-      subLessons: items.map((item) => ({
-        id: `sub-${item.lessonPosition}-${item.subLessonPosition}`,
-        title: item.title,
-        description: '',
-        videoUrl: item.videoUrl ?? '',
-        progress: item.completed ? ('completed' as const) : ('not-started' as const),
-      })),
+      subLessons: items.map((item) => {
+        const assignment = myAssignments.value[item.id]
+        return {
+          id: `sub-${item.lessonPosition}-${item.subLessonPosition}`,
+          title: item.title,
+          description: '',
+          videoUrl: item.videoUrl ?? '',
+          progress: item.completed ? ('completed' as const) : ('not-started' as const),
+          assignment: assignment ? toCardAssignment(assignment) : undefined,
+        }
+      }),
     }
   })
   progressPercent.value = progress.progressPercent
@@ -72,6 +86,7 @@ async function loadProgress() {
   const requestedCourseId = backendCourseId.value
   progressLoading.value = true
   progressError.value = ''
+  assignmentError.value = ''
   course.value = undefined
   if (!requestedCourseId) {
     progressError.value = 'Invalid course link.'
@@ -79,11 +94,20 @@ async function loadProgress() {
     return
   }
   try {
-    const [subscriptions, progress] = await Promise.all([
+    const [subscriptions, progress, assignments] = await Promise.all([
       getSubscriptions(),
       getCourseProgress(requestedCourseId),
+      listMyAssignments().catch((error) => {
+        if (request === progressRequest) assignmentError.value = toApiError(error).message
+        return [] as MyAssignment[]
+      }),
     ])
     if (request !== progressRequest) return
+    myAssignments.value = Object.fromEntries(
+      assignments
+        .filter((assignment) => assignment.courseId === requestedCourseId)
+        .map((assignment) => [assignment.subLessonId, assignment]),
+    )
     const subscription = subscriptions.find((item) => item.courseId === requestedCourseId)
     if (!subscription) throw new Error('This course is not in your courses.')
     const preview = courses.find((item) => item.title === subscription.courseTitle)
@@ -170,11 +194,25 @@ const handlePlayClick = async () => {
   }
 }
 
-const handleAssignmentSubmit = (answer: string) => {
+const handleAssignmentSubmit = async (answer: string) => {
   const assignment = currentEntry.value?.subLesson.assignment
   if (!assignment) return
-  assignment.status = 'submitted'
-  assignment.answer = answer
+  const apiId = Number(assignment.id)
+  if (backendCourseId.value && Number.isInteger(apiId)) {
+    // Real course: the answer is saved through the API and the card shows what the server returns.
+    try {
+      const saved = await submitAssignment(apiId, answer)
+      myAssignments.value = { ...myAssignments.value, [saved.subLessonId]: saved }
+      if (lastProgress) applyProgress(lastProgress)
+      assignmentError.value = ''
+    } catch (error) {
+      assignmentError.value = toApiError(error).message
+      return
+    }
+  } else {
+    assignment.status = 'submitted'
+    assignment.answer = answer
+  }
   showSubmitToast.value = true
   setTimeout(() => {
     showSubmitToast.value = false
@@ -217,6 +255,13 @@ const handleAssignmentSubmit = (answer: string) => {
       <div class="min-w-0 flex-1 flex flex-col gap-6">
         <p v-if="progressError" role="alert" class="rounded-lg bg-red-50 p-4 text-sm text-red-700">
           {{ progressError }}
+        </p>
+        <p
+          v-if="assignmentError"
+          role="alert"
+          class="rounded-lg bg-red-50 p-4 text-sm text-red-700"
+        >
+          {{ assignmentError }}
         </p>
         <Transition
           name="fade"

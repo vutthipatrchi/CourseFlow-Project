@@ -184,9 +184,15 @@ Request body:
 ```json
 {
   "subLessonId": 1,
-  "description": "Write a short essay"
+  "description": "Write a short essay",
+  "durationDays": 3
 }
 ```
+
+`durationDays` is optional: the number of days suggested to finish the
+assignment. It is only a hint (students see "Assign within N days"): courses are
+self-paced, so nothing is enforced and an assignment never becomes overdue. Omit
+it or send `null` for no hint. When present it must be a positive integer.
 
 Responses:
 
@@ -197,6 +203,7 @@ Responses:
     "id": 10,
     "subLessonId": 1,
     "description": "Write a short essay",
+    "durationDays": 3,
     "createdAt": "2026-09-16T10:00:00Z"
   }
   ```
@@ -229,6 +236,7 @@ first.
     "courseName": "Service Design Essentials",
     "lessonName": "Lesson 1",
     "subLessonName": "Sub-lesson 1",
+    "durationDays": 3,
     "createdAt": "2026-09-16T10:00:00Z"
   }
 ]
@@ -242,14 +250,101 @@ when `id` does not exist.
 
 ### PUT /api/admin/assignments/{id}
 
-Updates an assignment's sub-lesson and description. Same request body and
-validation as `POST`, same success response shape. `404 Not Found` when
+Updates an assignment's sub-lesson, description and deadline. Same request
+body and validation as `POST` (send `"durationDays": null` to remove the
+deadline), same success response shape. `404 Not Found` when
 either `id` or the request's `subLessonId` does not exist.
 
 ### DELETE /api/admin/assignments/{id}
 
 Deletes an assignment. `204 No Content` on success, `404 Not Found` when
 `id` does not exist.
+
+## My assignments
+
+Student-facing endpoints for the "My Assignments" page. They require the
+`local` (or another database-backed) profile and a valid Clerk-issued bearer
+token; the token's subject identifies the student.
+
+Only assignments of courses the caller has an **active subscription** for are
+returned or accepted (`subscriptions.status = 'active'`, matched to the caller
+through `orders.customer_subject`). A signed-in user with no subscription gets
+an empty list.
+
+### GET /api/me/assignments
+
+Returns the caller's assignments with their status, newest first.
+
+```json
+[
+  {
+    "id": 10,
+    "description": "What are the 4 elements of service design?",
+    "courseId": 1,
+    "courseName": "Service Design Essentials",
+    "lessonName": "Lesson 1",
+    "lessonPosition": 1,
+    "subLessonId": 7,
+    "subLessonName": "Sub-lesson 1",
+    "subLessonPosition": 1,
+    "durationDays": 2,
+    "status": "pending",
+    "answer": null,
+    "submittedAt": null
+  }
+]
+```
+
+`lessonPosition` and `subLessonPosition` are the `position` of the lesson in its
+course and of the sub-lesson in its lesson, the same values the course progress
+API returns. The course player builds its URLs from them:
+`/courses/course-{courseId}/learn/sub-{lessonPosition}-{subLessonPosition}`.
+
+`durationDays` is the admin's suggested number of days, or `null`. It is a hint
+for the UI, not a deadline. `answer` and `submittedAt` are `null` until the
+caller submits. `submittedAt` is the time of the first submission and does not
+change when the answer is overwritten.
+
+`status` is derived on every request:
+
+| status | when |
+| --- | --- |
+| `submitted` | the caller has saved an answer (it can still be overwritten) |
+| `pending` | no answer yet |
+
+`overdue` is never returned: courses are self-paced, so there is no deadline.
+The card component still knows how to draw it. `in-progress` is not returned
+either. It would need learning-progress data (whether the student has started
+the sub-lesson), which the backend does not store yet.
+
+### POST /api/me/assignments/{id}/submissions
+
+Saves the caller's answer. Submitting again overwrites the previous answer.
+
+Request body:
+
+```json
+{ "answer": "People, process, products and partners" }
+```
+
+`answer` must not be blank and is limited to 4000 characters.
+
+Responses:
+
+- `200 OK` with the refreshed assignment, same shape as a list item above with
+  `"status": "submitted"`.
+- `400 Bad Request` when validation fails:
+
+  ```json
+  {
+    "message": "Validation failed",
+    "fieldErrors": { "answer": "must not be blank" }
+  }
+  ```
+
+- `404 Not Found` when the assignment does not exist **or** belongs to a course
+  the caller is not subscribed to. The two cases are intentionally
+  indistinguishable.
 
 ## Admin promo codes
 

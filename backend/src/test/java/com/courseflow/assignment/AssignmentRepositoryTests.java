@@ -23,7 +23,7 @@ class AssignmentRepositoryTests {
     @Test
     void insertsAndReadsBackAssignmentWithContext() {
         Long subLessonId = subLessonOptionRepository.findAll().get(0).subLessonId();
-        var request = new CreateAssignmentRequest(subLessonId, "Repository round-trip test");
+        var request = new CreateAssignmentRequest(subLessonId, "Repository round-trip test", null);
 
         AssignmentResponse inserted = assignmentRepository.insert(request);
 
@@ -36,12 +36,30 @@ class AssignmentRepositoryTests {
     }
 
     @Test
+    void storesAndReadsBackDurationDays() {
+        Long subLessonId = subLessonOptionRepository.findAll().get(0).subLessonId();
+
+        AssignmentResponse inserted = assignmentRepository.insert(
+            new CreateAssignmentRequest(subLessonId, "Has a deadline", 3));
+
+        assertThat(inserted.durationDays()).isEqualTo(3);
+        assertThat(assignmentRepository.findById(inserted.id()).orElseThrow().durationDays()).isEqualTo(3);
+        assertThat(assignmentRepository.findAllWithContext().stream()
+            .filter(summary -> summary.id().equals(inserted.id()))
+            .findFirst().orElseThrow().durationDays()).isEqualTo(3);
+
+        var cleared = assignmentRepository.update(
+            inserted.id(), new CreateAssignmentRequest(subLessonId, "Has a deadline", null));
+        assertThat(cleared.orElseThrow().durationDays()).isNull();
+    }
+
+    @Test
     void updatesAssignmentDescription() {
         Long subLessonId = subLessonOptionRepository.findAll().get(0).subLessonId();
-        var inserted = assignmentRepository.insert(new CreateAssignmentRequest(subLessonId, "Before update"));
+        var inserted = assignmentRepository.insert(new CreateAssignmentRequest(subLessonId, "Before update", null));
 
         var updated = assignmentRepository.update(
-            inserted.id(), new CreateAssignmentRequest(subLessonId, "After update"));
+            inserted.id(), new CreateAssignmentRequest(subLessonId, "After update", null));
 
         assertThat(updated).isPresent();
         assertThat(updated.get().description()).isEqualTo("After update");
@@ -51,7 +69,7 @@ class AssignmentRepositoryTests {
 
     @Test
     void updatingAMissingAssignmentReturnsEmpty() {
-        var result = assignmentRepository.update(-1L, new CreateAssignmentRequest(1L, "No such row"));
+        var result = assignmentRepository.update(-1L, new CreateAssignmentRequest(1L, "No such row", null));
 
         assertThat(result).isEmpty();
     }
@@ -59,7 +77,7 @@ class AssignmentRepositoryTests {
     @Test
     void deletesAssignmentSoItNoLongerReadsBack() {
         Long subLessonId = subLessonOptionRepository.findAll().get(0).subLessonId();
-        var inserted = assignmentRepository.insert(new CreateAssignmentRequest(subLessonId, "To be deleted"));
+        var inserted = assignmentRepository.insert(new CreateAssignmentRequest(subLessonId, "To be deleted", null));
 
         boolean deleted = assignmentRepository.deleteById(inserted.id());
 
