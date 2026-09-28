@@ -13,16 +13,46 @@ import LessonReading from '@/components/course/LessonReading.vue'
 import LessonSample from '@/components/course/LessonSample.vue'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
 import { courses } from '@/data/courses'
+import { getPublicDemoContent } from '@/api/demoContent'
+import { createDemoModules } from '@/data/demoLessons'
+import type { Module } from '@/types/course'
 import { DEMO_VIDEO_LABEL, DEMO_VIDEO_URL } from '@/data/demoVideo'
 
 const route = useRoute()
 
 const course = computed(() => courses.find((item) => item.id === route.params.id))
-const sampleLesson = computed(() => course.value?.modules[0]?.subLessons[0]?.demoLesson)
+const previewModules = ref<Module[]>([])
+const previewLoading = ref(false)
+const previewError = ref('')
+const sampleLesson = computed(() => previewModules.value[0]?.subLessons[0]?.demoLesson)
 const videoFailed = ref(false)
-watch(course, () => {
-  videoFailed.value = false
-})
+let previewRequest = 0
+
+async function loadPreview() {
+  const request = ++previewRequest
+  const title = course.value?.title
+  previewModules.value = []
+  previewError.value = ''
+  if (!title) return
+  previewLoading.value = true
+  try {
+    const rows = await getPublicDemoContent(title)
+    if (request === previewRequest) previewModules.value = createDemoModules(rows)
+  } catch {
+    if (request === previewRequest) previewError.value = 'ไม่สามารถโหลดบทเรียนตัวอย่างได้'
+  } finally {
+    if (request === previewRequest) previewLoading.value = false
+  }
+}
+
+watch(
+  course,
+  () => {
+    videoFailed.value = false
+    void loadPreview()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -79,11 +109,19 @@ watch(course, () => {
             Module Samples
           </h2>
           <p class="text-base text-[#646D89]">
-            เลือก Module แล้วกด “ดูตัวอย่างบทเรียน” เพื่ออ่านเนื้อหาจำลองและลองเล่นคลิปทดสอบ
+            ดูหัวข้อทั้งหมด และเปิดอ่านบทเรียนตัวอย่างฟรีในหัวข้อแรก
           </p>
+          <p v-if="previewLoading" role="status">กำลังโหลดบทเรียนตัวอย่าง…</p>
+          <div v-else-if="previewError" role="alert">
+            <p>{{ previewError }}</p>
+            <button type="button" class="text-blue-600 underline" @click="loadPreview">
+              ลองอีกครั้ง
+            </button>
+          </div>
+          <p v-else-if="!previewModules.length">ยังไม่มีบทเรียนตัวอย่าง</p>
           <div class="flex flex-col">
             <ModuleAccordion
-              v-for="(module, index) in course.modules"
+              v-for="(module, index) in previewModules"
               :key="`${course.id}-${module.id}`"
               :module="module"
               :index="index"

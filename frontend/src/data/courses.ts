@@ -2,7 +2,6 @@
 import serviceDesignImage from '@/assets/admin/courses/service-design.jpg'
 import softwareDeveloperImage from '@/assets/admin/courses/software-developer.jpg'
 import uxUiDesignImage from '@/assets/admin/courses/ux-ui-design.jpg'
-import { createDemoModules } from './demoLessons'
 
 const courseTemplates = [
   {
@@ -50,6 +49,6 @@ export const courses: Course[] = Array.from({ length: 12 }, (_, index) => {
     lessonCount: 6,
     hourCount: 6,
     price: 3559,
-    modules: createDemoModules(template.title),
+    modules: [],
   }
 })

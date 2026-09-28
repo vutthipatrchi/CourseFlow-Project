@@ -10,7 +10,9 @@ import AppFooter from '@/components/landing/AppFooter.vue'
 import CoursePlayerSidebar from '@/components/course/CoursePlayerSidebar.vue'
 import AssignmentCard from '@/components/course/AssignmentCard.vue'
 import LessonReading from '@/components/course/LessonReading.vue'
+import AuthorizedVideo from '@/components/course/AuthorizedVideo.vue'
 import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
+import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
 import { DEMO_VIDEO_LABEL, getLessonVideo } from '@/data/demoVideo'
 import { courses } from '@/data/courses'
 import {
@@ -77,6 +79,8 @@ let progressRequest = 0
 // The caller's assignments for this course, keyed by sub-lesson id (the id the progress API returns).
 const myAssignments = ref<Record<number, MyAssignment>>({})
 const assignmentError = ref('')
+const demoContent = ref<DemoContentRow[]>([])
+const demoContentError = ref('')
 let lastProgress: CourseProgressView | null = null
 
 function applyProgress(progress: CourseProgressView) {
@@ -88,11 +92,11 @@ function applyProgress(progress: CourseProgressView) {
     return {
       id: `module-${lessonPosition}`,
       title: items[0]
-        ? getDemoLessonLabels(items[0], getDemoLesson(course.value!.title, items[0])).lessonTitle
+        ? getDemoLessonLabels(items[0], getDemoLesson(demoContent.value, items[0])).lessonTitle
         : `Lesson ${lessonPosition}`,
       subLessons: items.map((item) => {
         const assignment = myAssignments.value[item.id]
-        const demoLesson = getDemoLesson(course.value!.title, item)
+        const demoLesson = getDemoLesson(demoContent.value, item)
         return {
           id: `sub-${item.lessonPosition}-${item.subLessonPosition}`,
           title: getDemoLessonLabels(item, demoLesson).title,
@@ -114,6 +118,8 @@ async function loadProgress() {
   progressLoading.value = true
   progressError.value = ''
   assignmentError.value = ''
+  demoContentError.value = ''
+  demoContent.value = []
   course.value = undefined
   if (!requestedCourseId) {
     progressError.value = 'Invalid course link.'
@@ -137,6 +143,11 @@ async function loadProgress() {
     )
     const subscription = subscriptions.find((item) => item.courseId === requestedCourseId)
     if (!subscription) throw new Error('This course is not in your courses.')
+    demoContent.value = await getEnrolledDemoContent(requestedCourseId).catch((error) => {
+      if (request === progressRequest) demoContentError.value = toApiError(error).message
+      return [] as DemoContentRow[]
+    })
+    if (request !== progressRequest) return
     const preview = courses.find((item) => item.title === subscription.courseTitle)
     course.value = {
       ...(preview ?? courses[0]!),
@@ -304,6 +315,14 @@ const handleAssignmentSubmit = async (answer: string) => {
         >
           {{ assignmentError }}
         </p>
+        <p
+          v-if="demoContentError"
+          role="alert"
+          class="rounded-lg bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          ไม่สามารถโหลดเนื้อหาบทเรียนได้: {{ demoContentError }}
+          <button type="button" class="ml-2 underline" @click="loadProgress">ลองอีกครั้ง</button>
+        </p>
         <Transition
           name="fade"
           mode="out-in"
@@ -316,7 +335,7 @@ const handleAssignmentSubmit = async (answer: string) => {
             <h1 class="text-4xl leading-tight font-medium tracking-[-0.02em] text-black">
               {{ currentEntry.subLesson.title }}
             </h1>
-            <video
+            <AuthorizedVideo
               v-if="playableVideo"
               :key="playableVideo"
               :src="playableVideo"

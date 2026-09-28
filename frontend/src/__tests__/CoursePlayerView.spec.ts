@@ -5,6 +5,9 @@ import CoursePlayerView from '../views/CoursePlayerView.vue'
 import type { CourseProgressView, SubscriptionView } from '@/api/payments'
 import type { MyAssignment } from '@/types/submission'
 import { DEMO_VIDEO_URL, DEMO_VIDEO_LABEL } from '@/data/demoVideo'
+import { demoContentFixtures } from './demoContentFixtures'
+import type { DemoContentRow } from '@/api/demoContent'
+import { getEnrolledDemoContent } from '@/api/demoContent'
 
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
@@ -25,6 +28,15 @@ const submissionMocks = vi.hoisted(() => ({
   submitAssignment: vi.fn<(id: number, answer: string) => Promise<MyAssignment>>(),
 }))
 vi.mock('@/api/submissions', () => submissionMocks)
+vi.mock('@/api/uploads', () => ({
+  isProtectedVideoUrl: (source: string) => source.includes('/api/uploads/videos/'),
+  authorizeVideoPlayback: vi.fn<(source: string) => Promise<void>>(async () => {}),
+}))
+vi.mock('@/api/demoContent', () => ({
+  getEnrolledDemoContent: vi.fn<(courseId: number) => Promise<DemoContentRow[]>>(async (courseId) =>
+    demoContentFixtures(courseId === 9 ? 'Software Developer' : 'Service Design Essentials'),
+  ),
+}))
 
 const progress: CourseProgressView = {
   courseId: 9,
@@ -64,7 +76,7 @@ beforeEach(() => {
   mocks.getCourseProgress.mockResolvedValue(structuredClone(progress))
 })
 
-async function mountPlayer() {
+async function mountPlayer(path = '/courses/course-9/learn/sub-1-1') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -76,7 +88,7 @@ async function mountPlayer() {
       },
     ],
   })
-  await router.push('/courses/course-9/learn/sub-1-1')
+  await router.push(path)
   await router.isReady()
   const wrapper = mount(CoursePlayerView, {
     global: {
@@ -88,6 +100,75 @@ async function mountPlayer() {
 }
 
 describe('purchased course player', () => {
+  it('does not substitute local readings when the content API fails', async () => {
+    vi.mocked(getEnrolledDemoContent).mockRejectedValueOnce(new Error('Content service unavailable'))
+    const wrapper = await mountPlayer()
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Content service unavailable')
+    expect(wrapper.find('article').exists()).toBe(false)
+    expect(wrapper.find('video').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['Course Overview', 2],
+    ['Getting to Know You', 3],
+    ['What is Service Design ?', 4],
+  ])('can complete the named seed sub-lesson %s', async (title, subLessonPosition) => {
+    const seedProgress: CourseProgressView = {
+      courseId: 1,
+      completedLessons: 0,
+      totalLessons: 1,
+      progressPercent: 0,
+      status: 'in-progress',
+      subLessons: [
+        {
+          id: 100 + subLessonPosition,
+          title,
+          videoUrl: 'https://example.com/videos/welcome.mp4',
+          lessonPosition: 3,
+          lessonTitle: 'Lesson 1',
+          subLessonPosition,
+          completed: false,
+        },
+      ],
+    }
+    mocks.getSubscriptions.mockResolvedValue([
+      {
+        id: 'subscription-1',
+        courseId: 1,
+        courseTitle: 'Service Design Essentials',
+        reference: 'CFTEST',
+        activatedAt: '2026-09-25T00:00:00Z',
+        completedLessons: 0,
+        totalLessons: 1,
+        progressPercent: 0,
+        status: 'in-progress',
+      },
+    ])
+    mocks.getCourseProgress.mockResolvedValue(seedProgress)
+    mocks.completeSubLesson.mockResolvedValue({
+      ...seedProgress,
+      completedLessons: 1,
+      progressPercent: 100,
+      status: 'completed',
+      subLessons: [{ ...seedProgress.subLessons[0]!, completed: true }],
+    })
+    const wrapper = await mountPlayer(`/courses/course-1/learn/sub-3-${subLessonPosition}`)
+    await flushPromises()
+    expect(wrapper.get('article').text()).toContain(title)
+    expect(wrapper.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'อ่านจบแล้ว')!
+      .trigger('click')
+    await flushPromises()
+    expect(mocks.completeSubLesson).toHaveBeenCalledExactlyOnceWith(1, 3, subLessonPosition)
+    expect(wrapper.text()).toContain('Completed')
+    wrapper.unmount()
+  })
+
   it('renders a reading and self-check answer without automatically completing the lesson', async () => {
     const wrapper = await mountPlayer()
     await flushPromises()

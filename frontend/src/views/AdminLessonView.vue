@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { VueDraggable } from 'vue-draggable-plus'
 import AdminLayout from '../components/admin/AdminLayout.vue'
+import AuthorizedVideo from '@/components/course/AuthorizedVideo.vue'
 import { getCourse } from '../admin/courseStore'
 import { createLesson, deleteLesson, fetchLesson, updateLesson } from '../api/lessons'
 import { uploadVideo } from '../api/uploads'
@@ -325,7 +326,7 @@ async function onDeleteLesson() {
                     <span class="text-sm text-[#2F5FAC]">Uploading…</span>
                   </template>
                   <template v-else-if="item.videoUrl">
-                    <video
+                    <AuthorizedVideo
                       :src="item.videoUrl"
                       class="absolute inset-0 h-full w-full object-cover"
                       muted

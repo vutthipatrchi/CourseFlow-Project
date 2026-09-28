@@ -11,6 +11,50 @@ Authenticated endpoints expect a Clerk JWT (`Authorization: Bearer …`).
 Returns HTTP 200 and `{"status":"UP","application":"CourseFlow"}`.
 This is a liveness check, not a database readiness check.
 
+## Demo learning content
+
+`GET /api/catalog/demo-video` streams the public sample clip from the backend
+and supports range requests. It does not require a subscription.
+
+`GET /api/catalog/demo-content?courseTitle=Service%20Design%20Essentials` is public
+and available with the database-backed profile. It returns the first reading as a
+free sample, followed by titles only for the remaining seed lessons. Their
+`reading` field is `null`. A course without demo content returns `[]`.
+
+```json
+[
+  {
+    "lessonName": "Lesson 1",
+    "subLessonName": "Welcome to the Course",
+    "title": "Introduction to Service Design",
+    "reading": {
+      "title": "Introduction to Service Design",
+      "objective": "...",
+      "paragraphs": ["...", "..."],
+      "example": "...",
+      "exercise": "...",
+      "solution": "..."
+    }
+  },
+  {
+    "lessonName": "Lesson 1",
+    "subLessonName": "Course Overview",
+    "title": "Course Overview",
+    "reading": null
+  }
+]
+```
+
+`GET /api/me/courses/{courseId}/demo-content` requires a Clerk JWT and an active
+subscription for that course. The backend checks the JWT subject against the
+subscription before returning all readings and suggested answers. An anonymous
+request returns 401; a user without an active subscription receives 404. The
+response uses `Cache-Control: no-store`.
+
+`lessonName` and `subLessonName` identify the original seed. Their database
+positions may change without breaking the reading match. Custom lessons without
+a matching seed name do not receive demo content.
+
 ## Admin courses
 
 These endpoints are available when the backend runs with a database-enabled
@@ -59,9 +103,19 @@ Multipart form field `file` (mp4, webm, mov, m4v). Requires admin JWT.
 }
 ```
 
+### POST /api/uploads/videos/{filename}/access
+
+Requires a Clerk JWT. The backend checks for an active subscription to a course
+containing the video, or `metadata.role=admin`, then sets a 15-minute HttpOnly
+cookie scoped to that video. Other callers receive 401 or 404.
+
 ### GET /api/uploads/videos/{filename}
 
-Public read of a previously uploaded video (no auth). Used by `<video>` tags.
+The browser streams the video directly from the backend using the scoped cookie.
+The backend rechecks the learner's active subscription for each request, including
+range requests. A missing or expired cookie returns 404. The player refreshes
+the cookie during long playback. External video URLs follow their host's access
+rules.
 
 ## Admin lessons and sub-lessons
 
