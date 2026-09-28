@@ -3,8 +3,13 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
+import LessonReading from '@/components/course/LessonReading.vue'
+import { getLearningDemoContent, type DemoContentRow } from '@/api/demoContent'
+import { toApiError } from '@/api/client'
 import { courses } from '@/data/courses'
-import type { Assignment, SubLessonProgress } from '@/types/course'
+import { createDemoModules } from '@/data/demoLessons'
+import { DEMO_VIDEO_LABEL, DEMO_VIDEO_URL } from '@/data/demoVideo'
+import type { Assignment, DemoLesson, SubLessonProgress } from '@/types/course'
 
 const route = useRoute()
 const course = computed(
@@ -17,20 +22,54 @@ type LessonItem = {
   title: string
   progress: SubLessonProgress
   assignment?: Assignment
+  demoLesson?: DemoLesson
 }
 
-const lessons = computed<LessonItem[]>(() => {
-  if (!course.value) return []
-  return course.value.modules.flatMap((module) =>
+const demoRows = ref<DemoContentRow[]>([])
+const contentError = ref('')
+const contentLoading = ref(false)
+let contentRequest = 0
+
+const outline = computed(() => {
+  if (demoRows.value.length) return createDemoModules(demoRows.value)
+  return course.value?.modules ?? []
+})
+
+const lessons = computed<LessonItem[]>(() =>
+  outline.value.flatMap((module) =>
     module.subLessons.map((subLesson) => ({
       id: subLesson.id,
       moduleId: module.id,
       title: subLesson.title,
       progress: subLesson.progress,
       assignment: subLesson.assignment,
+      demoLesson: subLesson.demoLesson,
     })),
-  )
-})
+  ),
+)
+
+async function loadDemoContent() {
+  const title = course.value?.title
+  const request = ++contentRequest
+  demoRows.value = []
+  contentError.value = ''
+  if (!title) return
+  contentLoading.value = true
+  try {
+    const rows = await getLearningDemoContent(title)
+    if (request !== contentRequest) return
+    demoRows.value = rows
+    const start = startingLesson()
+    currentId.value = start?.id ?? ''
+    openModuleIds.value = [start?.moduleId ?? 'module-1']
+    draftAnswer.value = ''
+  } catch (error) {
+    if (request !== contentRequest) return
+    contentError.value = toApiError(error).message
+  } finally {
+    if (request === contentRequest) contentLoading.value = false
+  }
+}
 
 function requestedLessonId() {
   const requested = route.query.lesson
@@ -83,6 +122,12 @@ watch(
     openModuleIds.value = [start?.moduleId ?? 'module-1']
     draftAnswer.value = ''
   },
+)
+
+watch(
+  () => course.value?.id,
+  () => void loadDemoContent(),
+  { immediate: true },
 )
 
 function lessonProgress(lesson: LessonItem): SubLessonProgress {
@@ -171,11 +216,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
         </div>
 
         <div class="mt-6">
-          <section
-            v-for="module in course.modules"
-            :key="module.id"
-            class="border-b border-[#F1F2F6]"
-          >
+          <section v-for="module in outline" :key="module.id" class="border-b border-[#F1F2F6]">
             <button
               type="button"
               class="flex w-full items-center gap-4 py-4 text-left"
@@ -183,10 +224,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
               @click="toggleModule(module.id)"
             >
               <span class="w-6 text-sm text-[#646D89]">{{
-                String(course.modules.findIndex((item) => item.id === module.id) + 1).padStart(
-                  2,
-                  '0',
-                )
+                String(outline.findIndex((item) => item.id === module.id) + 1).padStart(2, '0')
               }}</span>
               <span class="flex-1 text-sm font-medium text-black">{{ module.title }}</span>
               <svg
@@ -250,7 +288,33 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
           {{ currentLesson.title }}
         </h2>
 
-        <div class="relative mt-6 overflow-hidden rounded-lg bg-[#F1F2F6]">
+        <p v-if="contentLoading" class="mt-6 text-sm text-[#646D89]" role="status">
+          Loading lesson content…
+        </p>
+        <p v-else-if="contentError" class="mt-6 text-sm text-[#C0392B]" role="alert">
+          Unable to load lesson content: {{ contentError }}
+        </p>
+
+        <template v-if="currentLesson.demoLesson">
+          <figure class="mt-6 space-y-3">
+            <video
+              :src="DEMO_VIDEO_URL"
+              :aria-label="`Test clip for ${currentLesson.title}`"
+              controls
+              playsinline
+              preload="metadata"
+              class="aspect-video w-full rounded-lg bg-black"
+            />
+            <figcaption class="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
+              {{ DEMO_VIDEO_LABEL }}
+            </figcaption>
+          </figure>
+          <div class="mt-6">
+            <LessonReading :lesson="currentLesson.demoLesson" />
+          </div>
+        </template>
+
+        <div v-else class="relative mt-6 overflow-hidden rounded-lg bg-[#F1F2F6]">
           <img :src="course.imageUrl" :alt="''" class="aspect-video w-full object-cover" />
           <button
             type="button"
@@ -263,7 +327,10 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
           </button>
         </div>
 
-        <div v-if="currentLesson.assignment" class="mt-6 rounded-xl bg-[#F6F7FC] p-6">
+        <div
+          v-if="currentLesson.assignment && !currentLesson.demoLesson"
+          class="mt-6 rounded-xl bg-[#F6F7FC] p-6"
+        >
           <div class="flex items-center justify-between gap-4">
             <h3 class="text-lg font-medium text-black">Assignment</h3>
             <span

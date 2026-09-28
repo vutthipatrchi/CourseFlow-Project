@@ -1,7 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import LearningProgressView from '../views/LearningProgressView.vue'
+import { getLearningDemoContent } from '@/api/demoContent'
+
+vi.mock('@/api/demoContent', () => ({
+  getLearningDemoContent: vi.fn(async () => []),
+}))
 
 async function mountView(path = '/learn/course-1') {
   const router = createRouter({
@@ -28,6 +33,33 @@ async function mountView(path = '/learn/course-1') {
 describe('learning progress', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.mocked(getLearningDemoContent).mockResolvedValue([])
+  })
+
+  it('shows the demo reading for the selected course', async () => {
+    vi.mocked(getLearningDemoContent).mockResolvedValue([
+      {
+        lessonName: 'Lesson 1',
+        subLessonName: 'Welcome to the Course',
+        title: 'Introduction to Service Design',
+        reading: {
+          title: 'Introduction to Service Design',
+          objective: 'แยกบริการออกจากจุดสัมผัสเพียงจุดเดียวได้',
+          paragraphs: ['บริการคือชุดกิจกรรม'],
+          example: 'ร้านกาแฟ',
+          exercise: 'เลือกบริการใกล้ตัว',
+          solution: 'ตัวอย่างร้านกาแฟ',
+        },
+      },
+    ])
+
+    const wrapper = await mountView()
+    await flushPromises()
+
+    expect(getLearningDemoContent).toHaveBeenCalledWith('Service Design Essentials')
+    expect(wrapper.text()).toContain('Introduction to Service Design')
+    expect(wrapper.text()).toContain('บริการคือชุดกิจกรรม')
+    expect(wrapper.text()).toContain('คลิปตัวอย่างสำหรับทดสอบตัวเล่นวิดีโอ')
   })
 
   it('shows course progress and the current lesson', async () => {
