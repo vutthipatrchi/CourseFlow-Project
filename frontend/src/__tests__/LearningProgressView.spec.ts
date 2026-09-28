@@ -1,12 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import LearningProgressView from '../views/LearningProgressView.vue'
-import { getLearningDemoContent } from '@/api/demoContent'
-
-vi.mock('@/api/demoContent', () => ({
-  getLearningDemoContent: vi.fn(async () => []),
-}))
 
 async function mountView(path = '/learn/course-1') {
   const router = createRouter({
@@ -33,33 +28,6 @@ async function mountView(path = '/learn/course-1') {
 describe('learning progress', () => {
   beforeEach(() => {
     localStorage.clear()
-    vi.mocked(getLearningDemoContent).mockResolvedValue([])
-  })
-
-  it('shows the demo reading for the selected course', async () => {
-    vi.mocked(getLearningDemoContent).mockResolvedValue([
-      {
-        lessonName: 'Lesson 1',
-        subLessonName: 'Welcome to the Course',
-        title: 'Introduction to Service Design',
-        reading: {
-          title: 'Introduction to Service Design',
-          objective: 'แยกบริการออกจากจุดสัมผัสเพียงจุดเดียวได้',
-          paragraphs: ['บริการคือชุดกิจกรรม'],
-          example: 'ร้านกาแฟ',
-          exercise: 'เลือกบริการใกล้ตัว',
-          solution: 'ตัวอย่างร้านกาแฟ',
-        },
-      },
-    ])
-
-    const wrapper = await mountView()
-    await flushPromises()
-
-    expect(getLearningDemoContent).toHaveBeenCalledWith('Service Design Essentials')
-    expect(wrapper.text()).toContain('Introduction to Service Design')
-    expect(wrapper.text()).toContain('บริการคือชุดกิจกรรม')
-    expect(wrapper.text()).toContain('คลิปตัวอย่างสำหรับทดสอบตัวเล่นวิดีโอ')
   })
 
   it('shows course progress and the current lesson', async () => {
@@ -69,7 +37,19 @@ describe('learning progress', () => {
     expect(wrapper.text()).toContain('21% Complete')
     expect(wrapper.text()).not.toContain('"videoUrl"')
     expect(wrapper.get('h2').text()).toBe('4 Levels of Service Design in an Organization')
+    expect(wrapper.text()).toContain('product, service, business, and societal level')
+    expect(wrapper.text()).toContain('Example')
+    expect(wrapper.text()).toContain('Try it yourself')
     expect(wrapper.text()).toContain('Pending')
+  })
+
+  it('shows a reading for a lesson that has no assignment', async () => {
+    const wrapper = await mountView('/learn/course-3?lesson=sub-2-2')
+
+    expect(wrapper.get('h2').text()).toBe('Personas and Jobs to Be Done')
+    expect(wrapper.text()).toContain('personas and job statements')
+    expect(wrapper.text()).toContain('Example')
+    expect(wrapper.text()).toContain('Try it yourself')
   })
 
   it('opens the course and lesson selected from the course list', async () => {
