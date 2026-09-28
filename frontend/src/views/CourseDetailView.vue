@@ -3,18 +3,56 @@
 // Guest-facing page showing one course's detail, modules, and subscribe card
 // แก้ไขได้: back link target, module list source, image placeholder
 
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import CtaBanner from '@/components/landing/CtaBanner.vue'
 import ModuleAccordion from '@/components/course/ModuleAccordion.vue'
+import LessonReading from '@/components/course/LessonReading.vue'
+import LessonSample from '@/components/course/LessonSample.vue'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
 import { courses } from '@/data/courses'
+import { getPublicDemoContent } from '@/api/demoContent'
+import { createDemoModules } from '@/data/demoLessons'
+import type { Module } from '@/types/course'
+import { DEMO_VIDEO_LABEL, DEMO_VIDEO_URL } from '@/data/demoVideo'
 
 const route = useRoute()
 
 const course = computed(() => courses.find((item) => item.id === route.params.id))
+const previewModules = ref<Module[]>([])
+const previewLoading = ref(false)
+const previewError = ref('')
+const sampleLesson = computed(() => previewModules.value[0]?.subLessons[0]?.demoLesson)
+const videoFailed = ref(false)
+let previewRequest = 0
+
+async function loadPreview() {
+  const request = ++previewRequest
+  const title = course.value?.title
+  previewModules.value = []
+  previewError.value = ''
+  if (!title) return
+  previewLoading.value = true
+  try {
+    const rows = await getPublicDemoContent(title)
+    if (request === previewRequest) previewModules.value = createDemoModules(rows)
+  } catch {
+    if (request === previewRequest) previewError.value = 'ไม่สามารถโหลดบทเรียนตัวอย่างได้'
+  } finally {
+    if (request === previewRequest) previewLoading.value = false
+  }
+}
+
+watch(
+  course,
+  () => {
+    videoFailed.value = false
+    void loadPreview()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -33,38 +71,67 @@ const course = computed(() => courses.find((item) => item.id === route.params.id
     </div>
     <main class="detail-container flex flex-col gap-6 pr-24 pt-6 pb-25 lg:flex-row lg:items-start">
       <div class="flex max-w-200 flex-1 flex-col gap-25">
-        <div class="relative w-full">
-          <img
-            :src="course.imageUrl"
-            :alt="course.title"
-            class="aspect-739/460 w-full rounded-lg bg-gray-100 object-cover"
+        <figure class="w-full space-y-3">
+          <video
+            :key="course.id"
+            :src="DEMO_VIDEO_URL"
+            :poster="course.imageUrl"
+            :aria-label="`คลิปทดสอบสำหรับ ${course.title}`"
+            controls
+            playsinline
+            preload="metadata"
+            class="aspect-video w-full rounded-lg bg-black"
+            @error="videoFailed = true"
           />
-          <div
-            class="absolute top-1/2 left-1/2 flex h-26 w-26 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/50"
-          >
-            <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </div>
+          <figcaption class="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
+            {{ DEMO_VIDEO_LABEL }}
+          </figcaption>
+          <p v-if="videoFailed" role="alert" class="text-sm text-amber-900">
+            ไม่สามารถโหลดคลิปทดสอบได้ กรุณาลองใหม่ภายหลัง
+          </p>
+        </figure>
         <div class="flex flex-col gap-6">
           <h1 class="text-4xl leading-tight font-medium tracking-[-0.02em] text-black">
             Course Detail
           </h1>
           <p class="text-base text-[#646D89]">{{ course.longDescription }}</p>
+          <details v-if="sampleLesson" class="rounded-xl border border-[#D6D9E4] p-4">
+            <summary
+              class="cursor-pointer font-semibold text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-4"
+            >
+              อ่านบทเรียนตัวอย่างฟรี
+            </summary>
+            <LessonReading class="mt-4" :lesson="sampleLesson" />
+          </details>
         </div>
         <div class="flex flex-col gap-6">
           <h2 class="text-4xl leading-tight font-medium tracking-[-0.02em] text-black">
             Module Samples
           </h2>
+          <p class="text-base text-[#646D89]">
+            ดูหัวข้อทั้งหมด และเปิดอ่านบทเรียนตัวอย่างฟรีในหัวข้อแรก
+          </p>
+          <p v-if="previewLoading" role="status">กำลังโหลดบทเรียนตัวอย่าง…</p>
+          <div v-else-if="previewError" role="alert">
+            <p>{{ previewError }}</p>
+            <button type="button" class="text-blue-600 underline" @click="loadPreview">
+              ลองอีกครั้ง
+            </button>
+          </div>
+          <p v-else-if="!previewModules.length">ยังไม่มีบทเรียนตัวอย่าง</p>
           <div class="flex flex-col">
             <ModuleAccordion
-              v-for="(module, index) in course.modules"
-              :key="module.id"
+              v-for="(module, index) in previewModules"
+              :key="`${course.id}-${module.id}`"
               :module="module"
               :index="index"
               :default-open="index === 0"
-            />
+            >
+              <template #lesson="{ subLesson }">
+                <LessonSample v-if="subLesson.demoLesson" :lesson="subLesson.demoLesson" />
+                <span v-else>{{ subLesson.title }}</span>
+              </template>
+            </ModuleAccordion>
           </div>
         </div>
       </div>

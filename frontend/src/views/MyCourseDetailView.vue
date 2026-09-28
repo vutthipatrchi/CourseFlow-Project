@@ -10,11 +10,15 @@ import {
   type SubscriptionView,
 } from '@/api/payments'
 import { courses } from '@/data/courses'
+import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
+import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
 
 const route = useRoute()
 const courseId = computed(() => Number(route.params.courseId))
 const subscription = ref<SubscriptionView | null>(null)
 const progress = ref<CourseProgressView | null>(null)
+const demoContent = ref<DemoContentRow[]>([])
+const contentError = ref('')
 const loading = ref(true)
 const error = ref('')
 
@@ -22,7 +26,10 @@ const coursePreview = computed(() =>
   courses.find((course) => course.title === subscription.value?.courseTitle),
 )
 const modules = computed(() => {
-  const lessons = progress.value?.subLessons ?? []
+  const lessons = (progress.value?.subLessons ?? []).map((lesson) => ({
+    ...lesson,
+    ...getDemoLessonLabels(lesson, getDemoLesson(demoContent.value, lesson)),
+  }))
   const positions = [...new Set(lessons.map((lesson) => lesson.lessonPosition))]
   return positions.map((position) => {
     const subLessons = lessons.filter((lesson) => lesson.lessonPosition === position)
@@ -53,6 +60,8 @@ async function load() {
   error.value = ''
   subscription.value = null
   progress.value = null
+  demoContent.value = []
+  contentError.value = ''
   if (!Number.isSafeInteger(courseId.value) || courseId.value <= 0) {
     error.value = 'Invalid course'
     loading.value = false
@@ -65,7 +74,15 @@ async function load() {
       error.value = 'This course is not in your courses.'
       return
     }
-    progress.value = await getCourseProgress(courseId.value)
+    const [courseProgress, readings] = await Promise.all([
+      getCourseProgress(courseId.value),
+      getEnrolledDemoContent(courseId.value).catch(() => {
+        contentError.value = 'Could not load the lesson readings.'
+        return [] as DemoContentRow[]
+      }),
+    ])
+    demoContent.value = readings
+    progress.value = courseProgress
   } catch (failure) {
     error.value = failure instanceof Error ? failure.message : 'Unable to load course details'
   } finally {
@@ -94,6 +111,7 @@ watch(courseId, load, { immediate: true })
       </div>
 
       <template v-else-if="subscription && progress">
+        <p v-if="contentError" role="alert" class="mt-5 text-amber-900">{{ contentError }}</p>
         <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_310px] lg:items-start">
           <div class="relative aspect-[739/460] overflow-hidden rounded-lg bg-blue-100">
             <img
