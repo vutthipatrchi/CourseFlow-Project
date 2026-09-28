@@ -1,6 +1,6 @@
 export const DEMO_VIDEO_URL = '/api/catalog/demo-video'
 export const DEMO_VIDEO_LABEL =
-  'Sample clip for testing the video player. The same clip is reused for every practice lesson and is not the lesson recording.'
+  'คลิปตัวอย่างสำหรับทดสอบตัวเล่นวิดีโอ ใช้คลิปเดียวกันทุกบทจำลอง ไม่ใช่วิดีโอสอนของบทนี้'
 
 /** Use the backend-served sample only for recognized demo lessons without an actual video. */
 export function getLessonVideo(source: string | undefined, hasDemoLesson: boolean) {

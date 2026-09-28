@@ -1,4 +1,4 @@
-import type { Course, Module, SubLesson } from '@/types/course'
+﻿import type { Course, Module, SubLesson } from '@/types/course'
 import serviceDesignImage from '@/assets/admin/courses/service-design.jpg'
 import softwareDeveloperImage from '@/assets/admin/courses/software-developer.jpg'
 import uxUiDesignImage from '@/assets/admin/courses/ux-ui-design.jpg'

@@ -29,6 +29,7 @@ describe('AssignmentForm', () => {
     expect(submitted![0]![0]).toEqual({
       subLessonId: 1,
       description: 'Build a todo app',
+      durationDays: null,
     })
   })
 
@@ -47,7 +48,7 @@ describe('AssignmentForm', () => {
       props: {
         subLessonOptions: options,
         submitting: false,
-        initialValue: { subLessonId: 1, description: 'Existing assignment' },
+        initialValue: { subLessonId: 1, description: 'Existing assignment', durationDays: null },
       },
     })
 
@@ -62,6 +63,7 @@ describe('AssignmentForm', () => {
     expect(wrapper.emitted('submit')![0]![0]).toEqual({
       subLessonId: 1,
       description: 'Existing assignment',
+      durationDays: null,
     })
   })
 
@@ -79,7 +81,7 @@ describe('AssignmentForm', () => {
       props: {
         subLessonOptions: multiCourseOptions,
         submitting: false,
-        initialValue: { subLessonId: 1, description: 'Existing assignment' },
+        initialValue: { subLessonId: 1, description: 'Existing assignment', durationDays: null },
       },
     })
 

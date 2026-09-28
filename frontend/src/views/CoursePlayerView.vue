@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // ── CoursePlayerView ──────────────────────────────────────────────────────
 // Course learning page: sidebar progress/module tree, video + assignment, prev/next nav
-// แก้ไขได้: progress bar calc, play/complete simulation, assignment submit handler
+// Demo readings and available videos use explicit, server-backed completion.
 
 import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -9,6 +9,11 @@ import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import CoursePlayerSidebar from '@/components/course/CoursePlayerSidebar.vue'
 import AssignmentCard from '@/components/course/AssignmentCard.vue'
+import LessonReading from '@/components/course/LessonReading.vue'
+import AuthorizedVideo from '@/components/course/AuthorizedVideo.vue'
+import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
+import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
+import { DEMO_VIDEO_LABEL, getLessonVideo } from '@/data/demoVideo'
 import { courses } from '@/data/courses'
 import {
   completeSubLesson,
@@ -16,7 +21,11 @@ import {
   getSubscriptions,
   type CourseProgressView,
 } from '@/api/payments'
+import { listMyAssignments, submitAssignment } from '@/api/submissions'
+import { toApiError } from '@/api/client'
+import { toCardAssignment } from '@/lib/assignmentCard'
 import type { Course } from '@/types/course'
+import type { MyAssignment } from '@/types/submission'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,6 +47,26 @@ const currentEntry = computed(() =>
   currentIndex.value >= 0 ? flatSubLessons.value[currentIndex.value] : undefined,
 )
 
+const videoFailed = ref(false)
+const lessonVideo = computed(() =>
+  getLessonVideo(
+    currentEntry.value?.subLesson.videoUrl,
+    Boolean(currentEntry.value?.subLesson.demoLesson),
+  ),
+)
+const playableVideo = computed(() => lessonVideo.value.url)
+const canComplete = computed(() =>
+  Boolean(currentEntry.value?.subLesson.demoLesson || (playableVideo.value && !videoFailed.value)),
+)
+const completionSaving = ref(false)
+
+watch(
+  () => currentEntry.value?.subLesson.id,
+  () => {
+    videoFailed.value = false
+  },
+)
+
 const progressPercent = ref(0)
 const progressError = ref('')
 const backendCourseId = computed(() => {
@@ -47,21 +76,37 @@ const backendCourseId = computed(() => {
 const progressLoading = ref(true)
 let progressRequest = 0
 
+// The caller's assignments for this course, keyed by sub-lesson id (the id the progress API returns).
+const myAssignments = ref<Record<number, MyAssignment>>({})
+const assignmentError = ref('')
+const demoContent = ref<DemoContentRow[]>([])
+const demoContentError = ref('')
+let lastProgress: CourseProgressView | null = null
+
 function applyProgress(progress: CourseProgressView) {
   if (!course.value) return
+  lastProgress = progress
   const lessonPositions = [...new Set(progress.subLessons.map((item) => item.lessonPosition))]
   course.value.modules = lessonPositions.map((lessonPosition) => {
     const items = progress.subLessons.filter((item) => item.lessonPosition === lessonPosition)
     return {
       id: `module-${lessonPosition}`,
-      title: items[0]?.lessonTitle ?? `Lesson ${lessonPosition}`,
-      subLessons: items.map((item) => ({
-        id: `sub-${item.lessonPosition}-${item.subLessonPosition}`,
-        title: item.title,
-        description: '',
-        videoUrl: item.videoUrl ?? '',
-        progress: item.completed ? ('completed' as const) : ('not-started' as const),
-      })),
+      title: items[0]
+        ? getDemoLessonLabels(items[0], getDemoLesson(demoContent.value, items[0])).lessonTitle
+        : `Lesson ${lessonPosition}`,
+      subLessons: items.map((item) => {
+        const assignment = myAssignments.value[item.id]
+        const demoLesson = getDemoLesson(demoContent.value, item)
+        return {
+          id: `sub-${item.lessonPosition}-${item.subLessonPosition}`,
+          title: getDemoLessonLabels(item, demoLesson).title,
+          description: '',
+          videoUrl: item.videoUrl ?? '',
+          demoLesson,
+          progress: item.completed ? ('completed' as const) : ('not-started' as const),
+          assignment: assignment ? toCardAssignment(assignment) : undefined,
+        }
+      }),
     }
   })
   progressPercent.value = progress.progressPercent
@@ -72,6 +117,9 @@ async function loadProgress() {
   const requestedCourseId = backendCourseId.value
   progressLoading.value = true
   progressError.value = ''
+  assignmentError.value = ''
+  demoContentError.value = ''
+  demoContent.value = []
   course.value = undefined
   if (!requestedCourseId) {
     progressError.value = 'Invalid course link.'
@@ -79,13 +127,27 @@ async function loadProgress() {
     return
   }
   try {
-    const [subscriptions, progress] = await Promise.all([
+    const [subscriptions, progress, assignments] = await Promise.all([
       getSubscriptions(),
       getCourseProgress(requestedCourseId),
+      listMyAssignments().catch((error) => {
+        if (request === progressRequest) assignmentError.value = toApiError(error).message
+        return [] as MyAssignment[]
+      }),
     ])
     if (request !== progressRequest) return
+    myAssignments.value = Object.fromEntries(
+      assignments
+        .filter((assignment) => assignment.courseId === requestedCourseId)
+        .map((assignment) => [assignment.subLessonId, assignment]),
+    )
     const subscription = subscriptions.find((item) => item.courseId === requestedCourseId)
     if (!subscription) throw new Error('This course is not in your courses.')
+    demoContent.value = await getEnrolledDemoContent(requestedCourseId).catch((error) => {
+      if (request === progressRequest) demoContentError.value = toApiError(error).message
+      return [] as DemoContentRow[]
+    })
+    if (request !== progressRequest) return
     const preview = courses.find((item) => item.title === subscription.courseTitle)
     course.value = {
       ...(preview ?? courses[0]!),
@@ -152,29 +214,57 @@ const goNext = () => {
   if (hasNext.value) goToSubLesson(flatSubLessons.value[currentIndex.value + 1]!.subLesson.id)
 }
 
-const handlePlayClick = async () => {
+const handleComplete = async () => {
   const subLesson = currentEntry.value?.subLesson
-  if (!subLesson || subLesson.progress === 'completed' || !backendCourseId.value) return
+  if (
+    !subLesson ||
+    subLesson.progress === 'completed' ||
+    !backendCourseId.value ||
+    !canComplete.value ||
+    completionSaving.value
+  )
+    return
   const positions = /^sub-(\d+)-(\d+)$/.exec(subLesson.id)
   if (!positions) return
+  const request = progressRequest
+  completionSaving.value = true
   try {
     const progress = await completeSubLesson(
       backendCourseId.value,
       Number(positions[1]),
       Number(positions[2]),
     )
+    if (request !== progressRequest) return
     applyProgress(progress)
     progressError.value = ''
   } catch (error) {
-    progressError.value = error instanceof Error ? error.message : 'Unable to save course progress'
+    if (request === progressRequest)
+      progressError.value =
+        error instanceof Error ? error.message : 'Unable to save course progress'
+  } finally {
+    completionSaving.value = false
   }
 }
 
-const handleAssignmentSubmit = (answer: string) => {
+const handleAssignmentSubmit = async (answer: string) => {
   const assignment = currentEntry.value?.subLesson.assignment
   if (!assignment) return
-  assignment.status = 'submitted'
-  assignment.answer = answer
+  const apiId = Number(assignment.id)
+  if (backendCourseId.value && Number.isInteger(apiId)) {
+    // Real course: the answer is saved through the API and the card shows what the server returns.
+    try {
+      const saved = await submitAssignment(apiId, answer)
+      myAssignments.value = { ...myAssignments.value, [saved.subLessonId]: saved }
+      if (lastProgress) applyProgress(lastProgress)
+      assignmentError.value = ''
+    } catch (error) {
+      assignmentError.value = toApiError(error).message
+      return
+    }
+  } else {
+    assignment.status = 'submitted'
+    assignment.answer = answer
+  }
   showSubmitToast.value = true
   setTimeout(() => {
     showSubmitToast.value = false
@@ -218,6 +308,21 @@ const handleAssignmentSubmit = (answer: string) => {
         <p v-if="progressError" role="alert" class="rounded-lg bg-red-50 p-4 text-sm text-red-700">
           {{ progressError }}
         </p>
+        <p
+          v-if="assignmentError"
+          role="alert"
+          class="rounded-lg bg-red-50 p-4 text-sm text-red-700"
+        >
+          {{ assignmentError }}
+        </p>
+        <p
+          v-if="demoContentError"
+          role="alert"
+          class="rounded-lg bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          ไม่สามารถโหลดเนื้อหาบทเรียนได้: {{ demoContentError }}
+          <button type="button" class="ml-2 underline" @click="loadProgress">ลองอีกครั้ง</button>
+        </p>
         <Transition
           name="fade"
           mode="out-in"
@@ -230,31 +335,50 @@ const handleAssignmentSubmit = (answer: string) => {
             <h1 class="text-4xl leading-tight font-medium tracking-[-0.02em] text-black">
               {{ currentEntry.subLesson.title }}
             </h1>
-            <button
-              type="button"
-              class="group relative block w-full cursor-pointer"
-              @click="handlePlayClick"
+            <AuthorizedVideo
+              v-if="playableVideo"
+              :key="playableVideo"
+              :src="playableVideo"
+              :aria-label="currentEntry.subLesson.title"
+              controls
+              playsinline
+              preload="metadata"
+              class="aspect-video w-full rounded-lg bg-black"
+              @error="videoFailed = true"
+            />
+            <p v-if="lessonVideo.isDemo" class="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
+              {{ DEMO_VIDEO_LABEL }}
+            </p>
+            <p v-if="videoFailed" role="alert" class="rounded-lg bg-amber-50 p-4 text-amber-900">
+              ไม่สามารถโหลดวิดีโอได้ กรุณาลองใหม่ภายหลัง
+            </p>
+            <LessonReading
+              v-if="currentEntry.subLesson.demoLesson"
+              :key="currentEntry.subLesson.id"
+              :lesson="currentEntry.subLesson.demoLesson"
+            />
+            <p
+              v-else-if="!playableVideo"
+              role="status"
+              class="rounded-lg bg-gray-50 p-5 text-gray-600"
             >
-              <img
-                :src="course.imageUrl"
-                :alt="currentEntry.subLesson.title"
-                class="aspect-739/460 w-full rounded-lg bg-gray-100 object-cover"
-              />
-              <div
-                class="absolute top-1/2 left-1/2 flex h-26 w-26 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-transform duration-200 group-hover:scale-110"
-              >
-                <svg
-                  v-if="currentEntry.subLesson.progress !== 'completed'"
-                  class="h-8 w-8 text-white"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                <svg v-else class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 16.2l-3.5-3.5L4 14.2 9 19.2 20 8.2l-1.5-1.5z" />
-                </svg>
-              </div>
+              บทนี้ยังไม่มีเนื้อหาให้อ่านหรือวิดีโอสำหรับเรียน
+            </p>
+
+            <button
+              v-if="canComplete && currentEntry.subLesson.progress !== 'completed'"
+              type="button"
+              :disabled="completionSaving"
+              class="self-start rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              @click="handleComplete"
+            >
+              {{
+                completionSaving
+                  ? 'กำลังบันทึก…'
+                  : currentEntry.subLesson.demoLesson
+                    ? 'อ่านจบแล้ว'
+                    : 'เรียนจบแล้ว'
+              }}
             </button>
 
             <p class="text-base text-[#646D89]">{{ currentEntry.subLesson.description }}</p>
