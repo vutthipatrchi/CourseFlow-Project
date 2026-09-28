@@ -3,7 +3,11 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import CoursePlayerView from '../views/CoursePlayerView.vue'
 import type { CourseProgressView, SubscriptionView } from '@/api/payments'
+import type { MyAssignment } from '@/types/submission'
 import { DEMO_VIDEO_URL, DEMO_VIDEO_LABEL } from '@/data/demoVideo'
+import { demoContentFixtures } from './demoContentFixtures'
+import type { DemoContentRow } from '@/api/demoContent'
+import { getEnrolledDemoContent } from '@/api/demoContent'
 
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
@@ -18,6 +22,21 @@ const mocks = vi.hoisted(() => ({
     >(),
 }))
 vi.mock('@/api/payments', () => mocks)
+
+const submissionMocks = vi.hoisted(() => ({
+  listMyAssignments: vi.fn<() => Promise<MyAssignment[]>>(),
+  submitAssignment: vi.fn<(id: number, answer: string) => Promise<MyAssignment>>(),
+}))
+vi.mock('@/api/submissions', () => submissionMocks)
+vi.mock('@/api/uploads', () => ({
+  isProtectedVideoUrl: (source: string) => source.includes('/api/uploads/videos/'),
+  authorizeVideoPlayback: vi.fn<(source: string) => Promise<void>>(async () => {}),
+}))
+vi.mock('@/api/demoContent', () => ({
+  getEnrolledDemoContent: vi.fn<(courseId: number) => Promise<DemoContentRow[]>>(async (courseId) =>
+    demoContentFixtures(courseId === 9 ? 'Software Developer' : 'Service Design Essentials'),
+  ),
+}))
 
 const progress: CourseProgressView = {
   courseId: 9,
@@ -40,6 +59,7 @@ const progress: CourseProgressView = {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  submissionMocks.listMyAssignments.mockResolvedValue([])
   mocks.getSubscriptions.mockResolvedValue([
     {
       id: 'subscription-9',
@@ -56,7 +76,7 @@ beforeEach(() => {
   mocks.getCourseProgress.mockResolvedValue(structuredClone(progress))
 })
 
-async function mountPlayer() {
+async function mountPlayer(path = '/courses/course-9/learn/sub-1-1') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -68,7 +88,7 @@ async function mountPlayer() {
       },
     ],
   })
-  await router.push('/courses/course-9/learn/sub-1-1')
+  await router.push(path)
   await router.isReady()
   const wrapper = mount(CoursePlayerView, {
     global: {
@@ -80,6 +100,75 @@ async function mountPlayer() {
 }
 
 describe('purchased course player', () => {
+  it('does not substitute local readings when the content API fails', async () => {
+    vi.mocked(getEnrolledDemoContent).mockRejectedValueOnce(new Error('Content service unavailable'))
+    const wrapper = await mountPlayer()
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Content service unavailable')
+    expect(wrapper.find('article').exists()).toBe(false)
+    expect(wrapper.find('video').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['Course Overview', 2],
+    ['Getting to Know You', 3],
+    ['What is Service Design ?', 4],
+  ])('can complete the named seed sub-lesson %s', async (title, subLessonPosition) => {
+    const seedProgress: CourseProgressView = {
+      courseId: 1,
+      completedLessons: 0,
+      totalLessons: 1,
+      progressPercent: 0,
+      status: 'in-progress',
+      subLessons: [
+        {
+          id: 100 + subLessonPosition,
+          title,
+          videoUrl: 'https://example.com/videos/welcome.mp4',
+          lessonPosition: 3,
+          lessonTitle: 'Lesson 1',
+          subLessonPosition,
+          completed: false,
+        },
+      ],
+    }
+    mocks.getSubscriptions.mockResolvedValue([
+      {
+        id: 'subscription-1',
+        courseId: 1,
+        courseTitle: 'Service Design Essentials',
+        reference: 'CFTEST',
+        activatedAt: '2026-09-25T00:00:00Z',
+        completedLessons: 0,
+        totalLessons: 1,
+        progressPercent: 0,
+        status: 'in-progress',
+      },
+    ])
+    mocks.getCourseProgress.mockResolvedValue(seedProgress)
+    mocks.completeSubLesson.mockResolvedValue({
+      ...seedProgress,
+      completedLessons: 1,
+      progressPercent: 100,
+      status: 'completed',
+      subLessons: [{ ...seedProgress.subLessons[0]!, completed: true }],
+    })
+    const wrapper = await mountPlayer(`/courses/course-1/learn/sub-3-${subLessonPosition}`)
+    await flushPromises()
+    expect(wrapper.get('article').text()).toContain(title)
+    expect(wrapper.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'อ่านจบแล้ว')!
+      .trigger('click')
+    await flushPromises()
+    expect(mocks.completeSubLesson).toHaveBeenCalledExactlyOnceWith(1, 3, subLessonPosition)
+    expect(wrapper.text()).toContain('Completed')
+    wrapper.unmount()
+  })
+
   it('renders a reading and self-check answer without automatically completing the lesson', async () => {
     const wrapper = await mountPlayer()
     await flushPromises()
@@ -261,6 +350,206 @@ describe('purchased course player', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain('Active course subscription not found')
     expect(wrapper.text()).not.toContain('Welcome to the Course')
     expect(wrapper.find('video').exists()).toBe(false)
+    wrapper.unmount()
+  })
+})
+
+const assignmentProgress: CourseProgressView = {
+  courseId: 1,
+  completedLessons: 0,
+  totalLessons: 2,
+  progressPercent: 0,
+  status: 'in-progress',
+  subLessons: [
+    {
+      id: 7,
+      title: '4 Levels of Service Design',
+      videoUrl: null,
+      lessonPosition: 1,
+      lessonTitle: 'Introduction',
+      subLessonPosition: 1,
+      completed: false,
+    },
+    {
+      id: 8,
+      title: 'Scope of Service Design',
+      videoUrl: null,
+      lessonPosition: 1,
+      lessonTitle: 'Introduction',
+      subLessonPosition: 2,
+      completed: false,
+    },
+  ],
+}
+
+const assignment: MyAssignment = {
+  id: 5,
+  description: 'What are the 4 elements of service design?',
+  courseId: 1,
+  courseName: 'Service Design Essentials',
+  lessonName: 'Introduction',
+  lessonPosition: 1,
+  subLessonId: 7,
+  subLessonName: '4 Levels of Service Design',
+  subLessonPosition: 1,
+  durationDays: 2,
+  status: 'pending',
+  answer: null,
+  submittedAt: null,
+}
+
+async function mountAssignmentPlayer(path = '/courses/course-1/learn/sub-1-1') {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      {
+        path: '/courses/:id/learn/:subLessonId',
+        name: 'course-player',
+        component: { template: '<div />' },
+      },
+    ],
+  })
+  await router.push(path)
+  await router.isReady()
+  const wrapper = mount(CoursePlayerView, {
+    global: {
+      plugins: [router],
+      stubs: { AppNavbar: true, AppFooter: true, CoursePlayerSidebar: true },
+    },
+  })
+  await flushPromises()
+  return wrapper
+}
+
+describe('CoursePlayerView assignments on a real course', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.getSubscriptions.mockResolvedValue([
+      {
+        id: 'sub-1',
+        courseId: 1,
+        courseTitle: 'Service Design Essentials',
+        reference: 'R1',
+        activatedAt: '2026-09-20T00:00:00Z',
+        completedLessons: 0,
+        totalLessons: 2,
+        progressPercent: 0,
+        status: 'in-progress',
+      },
+    ])
+    mocks.getCourseProgress.mockResolvedValue(assignmentProgress)
+    submissionMocks.listMyAssignments.mockResolvedValue([assignment])
+  })
+
+  it('shows the assignment of the open sub-lesson with its status and deadline', async () => {
+    const wrapper = await mountAssignmentPlayer()
+
+    expect(wrapper.text()).toContain('What are the 4 elements of service design?')
+    expect(wrapper.text()).toContain('Pending')
+    expect(wrapper.text()).toContain('Assign within 2 days')
+  })
+
+  it('shows no assignment card on a sub-lesson without one', async () => {
+    const wrapper = await mountAssignmentPlayer('/courses/course-1/learn/sub-1-2')
+
+    expect(wrapper.text()).toContain('Scope of Service Design')
+    expect(wrapper.text()).not.toContain('What are the 4 elements of service design?')
+    expect(wrapper.find('textarea').exists()).toBe(false)
+  })
+
+  it('saves the answer through the API and turns the card into Submitted', async () => {
+    submissionMocks.submitAssignment.mockResolvedValue({
+      ...assignment,
+      status: 'submitted',
+      answer: 'People, process',
+      submittedAt: '2026-09-24T00:00:00Z',
+    })
+    const wrapper = await mountAssignmentPlayer()
+
+    await wrapper.get('textarea').setValue('People, process')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Send Assignment')!
+      .trigger('click')
+    await flushPromises()
+
+    expect(submissionMocks.submitAssignment).toHaveBeenCalledWith(5, 'People, process')
+    expect(wrapper.find('textarea').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Submitted')
+    expect(wrapper.text()).toContain('People, process')
+    expect(wrapper.text()).toContain('Assignment submitted successfully!')
+  })
+
+  it('keeps the card editable and shows the error when saving fails', async () => {
+    submissionMocks.submitAssignment.mockRejectedValue(new Error('Assignment 5 not found'))
+    const wrapper = await mountAssignmentPlayer()
+
+    await wrapper.get('textarea').setValue('my answer')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Send Assignment')!
+      .trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('Assignment 5 not found')
+    expect(wrapper.find('textarea').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Assignment submitted successfully!')
+  })
+
+  it('still shows the course when the assignments request fails', async () => {
+    submissionMocks.listMyAssignments.mockRejectedValue(new Error('Network down'))
+    const wrapper = await mountAssignmentPlayer()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('Network down')
+    expect(wrapper.text()).toContain('4 Levels of Service Design')
+    expect(wrapper.find('textarea').exists()).toBe(false)
+  })
+
+  it('preserves the demo reading and submitted assignment when completing the lesson', async () => {
+    const demoProgress: CourseProgressView = {
+      ...assignmentProgress,
+      subLessons: assignmentProgress.subLessons.map((lesson, index) =>
+        index === 0 ? { ...lesson, title: 'Introduction to Service Design' } : lesson,
+      ),
+    }
+    mocks.getCourseProgress.mockResolvedValue(demoProgress)
+    submissionMocks.submitAssignment.mockResolvedValue({
+      ...assignment,
+      status: 'submitted',
+      answer: 'People, process',
+      submittedAt: '2026-09-28T00:00:00Z',
+    })
+    mocks.completeSubLesson.mockResolvedValue({
+      ...demoProgress,
+      completedLessons: 1,
+      progressPercent: 50,
+      subLessons: demoProgress.subLessons.map((lesson, index) =>
+        index === 0 ? { ...lesson, completed: true } : lesson,
+      ),
+    })
+    const wrapper = await mountAssignmentPlayer()
+    expect(wrapper.find('article').exists()).toBe(true)
+    expect(wrapper.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
+
+    await wrapper.get('textarea').setValue('People, process')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Send Assignment')!
+      .trigger('click')
+    await flushPromises()
+    expect(submissionMocks.submitAssignment).toHaveBeenCalledExactlyOnceWith(5, 'People, process')
+    expect(wrapper.find('article').exists()).toBe(true)
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'อ่านจบแล้ว')!
+      .trigger('click')
+    await flushPromises()
+    expect(mocks.completeSubLesson).toHaveBeenCalledExactlyOnceWith(1, 1, 1)
+    expect(wrapper.text()).toContain('Submitted')
+    expect(wrapper.text()).toContain('People, process')
+    expect(wrapper.find('article').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
     wrapper.unmount()
   })
 })

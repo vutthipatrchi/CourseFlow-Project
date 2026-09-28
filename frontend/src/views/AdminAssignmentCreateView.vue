@@ -22,7 +22,11 @@ const assignmentId = computed(() => {
 const isEditing = computed(() => assignmentId.value !== null)
 
 const subLessonOptions = ref<SubLessonOption[]>([])
-const initialValue = ref<{ subLessonId: number; description: string } | null>(null)
+const initialValue = ref<{
+  subLessonId: number
+  description: string
+  durationDays: number | null
+} | null>(null)
 const loading = ref(isEditing.value)
 const submitting = ref(false)
 const serverFieldErrors = ref<Record<string, string> | undefined>(undefined)
@@ -41,6 +45,7 @@ onMounted(async () => {
       initialValue.value = {
         subLessonId: assignment.subLessonId,
         description: assignment.description,
+        durationDays: assignment.durationDays,
       }
     } catch (err) {
       serverError.value = toApiError(err).message

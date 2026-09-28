@@ -31,3 +31,24 @@ export async function uploadVideo(file: File): Promise<UploadedVideo> {
   if (!response.ok) throw new Error(await readError(response))
   return (await response.json()) as UploadedVideo
 }
+
+export function isProtectedVideoUrl(source: string): boolean {
+  try {
+    const url = new URL(source, window.location.origin)
+    return url.origin === window.location.origin && /^\/api\/uploads\/videos\/[^/]+$/.test(url.pathname)
+  } catch {
+    return false
+  }
+}
+
+export async function authorizeVideoPlayback(source: string): Promise<void> {
+  const token = await getToken()
+  if (!token) throw new Error('Sign in to watch this lesson video')
+  const url = new URL(source, window.location.origin)
+  const response = await fetch(`${url.pathname}/access`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    credentials: 'same-origin',
+  })
+  if (!response.ok) throw new Error(await readError(response))
+}

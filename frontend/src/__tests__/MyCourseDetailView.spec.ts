@@ -3,12 +3,19 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import MyCourseDetailView from '../views/MyCourseDetailView.vue'
 import type { CourseProgressView, SubscriptionView } from '@/api/payments'
+import { demoContentFixtures } from './demoContentFixtures'
+import type { DemoContentRow } from '@/api/demoContent'
 
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
   getCourseProgress: vi.fn<(courseId: number) => Promise<CourseProgressView>>(),
 }))
 vi.mock('@/api/payments', () => mocks)
+vi.mock('@/api/demoContent', () => ({
+  getEnrolledDemoContent: vi.fn<(courseId: number) => Promise<DemoContentRow[]>>(async (courseId) =>
+    demoContentFixtures(courseId === 1 ? 'Service Design Essentials' : 'Software Developer'),
+  ),
+}))
 vi.mock('@/components/landing/AppNavbar.vue', () => ({
   default: { template: '<header>Navbar</header>' },
 }))

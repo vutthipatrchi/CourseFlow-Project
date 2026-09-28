@@ -11,6 +11,50 @@ Authenticated endpoints expect a Clerk JWT (`Authorization: Bearer …`).
 Returns HTTP 200 and `{"status":"UP","application":"CourseFlow"}`.
 This is a liveness check, not a database readiness check.
 
+## Demo learning content
+
+`GET /api/catalog/demo-video` streams the public sample clip from the backend
+and supports range requests. It does not require a subscription.
+
+`GET /api/catalog/demo-content?courseTitle=Service%20Design%20Essentials` is public
+and available with the database-backed profile. It returns the first reading as a
+free sample, followed by titles only for the remaining seed lessons. Their
+`reading` field is `null`. A course without demo content returns `[]`.
+
+```json
+[
+  {
+    "lessonName": "Lesson 1",
+    "subLessonName": "Welcome to the Course",
+    "title": "Introduction to Service Design",
+    "reading": {
+      "title": "Introduction to Service Design",
+      "objective": "...",
+      "paragraphs": ["...", "..."],
+      "example": "...",
+      "exercise": "...",
+      "solution": "..."
+    }
+  },
+  {
+    "lessonName": "Lesson 1",
+    "subLessonName": "Course Overview",
+    "title": "Course Overview",
+    "reading": null
+  }
+]
+```
+
+`GET /api/me/courses/{courseId}/demo-content` requires a Clerk JWT and an active
+subscription for that course. The backend checks the JWT subject against the
+subscription before returning all readings and suggested answers. An anonymous
+request returns 401; a user without an active subscription receives 404. The
+response uses `Cache-Control: no-store`.
+
+`lessonName` and `subLessonName` identify the original seed. Their database
+positions may change without breaking the reading match. Custom lessons without
+a matching seed name do not receive demo content.
+
 ## Admin courses
 
 These endpoints are available when the backend runs with a database-enabled
@@ -59,9 +103,19 @@ Multipart form field `file` (mp4, webm, mov, m4v). Requires admin JWT.
 }
 ```
 
+### POST /api/uploads/videos/{filename}/access
+
+Requires a Clerk JWT. The backend checks for an active subscription to a course
+containing the video, or `metadata.role=admin`, then sets a 15-minute HttpOnly
+cookie scoped to that video. Other callers receive 401 or 404.
+
 ### GET /api/uploads/videos/{filename}
 
-Public read of a previously uploaded video (no auth). Used by `<video>` tags.
+The browser streams the video directly from the backend using the scoped cookie.
+The backend rechecks the learner's active subscription for each request, including
+range requests. A missing or expired cookie returns 404. The player refreshes
+the cookie during long playback. External video URLs follow their host's access
+rules.
 
 ## Admin lessons and sub-lessons
 
@@ -184,9 +238,15 @@ Request body:
 ```json
 {
   "subLessonId": 1,
-  "description": "Write a short essay"
+  "description": "Write a short essay",
+  "durationDays": 3
 }
 ```
+
+`durationDays` is optional: the number of days suggested to finish the
+assignment. It is only a hint (students see "Assign within N days"): courses are
+self-paced, so nothing is enforced and an assignment never becomes overdue. Omit
+it or send `null` for no hint. When present it must be a positive integer.
 
 Responses:
 
@@ -197,6 +257,7 @@ Responses:
     "id": 10,
     "subLessonId": 1,
     "description": "Write a short essay",
+    "durationDays": 3,
     "createdAt": "2026-09-16T10:00:00Z"
   }
   ```
@@ -229,6 +290,7 @@ first.
     "courseName": "Service Design Essentials",
     "lessonName": "Lesson 1",
     "subLessonName": "Sub-lesson 1",
+    "durationDays": 3,
     "createdAt": "2026-09-16T10:00:00Z"
   }
 ]
@@ -242,14 +304,101 @@ when `id` does not exist.
 
 ### PUT /api/admin/assignments/{id}
 
-Updates an assignment's sub-lesson and description. Same request body and
-validation as `POST`, same success response shape. `404 Not Found` when
+Updates an assignment's sub-lesson, description and deadline. Same request
+body and validation as `POST` (send `"durationDays": null` to remove the
+deadline), same success response shape. `404 Not Found` when
 either `id` or the request's `subLessonId` does not exist.
 
 ### DELETE /api/admin/assignments/{id}
 
 Deletes an assignment. `204 No Content` on success, `404 Not Found` when
 `id` does not exist.
+
+## My assignments
+
+Student-facing endpoints for the "My Assignments" page. They require the
+`local` (or another database-backed) profile and a valid Clerk-issued bearer
+token; the token's subject identifies the student.
+
+Only assignments of courses the caller has an **active subscription** for are
+returned or accepted (`subscriptions.status = 'active'`, matched to the caller
+through `orders.customer_subject`). A signed-in user with no subscription gets
+an empty list.
+
+### GET /api/me/assignments
+
+Returns the caller's assignments with their status, newest first.
+
+```json
+[
+  {
+    "id": 10,
+    "description": "What are the 4 elements of service design?",
+    "courseId": 1,
+    "courseName": "Service Design Essentials",
+    "lessonName": "Lesson 1",
+    "lessonPosition": 1,
+    "subLessonId": 7,
+    "subLessonName": "Sub-lesson 1",
+    "subLessonPosition": 1,
+    "durationDays": 2,
+    "status": "pending",
+    "answer": null,
+    "submittedAt": null
+  }
+]
+```
+
+`lessonPosition` and `subLessonPosition` are the `position` of the lesson in its
+course and of the sub-lesson in its lesson, the same values the course progress
+API returns. The course player builds its URLs from them:
+`/courses/course-{courseId}/learn/sub-{lessonPosition}-{subLessonPosition}`.
+
+`durationDays` is the admin's suggested number of days, or `null`. It is a hint
+for the UI, not a deadline. `answer` and `submittedAt` are `null` until the
+caller submits. `submittedAt` is the time of the first submission and does not
+change when the answer is overwritten.
+
+`status` is derived on every request:
+
+| status | when |
+| --- | --- |
+| `submitted` | the caller has saved an answer (it can still be overwritten) |
+| `pending` | no answer yet |
+
+`overdue` is never returned: courses are self-paced, so there is no deadline.
+The card component still knows how to draw it. `in-progress` is not returned
+either. It would need learning-progress data (whether the student has started
+the sub-lesson), which the backend does not store yet.
+
+### POST /api/me/assignments/{id}/submissions
+
+Saves the caller's answer. Submitting again overwrites the previous answer.
+
+Request body:
+
+```json
+{ "answer": "People, process, products and partners" }
+```
+
+`answer` must not be blank and is limited to 4000 characters.
+
+Responses:
+
+- `200 OK` with the refreshed assignment, same shape as a list item above with
+  `"status": "submitted"`.
+- `400 Bad Request` when validation fails:
+
+  ```json
+  {
+    "message": "Validation failed",
+    "fieldErrors": { "answer": "must not be blank" }
+  }
+  ```
+
+- `404 Not Found` when the assignment does not exist **or** belongs to a course
+  the caller is not subscribed to. The two cases are intentionally
+  indistinguishable.
 
 ## Admin promo codes
 

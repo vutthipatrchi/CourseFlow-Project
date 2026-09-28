@@ -8,6 +8,7 @@ public record AssignmentSummary(
     String courseName,
     String lessonName,
     String subLessonName,
+    Integer durationDays,
     OffsetDateTime createdAt
 ) {
 }

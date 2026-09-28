@@ -4,9 +4,17 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import CourseDetailView from '@/views/CourseDetailView.vue'
 import ModuleAccordion from '@/components/course/ModuleAccordion.vue'
 import { createDemoModules } from '@/data/demoLessons'
-import { DEMO_VIDEO_URL } from '@/data/demoVideo'
+import { demoContentFixtures } from './demoContentFixtures'
+import type { DemoContentRow } from '@/api/demoContent'
+import { getPublicDemoContent } from '@/api/demoContent'
 
 afterEach(() => vi.restoreAllMocks())
+
+vi.mock('@/api/demoContent', () => ({
+  getPublicDemoContent: vi.fn<(courseTitle: string) => Promise<DemoContentRow[]>>(async (courseTitle) =>
+    demoContentFixtures(courseTitle).map((row, index) => index === 0 ? row : { ...row, reading: null }),
+  ),
+}))
 
 async function mountPage() {
   const router = createRouter({
@@ -24,11 +32,23 @@ async function mountPage() {
       stubs: { AppNavbar: true, AppFooter: true, CtaBanner: true, SubscribeCard: true },
     },
   })
+  await flushPromises()
   return { wrapper, router }
 }
 
 describe('Module Samples previews', () => {
-  it('opens the selected module reading and clip, then stops playback when the module closes', async () => {
+  it('shows a retryable error when the backend cannot supply preview readings', async () => {
+    vi.mocked(getPublicDemoContent).mockRejectedValueOnce(new Error('Unavailable'))
+    const { wrapper } = await mountPage()
+    expect(wrapper.get('[role="alert"]').text()).toContain('ไม่สามารถโหลดบทเรียนตัวอย่างได้')
+    expect(wrapper.find('article').exists()).toBe(false)
+    await wrapper.get('[role="alert"] button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('article').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('keeps locked module readings out of the public preview', async () => {
     const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
     const { wrapper } = await mountPage()
     const module = wrapper.findAllComponents(ModuleAccordion)[1]!
@@ -37,19 +57,11 @@ describe('Module Samples previews', () => {
     expect(module.find('details').exists()).toBe(false)
     await toggle.trigger('click')
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    const sample = module.get('details')
-    expect(sample.get('summary').text()).toContain('ดูตัวอย่างบทเรียน')
-    expect(sample.find('video').exists()).toBe(false)
-    ;(sample.element as HTMLDetailsElement).open = true
-    await sample.trigger('toggle')
-    expect(sample.get('article h2').text()).toBe('Development Tools')
-    expect(sample.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
-    expect(sample.get('article').text()).toContain('Terminal')
-    expect(sample.text()).not.toContain('อ่านจบแล้ว')
+    expect(module.text()).toContain('Development Tools')
+    expect(module.find('details').exists()).toBe(false)
+    expect(module.find('article').exists()).toBe(false)
     await toggle.trigger('click')
-    expect(pause).toHaveBeenCalledOnce()
-    expect(module.find('video').exists()).toBe(false)
-    await toggle.trigger('click')
+    expect(pause).not.toHaveBeenCalled()
     expect(module.find('video').exists()).toBe(false)
     wrapper.unmount()
   })
@@ -81,12 +93,12 @@ describe('Module Samples previews', () => {
   })
 
   it('preserves lesson selection in the enrolled-course sidebar', async () => {
-    const module = createDemoModules('Software Developer')[0]!
+    const module = createDemoModules(demoContentFixtures('Software Developer'))[0]!
     const wrapper = mount(ModuleAccordion, {
       props: { module, index: 0, defaultOpen: true, interactive: true },
     })
     await wrapper.get('li button').trigger('click')
-    expect(wrapper.emitted('select')).toEqual([['sub-1-1']])
+    expect(wrapper.emitted('select')).toEqual([[module.subLessons[0]!.id]])
     expect(wrapper.find('details').exists()).toBe(false)
     wrapper.unmount()
   })
