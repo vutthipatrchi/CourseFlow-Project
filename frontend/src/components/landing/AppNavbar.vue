@@ -12,9 +12,12 @@ import UserMenu from './UserMenu.vue'
       </a>
 
       <div class="flex items-center gap-5 sm:gap-8">
-        <a href="#" class="whitespace-nowrap text-sm font-medium text-darkblue-500 hover:text-blue-600"
-          >Our Courses</a
+        <RouterLink
+          to="/courses"
+          class="whitespace-nowrap text-sm font-medium text-darkblue-500 hover:text-blue-600"
         >
+          Our Courses
+        </RouterLink>
         <Show when="signed-out">
           <a
             href="/sign-in"

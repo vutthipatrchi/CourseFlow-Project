@@ -22,6 +22,11 @@ async function mountPage() {
     routes: [
       { path: '/courses/:id', component: CourseDetailView },
       { path: '/courses', component: { template: '<div>Courses</div>' } },
+      {
+        path: '/learn/:courseId',
+        name: 'learning-progress',
+        component: { template: '<div>Learn</div>' },
+      },
     ],
   })
   await router.push('/courses/course-2')

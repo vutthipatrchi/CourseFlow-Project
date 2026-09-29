@@ -95,6 +95,12 @@ watch(
             Course Detail
           </h1>
           <p class="text-base text-[#646D89]">{{ course.longDescription }}</p>
+          <RouterLink
+            :to="{ name: 'learning-progress', params: { courseId: course.id } }"
+            class="inline-flex w-fit rounded-lg bg-[#2F5FAC] px-5 py-3 text-sm font-bold text-white hover:bg-[#254F93]"
+          >
+            Start learning
+          </RouterLink>
           <details v-if="sampleLesson" class="rounded-xl border border-[#D6D9E4] p-4">
             <summary
               class="cursor-pointer font-semibold text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-4"

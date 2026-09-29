@@ -15,6 +15,13 @@ export async function getPublicDemoContent(courseTitle: string): Promise<DemoCon
   return data
 }
 
+export async function getLearningDemoContent(courseTitle: string): Promise<DemoContentRow[]> {
+  const { data } = await client.get<DemoContentRow[]>('/learn/demo-content', {
+    params: { courseTitle },
+  })
+  return data
+}
+
 export async function getEnrolledDemoContent(courseId: number): Promise<DemoContentRow[]> {
   const { data } = await client.get<DemoContentRow[]>(`/me/courses/${courseId}/demo-content`)
   return data

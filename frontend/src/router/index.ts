@@ -47,6 +47,13 @@ const router = createRouter({
       component: () => import('../views/MyCoursesView.vue'),
       meta: { requiresAuth: true },
     },
+    { path: '/learn', redirect: { name: 'learning-progress', params: { courseId: 'course-1' } } },
+    {
+      path: '/learn/:courseId',
+      name: 'learning-progress',
+      component: () => import('../views/LearningProgressView.vue'),
+      meta: { requiresAuth: true },
+    },
     {
       path: '/my-courses/:courseId',
       name: 'my-course-detail',
