@@ -55,7 +55,9 @@ describe('usePaymentStatus toasts', () => {
     await vi.waitFor(() => expect(get().terminal.value).toBe(true))
 
     expect(successSpy).toHaveBeenCalledTimes(1)
-    expect(successSpy).toHaveBeenCalledWith('Payment successful!')
+    expect(successSpy).toHaveBeenCalledWith('Payment successful!', {
+      description: 'Reference no. REF1',
+    })
     wrapper.unmount()
   })
 
@@ -67,6 +69,20 @@ describe('usePaymentStatus toasts', () => {
 
     expect(errorSpy).toHaveBeenCalledTimes(1)
     expect(errorSpy).toHaveBeenCalledWith('Payment failed.')
+    wrapper.unmount()
+  })
+
+  it('includes the failure reason as the toast description when the gateway gives one', async () => {
+    mocks.getPayment.mockResolvedValue(
+      payment({ status: 'failed', failureMessage: 'The card was declined.' }),
+    )
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper, get } = mountStatus('11111111-1111-1111-1111-111111111111')
+    await vi.waitFor(() => expect(get().terminal.value).toBe(true))
+
+    expect(errorSpy).toHaveBeenCalledWith('Payment failed.', {
+      description: 'The card was declined.',
+    })
     wrapper.unmount()
   })
 

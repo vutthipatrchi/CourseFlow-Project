@@ -38,4 +38,12 @@ describe('ToastContainer', () => {
       closeButton: true,
     })
   })
+
+  it('sizes each toast to its message instead of a fixed width', () => {
+    const wrapper = mount(ToastContainer)
+
+    expect(wrapper.findComponent(Toaster).props('toastOptions')).toMatchObject({
+      style: { width: 'fit-content' },
+    })
+  })
 })

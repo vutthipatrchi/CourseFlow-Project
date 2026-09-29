@@ -80,9 +80,30 @@ describe('useToast', () => {
     const spy = vi.spyOn(toast, 'success')
     const { success } = useToast()
 
-    success('Sticks around', 5000)
+    success('Sticks around', { durationMs: 5000 })
 
     expect(spy).toHaveBeenCalledWith('Sticks around', { duration: 5000 })
+  })
+
+  it('renders a description as a second, lighter line under the message', async () => {
+    const wrapper = mountToaster()
+    const { success } = useToast()
+
+    success('Payment successful!', { description: 'Reference no. CF123' })
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.text()).toContain('Payment successful!')
+    expect(wrapper.text()).toContain('Reference no. CF123')
+  })
+
+  it('does not pass a second argument to vue-sonner when no options are given', () => {
+    const spy = vi.spyOn(toast, 'error')
+    const { error } = useToast()
+
+    error('Something went wrong.')
+
+    expect(spy).toHaveBeenCalledWith('Something went wrong.')
   })
 
   it('exposes the underlying vue-sonner toast for scenarios success()/error() do not cover', () => {

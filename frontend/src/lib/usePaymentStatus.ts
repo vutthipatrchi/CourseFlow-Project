@@ -36,8 +36,13 @@ export function usePaymentStatus(paymentId: Ref<string>) {
       errorMessage.value = ''
       if (!resolved && terminal.value) {
         resolved = true
-        if (next.status === 'successful') notifySuccess('Payment successful!')
-        else notifyError(next.status === 'expired' ? 'Payment expired.' : 'Payment failed.')
+        if (next.status === 'successful') {
+          notifySuccess('Payment successful!', { description: `Reference no. ${next.reference}` })
+        } else {
+          notifyError(next.status === 'expired' ? 'Payment expired.' : 'Payment failed.', {
+            description: next.failureMessage ?? undefined,
+          })
+        }
       }
     } catch (error) {
       if (current !== generation) return
