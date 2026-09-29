@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import CoursePlayerView from '../views/CoursePlayerView.vue'
@@ -59,10 +59,10 @@ const progress: CourseProgressView = {
   subLessons: [
     {
       id: 99,
-      title: 'Introduction to Programming',
+      title: 'Welcome to Software Development',
       videoUrl: null,
       lessonPosition: 1,
-      lessonTitle: 'Introduction to Programming',
+      lessonTitle: 'Getting Started as a Developer',
       subLessonPosition: 1,
       completed: false,
     },
@@ -70,7 +70,31 @@ const progress: CourseProgressView = {
 }
 
 beforeEach(() => {
-  vi.resetAllMocks()
+  vi.clearAllMocks()
+  // jsdom has no IntersectionObserver; avoid auto-complete noise from a fake one.
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return []
+      }
+    },
+  )
+  mocks.getCheckoutCourse.mockImplementation(async (courseId: number) => ({
+    id: courseId,
+    name: courseId === 9 ? 'Software Developer' : 'Service Design Essentials',
+    price: 3559,
+    category: 'Course',
+    summary: 'Catalog summary',
+    description: 'Catalog description',
+    learningTime: 8,
+    lessons: 6,
+    imageName: null,
+    accent: '#dce8fb',
+  }))
   submissionMocks.listMyAssignments.mockResolvedValue([])
   mocks.getSubscriptions.mockResolvedValue([
     {
@@ -86,6 +110,13 @@ beforeEach(() => {
     },
   ])
   mocks.getCourseProgress.mockResolvedValue(structuredClone(progress))
+  vi.mocked(getEnrolledDemoContent).mockImplementation(async (courseId) =>
+    demoContentFixtures(courseId === 9 ? 'Software Developer' : 'Service Design Essentials'),
+  )
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 async function mountPlayer(path = '/courses/course-9/learn/sub-1-1') {
@@ -116,8 +147,16 @@ function scrollToBottom() {
     configurable: true,
     value: 2000,
   })
+  Object.defineProperty(document.body, 'scrollHeight', {
+    configurable: true,
+    value: 2000,
+  })
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
   Object.defineProperty(window, 'scrollY', { configurable: true, value: 1200 })
+  Object.defineProperty(document.documentElement, 'scrollTop', {
+    configurable: true,
+    value: 1200,
+  })
   window.dispatchEvent(new Event('scroll'))
 }
 
@@ -344,10 +383,10 @@ describe('purchased course player', () => {
       subLessons: [
         {
           id: 99,
-          title: 'Introduction to Programming',
+          title: 'Welcome to Software Development',
           videoUrl: null,
           lessonPosition: 1,
-          lessonTitle: 'Introduction',
+          lessonTitle: 'Getting Started as a Developer',
           subLessonPosition: 1,
           completed: false,
         },
@@ -371,7 +410,7 @@ describe('purchased course player', () => {
       },
     ])
     await flushPromises()
-    expect(wrapper.text()).toContain('Introduction to Programming')
+    expect(wrapper.text()).toContain('Welcome to Software Development')
     expect(wrapper.text()).not.toContain('UX/UI Design Beginner')
     wrapper.unmount()
   })

@@ -14,8 +14,16 @@ function setScroll({
     configurable: true,
     value: scrollHeight,
   })
+  Object.defineProperty(document.body, 'scrollHeight', {
+    configurable: true,
+    value: scrollHeight,
+  })
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: innerHeight })
   Object.defineProperty(window, 'scrollY', { configurable: true, value: scrollY })
+  Object.defineProperty(document.documentElement, 'scrollTop', {
+    configurable: true,
+    value: scrollY,
+  })
 }
 
 describe('hasScrolledToPageBottom', () => {
@@ -29,8 +37,13 @@ describe('hasScrolledToPageBottom', () => {
     expect(hasScrolledToPageBottom()).toBe(false)
   })
 
-  it('is true only after scrolling to the bottom of a long page', () => {
-    setScroll({ scrollHeight: 2000, innerHeight: 800, scrollY: 1200 })
+  it('is true after scrolling near the bottom of a long page', () => {
+    setScroll({ scrollHeight: 2000, innerHeight: 800, scrollY: 1100 })
+    expect(hasScrolledToPageBottom()).toBe(true)
+  })
+
+  it('allows a larger bottom margin so the footer can already be visible', () => {
+    setScroll({ scrollHeight: 2000, innerHeight: 800, scrollY: 1090 })
     expect(hasScrolledToPageBottom()).toBe(true)
   })
 })

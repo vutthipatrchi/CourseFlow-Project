@@ -3,7 +3,7 @@
 // Course learning page: sidebar progress/module tree, video + assignment, prev/next nav
 // Demo readings and available videos use explicit, server-backed completion.
 
-import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
@@ -232,11 +232,15 @@ watch(
   },
 )
 
-onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true })
+  void nextTick().then(observeLessonEnd)
+})
 
 onUnmounted(() => {
   clearTimeout(loadingTimer)
   window.removeEventListener('scroll', onScroll)
+  lessonEndObserver?.disconnect()
 })
 
 watchEffect(() => {
@@ -294,9 +298,40 @@ const handleComplete = async () => {
   }
 }
 
-function onScroll() {
+function tryCompleteFromScroll() {
   if (hasScrolledToPageBottom()) void handleComplete()
 }
+
+function onScroll() {
+  tryCompleteFromScroll()
+}
+
+const lessonEndSentinel = ref<HTMLElement | null>(null)
+let lessonEndObserver: IntersectionObserver | undefined
+
+function observeLessonEnd() {
+  lessonEndObserver?.disconnect()
+  const target = lessonEndSentinel.value
+  if (!target || typeof IntersectionObserver === 'undefined') return
+  lessonEndObserver = new IntersectionObserver(
+    (entries) => {
+      // Require some scroll so short pages do not auto-complete on first paint.
+      if (!entries.some((entry) => entry.isIntersecting)) return
+      if ((Number.isFinite(window.scrollY) ? window.scrollY : 0) < 24) return
+      void handleComplete()
+    },
+    { root: null, threshold: 0, rootMargin: '0px 0px 80px 0px' },
+  )
+  lessonEndObserver.observe(target)
+}
+
+watch(
+  () => currentEntry.value?.subLesson.id,
+  async () => {
+    await nextTick()
+    observeLessonEnd()
+  },
+)
 
 const handleAssignmentSubmit = async (answer: string) => {
   const assignment = currentEntry.value?.subLesson.assignment
@@ -424,6 +459,8 @@ const handleAssignmentSubmit = async (answer: string) => {
               :assignment="currentEntry.subLesson.assignment"
               @submit="handleAssignmentSubmit"
             />
+            <!-- Marks the lesson complete once this end-of-reading marker enters view. -->
+            <div ref="lessonEndSentinel" class="h-px w-full" aria-hidden="true"></div>
           </div>
         </Transition>
       </div>
