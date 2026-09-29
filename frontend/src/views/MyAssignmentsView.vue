@@ -10,6 +10,7 @@ import AssignmentCard from '@/components/course/AssignmentCard.vue'
 import { listMyAssignments, submitAssignment } from '@/api/submissions'
 import { toApiError } from '@/api/client'
 import { toCardAssignment } from '@/lib/assignmentCard'
+import { useToast } from '@/composables/useToast'
 import type { AssignmentStatus } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
 
@@ -26,6 +27,7 @@ const assignments = ref<MyAssignment[]>([])
 const loading = ref(true)
 const loadError = ref('')
 const submitError = ref('')
+const { success: notifySuccess, error: notifyError } = useToast()
 
 async function load() {
   loading.value = true
@@ -34,6 +36,7 @@ async function load() {
     assignments.value = await listMyAssignments()
   } catch (failure) {
     loadError.value = toApiError(failure).message
+    notifyError(loadError.value)
   } finally {
     loading.value = false
   }
@@ -70,8 +73,10 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
     const updated = await submitAssignment(assignment.id, answer)
     const index = assignments.value.findIndex((item) => item.id === updated.id)
     if (index !== -1) assignments.value[index] = updated
+    notifySuccess('Assignment submitted successfully!')
   } catch (failure) {
     submitError.value = toApiError(failure).message
+    notifyError(submitError.value)
   }
 }
 </script>
