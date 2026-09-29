@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import PaymentView from '../views/PaymentView.vue'
 import PaymentQrView from '../views/PaymentQrView.vue'
 import PaymentStatusView from '../views/PaymentStatusView.vue'
@@ -126,6 +127,50 @@ describe('checkout', () => {
     wrapper.unmount()
   })
 
+  it('raises a matching toast when the order fails to load', async () => {
+    mocks.createOrder.mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+    wrapper.unmount()
+  })
+
+  it('raises a success toast when a promotion code is applied', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('#promo-code').setValue('COURSE200')
+    mocks.createOrder.mockResolvedValue({ ...order, promotionCode: 'COURSE200' })
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Apply')!
+      .trigger('click')
+    await flushPromises()
+    expect(successSpy).toHaveBeenCalledWith('Promotion code applied. Please review your total.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when applying a promotion code fails', async () => {
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('#promo-code').setValue('EXPIRED')
+    mocks.createOrder.mockRejectedValue(new Error('That code has expired.'))
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Apply')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('That code has expired.')
+    expect(errorSpy).toHaveBeenCalledWith('That code has expired.')
+    wrapper.unmount()
+  })
+
   it('uses the prepared order without creating another order at confirmation', async () => {
     const router = await createTestRouter()
     const wrapper = mount(PaymentView, { global: { plugins: [router] } })
@@ -151,6 +196,7 @@ describe('checkout', () => {
 
   it('recovers a lost response without resubmitting the payment', async () => {
     mocks.createPromptPayPayment.mockRejectedValue(new Error('timeout'))
+    const errorSpy = vi.spyOn(toast, 'error')
     const router = await createTestRouter()
     const wrapper = mount(PaymentView, { global: { plugins: [router] } })
     await flushPromises()
@@ -158,6 +204,9 @@ describe('checkout', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(wrapper.get('button[type="submit"]').text()).toBe('Check payment status')
+    expect(errorSpy).toHaveBeenCalledWith(
+      'We could not confirm the result. Check your payment status before trying again.',
+    )
     mocks.createOrder.mockResolvedValue({ ...order, payment: pending })
     await wrapper.get('form').trigger('submit')
     await flushPromises()
@@ -305,6 +354,17 @@ describe('payment status', () => {
     wrapper.unmount()
   })
 
+  it('raises a matching toast when the QR code fails to load', async () => {
+    mocks.downloadQr.mockRejectedValue(new Error('The QR provider is unavailable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = await createTestRouter(`/payment/qr?paymentId=${paymentId}`)
+    const wrapper = mount(PaymentQrView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toBe('The QR provider is unavailable.')
+    expect(errorSpy).toHaveBeenCalledWith('The QR provider is unavailable.')
+    wrapper.unmount()
+  })
+
   it('rejects an invalid payment link', async () => {
     const router = await createTestRouter('/payment/status?paymentId=not-a-uuid')
     const wrapper = mount(PaymentStatusView, { global: { plugins: [router] } })
@@ -349,6 +409,27 @@ describe('payment status', () => {
     expect(wrapper.get('h1').text()).toBe('Payment failed.')
     expect(wrapper.text()).toContain('Please check your payment details and try again')
     expect(wrapper.get('a[href="/payment?courseId=7"]').text()).toBe('Back to Payment')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when opening card verification fails', async () => {
+    mocks.getPayment.mockResolvedValue({
+      ...pending,
+      authorizeUrl: 'https://api.omise.co/payments/paym_test_123/authorize',
+    })
+    mocks.continueCardAuthentication.mockImplementation(() => {
+      throw new Error('Popup blocked.')
+    })
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = await createTestRouter(`/payment/status?paymentId=${paymentId}`)
+    const wrapper = mount(PaymentStatusView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Continue card verification')!
+      .trigger('click')
+    expect(wrapper.get('[role="alert"]').text()).toBe('Popup blocked.')
+    expect(errorSpy).toHaveBeenCalledWith('Popup blocked.')
     wrapper.unmount()
   })
 
