@@ -14,7 +14,9 @@ import {
 import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
 import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
 import { resolveCatalogImage } from '@/lib/catalogCourses'
+import { useToast } from '@/composables/useToast'
 
+const { error: notifyError } = useToast()
 const route = useRoute()
 const courseId = computed(() => Number(route.params.courseId))
 const subscription = ref<SubscriptionView | null>(null)
@@ -64,6 +66,11 @@ const learningRoute = computed(() => {
   }
 })
 
+function fail(message: string) {
+  error.value = message
+  notifyError(message)
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -72,7 +79,7 @@ async function load() {
   demoContent.value = []
   contentError.value = ''
   if (!Number.isSafeInteger(courseId.value) || courseId.value <= 0) {
-    error.value = 'Invalid course'
+    fail('Invalid course')
     loading.value = false
     return
   }
@@ -80,7 +87,7 @@ async function load() {
     const subscriptions = await getSubscriptions()
     subscription.value = subscriptions.find((item) => item.courseId === courseId.value) ?? null
     if (!subscription.value) {
-      error.value = 'This course is not in your courses.'
+      fail('This course is not in your courses.')
       return
     }
     const [courseProgress, readings, catalog] = await Promise.all([
@@ -95,7 +102,7 @@ async function load() {
     catalogCourse.value = catalog
     progress.value = courseProgress
   } catch (failure) {
-    error.value = failure instanceof Error ? failure.message : 'Unable to load course details'
+    fail(failure instanceof Error ? failure.message : 'Unable to load course details')
   } finally {
     loading.value = false
   }

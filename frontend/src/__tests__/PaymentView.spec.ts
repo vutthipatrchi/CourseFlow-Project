@@ -499,4 +499,15 @@ describe('payment status', () => {
     expect(router.currentRoute.value.fullPath).toBe('/my-courses/8')
     wrapper.unmount()
   })
+
+  it('raises a matching toast when My Courses fails to load', async () => {
+    mocks.getSubscriptions.mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = await createTestRouter('/my-courses')
+    const wrapper = mount(MyCoursesView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+    wrapper.unmount()
+  })
 })

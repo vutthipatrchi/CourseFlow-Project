@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import MyCourseDetailView from '../views/MyCourseDetailView.vue'
 import type { CourseProgressView, SubscriptionView } from '@/api/payments'
 import { demoContentFixtures } from './demoContentFixtures'
@@ -115,9 +116,20 @@ describe('MyCourseDetailView', () => {
   })
 
   it('does not show details for a course outside the user subscriptions', async () => {
+    const errorSpy = vi.spyOn(toast, 'error')
     const { wrapper } = await mountPage(2)
     expect(wrapper.get('[role="alert"]').text()).toBe('This course is not in your courses.')
     expect(mocks.getCourseProgress).not.toHaveBeenCalled()
+    expect(errorSpy).toHaveBeenCalledWith('This course is not in your courses.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when loading the course fails', async () => {
+    mocks.getSubscriptions.mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
     wrapper.unmount()
   })
 })
