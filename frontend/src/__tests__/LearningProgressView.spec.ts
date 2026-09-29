@@ -1,7 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import LearningProgressView from '../views/LearningProgressView.vue'
+import { getCourseAccess } from '@/lib/courseAccess'
+
+vi.mock('@/lib/courseAccess', () => ({
+  getCourseAccess: vi.fn(async () => ({
+    enrolled: true,
+    checkoutCourse: { id: 1, name: 'Service Design Essentials', price: 3559 },
+  })),
+}))
 
 async function mountView(path = '/learn/course-1') {
   const router = createRouter({
@@ -12,22 +20,31 @@ async function mountView(path = '/learn/course-1') {
         name: 'learning-progress',
         component: LearningProgressView,
       },
+      { path: '/courses/:id', component: { template: '<div>Detail</div>' } },
+      { path: '/my-courses', component: { template: '<div>My Courses</div>' } },
+      { path: '/payment', name: 'payment', component: { template: '<div>Payment</div>' } },
     ],
   })
   await router.push(path)
   await router.isReady()
 
-  return mount(LearningProgressView, {
+  const wrapper = mount(LearningProgressView, {
     global: {
       plugins: [router],
       stubs: { AppNavbar: true, AppFooter: true },
     },
   })
+  await flushPromises()
+  return wrapper
 }
 
 describe('learning progress', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.mocked(getCourseAccess).mockResolvedValue({
+      enrolled: true,
+      checkoutCourse: { id: 1, name: 'Service Design Essentials', price: 3559 },
+    })
   })
 
   it('shows course progress and the current lesson', async () => {
@@ -41,6 +58,18 @@ describe('learning progress', () => {
     expect(wrapper.text()).toContain('Example')
     expect(wrapper.text()).toContain('Try it yourself')
     expect(wrapper.text()).toContain('Pending')
+  })
+
+  it('blocks learning when the course is not purchased', async () => {
+    vi.mocked(getCourseAccess).mockResolvedValue({
+      enrolled: false,
+      checkoutCourse: { id: 1, name: 'Service Design Essentials', price: 3559 },
+    })
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Purchase this course to start learning')
+    expect(wrapper.text()).toContain('Subscribe this course')
+    expect(wrapper.find('h2').exists()).toBe(false)
   })
 
   it('shows a reading for a lesson that has no assignment', async () => {
@@ -78,22 +107,21 @@ describe('learning progress', () => {
     expect(current.text()).toContain('4 Levels of Service Design in an Organization')
     expect(current.html()).toContain('>i<')
 
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
     Object.defineProperty(document.documentElement, 'scrollHeight', {
       configurable: true,
       value: 2000,
     })
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
     Object.defineProperty(window, 'scrollY', { configurable: true, value: 1200 })
     window.dispatchEvent(new Event('scroll'))
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.get('[aria-current="true"]').html()).not.toContain('>i<')
     expect(wrapper.text()).toContain('25% Complete')
+    expect(wrapper.get('[aria-current="true"]').html()).not.toContain('>i<')
 
     wrapper.unmount()
-    const reloaded = await mountView()
-    expect(reloaded.text()).toContain('25% Complete')
-    expect(reloaded.get('[aria-current="true"]').html()).not.toContain('>i<')
+    const remounted = await mountView()
+    expect(remounted.text()).toContain('25% Complete')
   })
 
   it('marks an assignment as submitted', async () => {

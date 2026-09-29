@@ -7,13 +7,24 @@ import { createDemoModules } from '@/data/demoLessons'
 import { demoContentFixtures } from './demoContentFixtures'
 import type { DemoContentRow } from '@/api/demoContent'
 import { getPublicDemoContent } from '@/api/demoContent'
+import { getCourseAccess } from '@/lib/courseAccess'
 
 afterEach(() => vi.restoreAllMocks())
 
 vi.mock('@/api/demoContent', () => ({
-  getPublicDemoContent: vi.fn<(courseTitle: string) => Promise<DemoContentRow[]>>(async (courseTitle) =>
-    demoContentFixtures(courseTitle).map((row, index) => index === 0 ? row : { ...row, reading: null }),
+  getPublicDemoContent: vi.fn<(courseTitle: string) => Promise<DemoContentRow[]>>(
+    async (courseTitle) =>
+      demoContentFixtures(courseTitle).map((row, index) =>
+        index === 0 ? row : { ...row, reading: null },
+      ),
   ),
+}))
+
+vi.mock('@/lib/courseAccess', () => ({
+  getCourseAccess: vi.fn(async () => ({
+    enrolled: false,
+    checkoutCourse: { id: 9, name: 'Software Developer', price: 3559 },
+  })),
 }))
 
 async function mountPage() {
@@ -27,6 +38,7 @@ async function mountPage() {
         name: 'learning-progress',
         component: { template: '<div>Learn</div>' },
       },
+      { path: '/payment', name: 'payment', component: { template: '<div>Payment</div>' } },
     ],
   })
   await router.push('/courses/course-2')
@@ -42,6 +54,38 @@ async function mountPage() {
 }
 
 describe('Module Samples previews', () => {
+  it('sends unpaid learners to checkout instead of the learning page', async () => {
+    vi.mocked(getCourseAccess).mockResolvedValue({
+      enrolled: false,
+      checkoutCourse: { id: 9, name: 'Software Developer', price: 3559 },
+    })
+    const { wrapper, router } = await mountPage()
+    const start = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Start learning'))
+    await start?.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('payment')
+    expect(router.currentRoute.value.query.courseId).toBe('9')
+    wrapper.unmount()
+  })
+
+  it('opens the learning page when the course is already purchased', async () => {
+    vi.mocked(getCourseAccess).mockResolvedValue({
+      enrolled: true,
+      checkoutCourse: { id: 9, name: 'Software Developer', price: 3559 },
+    })
+    const { wrapper, router } = await mountPage()
+    const start = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Start learning'))
+    await start?.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('learning-progress')
+    expect(router.currentRoute.value.params.courseId).toBe('course-2')
+    wrapper.unmount()
+  })
+
   it('shows a retryable error when the backend cannot supply preview readings', async () => {
     vi.mocked(getPublicDemoContent).mockRejectedValueOnce(new Error('Unavailable'))
     const { wrapper } = await mountPage()

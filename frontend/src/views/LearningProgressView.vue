@@ -5,11 +5,57 @@ import AppFooter from '@/components/landing/AppFooter.vue'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import { courses } from '@/data/courses'
 import { buildLessonReading } from '@/data/lessonReadings'
+import { getCourseAccess } from '@/lib/courseAccess'
+import { hasScrolledToPageBottom } from '@/lib/scrollComplete'
 import type { Assignment, DemoLesson, SubLessonProgress } from '@/types/course'
 
 const route = useRoute()
 const course = computed(
   () => courses.find((item) => item.id === route.params.courseId) ?? courses[0],
+)
+
+const accessLoading = ref(true)
+const accessDenied = ref(false)
+const accessError = ref('')
+const paymentCourseId = ref<number | null>(null)
+let accessRequest = 0
+
+async function verifyAccess() {
+  const request = ++accessRequest
+  const title = course.value?.title
+  accessLoading.value = true
+  accessDenied.value = false
+  accessError.value = ''
+  paymentCourseId.value = null
+  if (!title) {
+    accessDenied.value = true
+    accessError.value = 'Course not found.'
+    accessLoading.value = false
+    return
+  }
+  try {
+    const access = await getCourseAccess(title)
+    if (request !== accessRequest) return
+    paymentCourseId.value = access.checkoutCourse?.id ?? null
+    if (!access.enrolled) {
+      accessDenied.value = true
+      accessError.value = 'Purchase this course to start learning.'
+    }
+  } catch (error) {
+    if (request !== accessRequest) return
+    accessDenied.value = true
+    accessError.value = error instanceof Error ? error.message : 'Unable to verify course access'
+  } finally {
+    if (request === accessRequest) accessLoading.value = false
+  }
+}
+
+watch(
+  () => course.value?.id,
+  () => {
+    void verifyAccess()
+  },
+  { immediate: true },
 )
 
 type LessonItem = {
@@ -119,6 +165,7 @@ function selectLesson(lesson: LessonItem) {
   if (!openModuleIds.value.includes(lesson.moduleId)) {
     openModuleIds.value = [...openModuleIds.value, lesson.moduleId]
   }
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
 }
 
 function toggleModule(moduleId: string) {
@@ -147,9 +194,7 @@ function markCurrentLessonComplete() {
 }
 
 function onScroll() {
-  const scrolled = window.scrollY + window.innerHeight
-  const pageHeight = document.documentElement.scrollHeight
-  if (pageHeight - scrolled <= 24) markCurrentLessonComplete()
+  if (hasScrolledToPageBottom()) markCurrentLessonComplete()
 }
 
 onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
@@ -157,7 +202,44 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <template>
-  <div v-if="course" class="flex min-h-screen flex-col bg-white">
+  <div v-if="accessLoading" class="flex min-h-screen flex-col bg-white">
+    <AppNavbar />
+    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+      <p role="status" class="text-[#646D89]">Checking course access…</p>
+    </main>
+    <AppFooter />
+  </div>
+
+  <div v-else-if="accessDenied" class="flex min-h-screen flex-col bg-white">
+    <AppNavbar />
+    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+      <p role="alert" class="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+        {{ accessError || 'You do not have access to this course.' }}
+      </p>
+      <div class="mt-4 flex flex-wrap gap-4">
+        <RouterLink
+          v-if="course"
+          :to="`/courses/${course.id}`"
+          class="inline-block font-semibold text-blue-600"
+        >
+          Back to course detail
+        </RouterLink>
+        <RouterLink
+          v-if="paymentCourseId"
+          :to="{ name: 'payment', query: { courseId: paymentCourseId } }"
+          class="inline-block font-semibold text-blue-600"
+        >
+          Subscribe this course
+        </RouterLink>
+        <RouterLink to="/my-courses" class="inline-block font-semibold text-blue-600">
+          Back to My Courses
+        </RouterLink>
+      </div>
+    </main>
+    <AppFooter />
+  </div>
+
+  <div v-else-if="course" class="flex min-h-screen flex-col bg-white">
     <AppNavbar />
 
     <main

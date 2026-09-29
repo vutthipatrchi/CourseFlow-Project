@@ -4,7 +4,7 @@
 // แก้ไขได้: back link target, module list source, image placeholder
 
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import CtaBanner from '@/components/landing/CtaBanner.vue'
@@ -15,10 +15,12 @@ import SubscribeCard from '@/components/course/SubscribeCard.vue'
 import { courses } from '@/data/courses'
 import { getPublicDemoContent } from '@/api/demoContent'
 import { createDemoModules } from '@/data/demoLessons'
+import { getCourseAccess } from '@/lib/courseAccess'
 import type { Module } from '@/types/course'
 import { DEMO_VIDEO_LABEL, DEMO_VIDEO_URL } from '@/data/demoVideo'
 
 const route = useRoute()
+const router = useRouter()
 
 const course = computed(() => courses.find((item) => item.id === route.params.id))
 const previewModules = ref<Module[]>([])
@@ -26,7 +28,31 @@ const previewLoading = ref(false)
 const previewError = ref('')
 const sampleLesson = computed(() => previewModules.value[0]?.subLessons[0]?.demoLesson)
 const videoFailed = ref(false)
+const startLearningBusy = ref(false)
+const startLearningError = ref('')
 let previewRequest = 0
+
+async function startLearning() {
+  if (!course.value || startLearningBusy.value) return
+  startLearningBusy.value = true
+  startLearningError.value = ''
+  try {
+    const access = await getCourseAccess(course.value.title)
+    if (access.enrolled) {
+      await router.push({ name: 'learning-progress', params: { courseId: course.value.id } })
+      return
+    }
+    if (access.checkoutCourse) {
+      await router.push({ name: 'payment', query: { courseId: access.checkoutCourse.id } })
+      return
+    }
+    startLearningError.value = 'This course is not available for checkout yet.'
+  } catch {
+    await router.push({ name: 'learning-progress', params: { courseId: course.value.id } })
+  } finally {
+    startLearningBusy.value = false
+  }
+}
 
 async function loadPreview() {
   const request = ++previewRequest
@@ -95,12 +121,17 @@ watch(
             Course Detail
           </h1>
           <p class="text-base text-[#646D89]">{{ course.longDescription }}</p>
-          <RouterLink
-            :to="{ name: 'learning-progress', params: { courseId: course.id } }"
-            class="inline-flex w-fit rounded-lg bg-[#2F5FAC] px-5 py-3 text-sm font-bold text-white hover:bg-[#254F93]"
+          <button
+            type="button"
+            :disabled="startLearningBusy"
+            class="inline-flex w-fit cursor-pointer rounded-lg bg-[#2F5FAC] px-5 py-3 text-sm font-bold text-white hover:bg-[#254F93] disabled:cursor-not-allowed disabled:opacity-60"
+            @click="startLearning"
           >
-            Start learning
-          </RouterLink>
+            {{ startLearningBusy ? 'Checking access…' : 'Start learning' }}
+          </button>
+          <p v-if="startLearningError" role="alert" class="text-sm text-red-700">
+            {{ startLearningError }}
+          </p>
           <details v-if="sampleLesson" class="rounded-xl border border-[#D6D9E4] p-4">
             <summary
               class="cursor-pointer font-semibold text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-4"

@@ -3,7 +3,7 @@
 // Course learning page: sidebar progress/module tree, video + assignment, prev/next nav
 // Demo readings and available videos use explicit, server-backed completion.
 
-import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
@@ -24,6 +24,7 @@ import {
 import { listMyAssignments, submitAssignment } from '@/api/submissions'
 import { toApiError } from '@/api/client'
 import { toCardAssignment } from '@/lib/assignmentCard'
+import { hasScrolledToPageBottom } from '@/lib/scrollComplete'
 import type { Course } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
 
@@ -62,8 +63,12 @@ const completionSaving = ref(false)
 
 watch(
   () => currentEntry.value?.subLesson.id,
-  () => {
+  (nextId, prevId) => {
+    if (!nextId || nextId === prevId) return
     videoFailed.value = false
+    // Only jump to the top when moving to a different lesson — not when progress
+    // re-renders the current lesson (that was causing the pre-green stutter).
+    if (prevId) window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   },
 )
 
@@ -110,6 +115,26 @@ function applyProgress(progress: CourseProgressView) {
     }
   })
   progressPercent.value = progress.progressPercent
+}
+
+/** Update completion flags in place so the lesson body is not remounted. */
+function syncProgressFlags(progress: CourseProgressView) {
+  lastProgress = progress
+  progressPercent.value = progress.progressPercent
+  if (!course.value) return
+  const completedById = new Map(
+    progress.subLessons.map((item) => [
+      `sub-${item.lessonPosition}-${item.subLessonPosition}`,
+      item.completed,
+    ]),
+  )
+  for (const module of course.value.modules) {
+    for (const subLesson of module.subLessons) {
+      const completed = completedById.get(subLesson.id)
+      if (completed === undefined) continue
+      subLesson.progress = completed ? 'completed' : 'not-started'
+    }
+  }
 }
 
 async function loadProgress() {
@@ -180,7 +205,8 @@ let loadingTimer: ReturnType<typeof setTimeout> | undefined
 
 watch(
   () => route.params.subLessonId,
-  () => {
+  (nextId, prevId) => {
+    if (nextId === prevId) return
     isLoading.value = true
     clearTimeout(loadingTimer)
     loadingTimer = setTimeout(() => {
@@ -189,7 +215,12 @@ watch(
   },
 )
 
-onUnmounted(() => clearTimeout(loadingTimer))
+onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+
+onUnmounted(() => {
+  clearTimeout(loadingTimer)
+  window.removeEventListener('scroll', onScroll)
+})
 
 watchEffect(() => {
   if (progressLoading.value || !course.value || flatSubLessons.value.length === 0) return
@@ -235,7 +266,7 @@ const handleComplete = async () => {
       Number(positions[2]),
     )
     if (request !== progressRequest) return
-    applyProgress(progress)
+    syncProgressFlags(progress)
     progressError.value = ''
   } catch (error) {
     if (request === progressRequest)
@@ -244,6 +275,10 @@ const handleComplete = async () => {
   } finally {
     completionSaving.value = false
   }
+}
+
+function onScroll() {
+  if (hasScrolledToPageBottom()) void handleComplete()
 }
 
 const handleAssignmentSubmit = async (answer: string) => {
@@ -365,22 +400,6 @@ const handleAssignmentSubmit = async (answer: string) => {
               บทนี้ยังไม่มีเนื้อหาให้อ่านหรือวิดีโอสำหรับเรียน
             </p>
 
-            <button
-              v-if="canComplete && currentEntry.subLesson.progress !== 'completed'"
-              type="button"
-              :disabled="completionSaving"
-              class="self-start rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-              @click="handleComplete"
-            >
-              {{
-                completionSaving
-                  ? 'กำลังบันทึก…'
-                  : currentEntry.subLesson.demoLesson
-                    ? 'อ่านจบแล้ว'
-                    : 'เรียนจบแล้ว'
-              }}
-            </button>
-
             <p class="text-base text-[#646D89]">{{ currentEntry.subLesson.description }}</p>
 
             <AssignmentCard
@@ -388,17 +407,6 @@ const handleAssignmentSubmit = async (answer: string) => {
               :assignment="currentEntry.subLesson.assignment"
               @submit="handleAssignmentSubmit"
             />
-            <div
-              v-else-if="currentEntry.subLesson.progress === 'completed'"
-              class="flex items-center gap-3 rounded-lg bg-blue-100 p-6"
-            >
-              <svg class="h-6 w-6 shrink-0" viewBox="0 0 20 20" fill="#2FAC8E">
-                <path
-                  d="M10 1a9 9 0 100 18 9 9 0 000-18zm-1.2 13.2l-4-4 1.4-1.4 2.6 2.6 6-6 1.4 1.4-7.4 7.4z"
-                />
-              </svg>
-              <p class="text-base font-medium text-black">Completed</p>
-            </div>
           </div>
         </Transition>
       </div>
