@@ -6,12 +6,14 @@ import { SignOutButton } from '@clerk/vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import courseFlowLogo from '../assets/admin/courseflow-sidebar-logo.svg'
 import { useCourseStore } from '@/stores/course'
+import { useToast } from '@/composables/useToast'
 import type { AdminCourse, AdminCourseLesson, AdminCoursePayload } from '@/types/course'
 import FormFieldError from '../components/admin/FormFieldError.vue'
 
 const router = useRouter()
 const route = useRoute()
 const courseStore = useCourseStore()
+const { success: notifySuccess, error: notifyError } = useToast()
 const { courses } = storeToRefs(courseStore)
 const { add: addCourse, find: getCourse, remove: removeCourse, update: updateCourse } = courseStore
 const courseId = Number(route.params.id)
@@ -88,6 +90,7 @@ onMounted(async () => {
     populateForm(await getCourse(courseId, true))
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to load course.'
+    notifyError(apiError.value)
   } finally {
     isLoadingCourse.value = false
   }
@@ -159,6 +162,7 @@ async function addLesson() {
     })
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to create course.'
+    notifyError(apiError.value)
   } finally {
     isSaving.value = false
   }
@@ -197,10 +201,13 @@ async function onDeleteCourse() {
   if (!isEditing || !courseToEdit.value) return
   if (!window.confirm(`Delete course "${courseToEdit.value.name}"?`)) return
   try {
+    const deletedName = courseToEdit.value.name
     await removeCourse(courseToEdit.value.id)
+    notifySuccess(`${deletedName} was deleted.`)
     await router.push({ name: 'admin-courses' })
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to delete course.'
+    notifyError(apiError.value)
   }
 }
 
@@ -333,6 +340,7 @@ async function saveCourse() {
     } else {
       await addCourse(details)
     }
+    notifySuccess(`${name.value.trim()} was ${isEditing ? 'updated' : 'created'}.`)
 
     await router.push({
       name: 'admin-courses',
@@ -340,6 +348,7 @@ async function saveCourse() {
     })
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to save course.'
+    notifyError(apiError.value)
   } finally {
     isSaving.value = false
   }

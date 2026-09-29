@@ -3,7 +3,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { VueDraggable } from 'vue-draggable-plus'
-import { createCourse, updateCourse } from '@/api/courses'
+import { toast } from 'vue-sonner'
+import { createCourse, deleteCourse, getCourse, updateCourse } from '@/api/courses'
 import { useCourseStore } from '@/stores/course'
 import type { AdminCourse, AdminCoursePayload } from '@/types/course'
 import { makeCourseFixtures } from './courseFixtures'
@@ -94,6 +95,7 @@ describe('admin add course', () => {
   })
 
   it('adds a mock course and returns to the course list', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
     const { router, wrapper } = await mountView()
 
     await wrapper.get('input[name="courseName"]').setValue('Payment Fundamentals')
@@ -119,6 +121,36 @@ describe('admin add course', () => {
     expect(useCourseStore().courses[0]?.name).toBe('Payment Fundamentals')
     expect(router.currentRoute.value.name).toBe('admin-courses')
     expect(router.currentRoute.value.query.created).toBe('Payment Fundamentals')
+    expect(successSpy).toHaveBeenCalledWith('Payment Fundamentals was created.')
+  })
+
+  it('raises a matching toast when creating the course fails', async () => {
+    vi.mocked(createCourse).mockRejectedValue(new Error('That course name is taken.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountView()
+
+    await wrapper.get('input[name="courseName"]').setValue('Payment Fundamentals')
+    await wrapper.get('input[name="price"]').setValue(1990)
+    await wrapper.get('input[name="learningTime"]').setValue(12)
+    await wrapper.get('input[name="promoCode"]').setValue('WELCOME200')
+    await wrapper.get('input[name="minimumPurchase"]').setValue(0)
+    await wrapper.get('input[name="discountType"][value="fixed"]').setValue(true)
+    await wrapper.get('input[name="discount"]:not(:disabled)').setValue(200)
+    await wrapper.get('textarea[name="summary"]').setValue('A practical finance course.')
+    await wrapper
+      .get('textarea[name="description"]')
+      .setValue('A detailed introduction to payment systems.')
+    const coverImage = wrapper.get<HTMLInputElement>('input[name="coverImage"]')
+    Object.defineProperty(coverImage.element, 'files', {
+      configurable: true,
+      value: [new File(['cover'], 'cover.png', { type: 'image/png' })],
+    })
+    await coverImage.trigger('change')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.get('.api-error').text()).toBe('That course name is taken.')
+    expect(errorSpy).toHaveBeenCalledWith('That course name is taken.')
   })
 
   it('shows branded required-field messages when the form is empty', async () => {
@@ -172,6 +204,7 @@ describe('admin add course', () => {
 
 describe('admin edit course', () => {
   it('loads the existing course and saves changes from the full edit page', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
     const { router, wrapper } = await mountView('/admin/courses/1/edit')
     await flushPromises()
 
@@ -193,6 +226,46 @@ describe('admin edit course', () => {
     expect(useCourseStore().courses.find((course) => course.id === 1)?.price).toBe(4990)
     expect(router.currentRoute.value.name).toBe('admin-courses')
     expect(router.currentRoute.value.query.updated).toBe('Advanced Service Design')
+    expect(successSpy).toHaveBeenCalledWith('Advanced Service Design was updated.')
+  })
+
+  it('raises a matching toast when the course fails to load for editing', async () => {
+    vi.mocked(getCourse).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+
+    const { wrapper } = await mountView('/admin/courses/1/edit')
+    await flushPromises()
+
+    expect(wrapper.get('.api-error').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+  })
+
+  it('raises a matching toast when the course is deleted from the edit page', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const successSpy = vi.spyOn(toast, 'success')
+    const { router, wrapper } = await mountView('/admin/courses/1/edit')
+    await flushPromises()
+
+    await wrapper.get('.delete-course-link').trigger('click')
+    await flushPromises()
+
+    expect(vi.mocked(deleteCourse)).toHaveBeenCalledWith(1)
+    expect(router.currentRoute.value.name).toBe('admin-courses')
+    expect(successSpy).toHaveBeenCalledWith('Service Design Essentials was deleted.')
+  })
+
+  it('raises a matching toast when deleting the course from the edit page fails', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(deleteCourse).mockRejectedValue(new Error('The course has active students.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountView('/admin/courses/1/edit')
+    await flushPromises()
+
+    await wrapper.get('.delete-course-link').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('.api-error').text()).toBe('The course has active students.')
+    expect(errorSpy).toHaveBeenCalledWith('The course has active students.')
   })
 
   it('only lets lessons be dragged from the grip handle', async () => {

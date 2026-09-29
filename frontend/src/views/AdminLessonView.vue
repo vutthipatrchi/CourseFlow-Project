@@ -8,9 +8,11 @@ import { getCourse } from '../admin/courseStore'
 import { createLesson, deleteLesson, fetchLesson, updateLesson } from '../api/lessons'
 import { uploadVideo } from '../api/uploads'
 import { emptySubLesson, toFormSubLessons, type SubLessonFormItem } from '../types/lesson'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const courseId = computed(() => {
   const raw = String(route.params.courseId ?? '')
@@ -140,8 +142,10 @@ async function onVideoSelected(item: SubLessonFormItem, event: Event) {
   try {
     const uploaded = await uploadVideo(file)
     item.videoUrl = uploaded.url
+    notifySuccess('Video uploaded.')
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Video upload failed'
+    notifyError(errorMessage.value)
   } finally {
     uploadingKey.value = null
   }
@@ -188,16 +192,19 @@ async function save() {
         name: payload.name,
         subLessons: payload.subLessons.map(({ name, videoUrl }) => ({ name, videoUrl })),
       })
+      notifySuccess('Lesson created.')
       goToCourse()
       return
     }
     await updateLesson(Number(lessonIdParam.value), payload)
+    notifySuccess('Lesson updated.')
     goToCourse()
   } catch (error) {
     errorMessage.value =
       error instanceof Error
         ? `${error.message} (API needs backend profile local + database)`
         : 'Save failed'
+    notifyError(errorMessage.value)
   } finally {
     saving.value = false
   }
@@ -212,9 +219,11 @@ async function onDeleteLesson() {
   if (!window.confirm('Delete this lesson and all of its sub-lessons?')) return
   try {
     await deleteLesson(Number(lessonIdParam.value))
+    notifySuccess('Lesson deleted.')
     goToCourse()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Delete failed'
+    notifyError(errorMessage.value)
   }
 }
 </script>

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { deleteCourse } from '@/api/courses'
+import { toast } from 'vue-sonner'
+import { deleteCourse, listCourses } from '@/api/courses'
 import { useCourseStore } from '@/stores/course'
 import { makeCourseFixtures } from './courseFixtures'
 import AdminCourseListView from '../views/AdminCourseListView.vue'
@@ -103,6 +104,7 @@ describe('admin course list', () => {
   })
 
   it('asks for confirmation before deleting a course', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
     const wrapper = mountView()
 
     await wrapper.get('button[aria-label="Delete Service Design Essentials"]').trigger('click')
@@ -116,6 +118,30 @@ describe('admin course list', () => {
     expect(wrapper.findAll('tbody tr')).toHaveLength(7)
     expect(wrapper.get('tbody').text()).not.toContain('Service Design Essentials')
     expect(wrapper.get('[role="status"]').text()).toContain('was deleted')
+    expect(successSpy).toHaveBeenCalledWith('Service Design Essentials was deleted.')
+  })
+
+  it('raises a matching toast when deleting a course fails', async () => {
+    vi.mocked(deleteCourse).mockRejectedValue(new Error('The course has active students.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const wrapper = mountView()
+
+    await wrapper.get('button[aria-label="Delete Service Design Essentials"]').trigger('click')
+    await wrapper.get('.danger-button').trigger('click')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('The course has active students.')
+  })
+
+  it('raises a matching toast when the course list fails to load', async () => {
+    useCourseStore().$patch({ loaded: false })
+    vi.mocked(listCourses).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+
+    mountView()
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
   })
 
   it('cancels deletion without removing the course', async () => {

@@ -9,11 +9,13 @@ import serviceDesignThumbnail from '../assets/admin/courses/service-design.jpg'
 import softwareDeveloperThumbnail from '../assets/admin/courses/software-developer.jpg'
 import uxUiDesignThumbnail from '../assets/admin/courses/ux-ui-design.jpg'
 import { useCourseStore } from '@/stores/course'
+import { useToast } from '@/composables/useToast'
 import type { AdminCourse } from '@/types/course'
 
 const courseStore = useCourseStore()
 const { courses, error: coursesError, loading: coursesLoading } = storeToRefs(courseStore)
 const { load: loadCourses, remove: removeCourse } = courseStore
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const search = ref('')
 const route = useRoute()
@@ -29,7 +31,8 @@ const feedback = ref(
 )
 
 onMounted(() => {
-  void loadCourses().catch(() => undefined)
+  // load() already sets coursesError (shown inline in the table); reuse that exact message.
+  void loadCourses().catch(() => notifyError(coursesError.value || 'Unable to load courses.'))
 })
 
 const filteredCourses = computed(() => {
@@ -84,9 +87,11 @@ async function deleteCourse() {
   try {
     await removeCourse(course.id)
     feedback.value = `${course.name} was deleted.`
+    notifySuccess(feedback.value)
     coursePendingDeletion.value = null
   } catch (error) {
     feedback.value = error instanceof Error ? error.message : 'Unable to delete course.'
+    notifyError(feedback.value)
   } finally {
     deleting.value = false
   }

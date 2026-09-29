@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { VueDraggable } from 'vue-draggable-plus'
-import { createLesson, fetchLesson, updateLesson } from '@/api/lessons'
+import { toast } from 'vue-sonner'
+import { createLesson, deleteLesson, fetchLesson, updateLesson } from '@/api/lessons'
+import { uploadVideo } from '@/api/uploads'
 import type { SubLessonFormItem } from '@/types/lesson'
 import AdminLessonView from '../views/AdminLessonView.vue'
 
@@ -99,6 +101,7 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
   })
 
   it('saves sub-lessons in their dragged order when editing a lesson', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
     const wrapper = await mountView('/admin/courses/1/lessons/7')
     const draggable = wrapper.getComponent(VueDraggable)
     const [first, second, third] = draggable.props('modelValue') as SubLessonFormItem[]
@@ -121,6 +124,89 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
         { id: 12, name: 'Overview', videoUrl: 'https://example.com/b.mp4' },
       ],
     })
+    expect(successSpy).toHaveBeenCalledWith('Lesson updated.')
+  })
+
+  it('raises a matching toast when saving the lesson fails', async () => {
+    vi.mocked(updateLesson).mockRejectedValue(new Error('The lesson name is taken.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const wrapper = await mountView('/admin/courses/1/lessons/7')
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Edit')!
+      .trigger('click')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'The lesson name is taken. (API needs backend profile local + database)',
+    )
+  })
+
+  it('raises a matching toast when the lesson is deleted', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(deleteLesson).mockResolvedValue()
+    const successSpy = vi.spyOn(toast, 'success')
+    const wrapper = await mountView('/admin/courses/1/lessons/7')
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Delete Lesson')!
+      .trigger('click')
+    await flushPromises()
+
+    expect(deleteLesson).toHaveBeenCalledWith(7)
+    expect(successSpy).toHaveBeenCalledWith('Lesson deleted.')
+  })
+
+  it('raises a matching toast when deleting the lesson fails', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(deleteLesson).mockRejectedValue(new Error('The lesson has active students.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const wrapper = await mountView('/admin/courses/1/lessons/7')
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Delete Lesson')!
+      .trigger('click')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('The lesson has active students.')
+  })
+
+  it('raises a matching toast when a sub-lesson video is uploaded', async () => {
+    vi.mocked(uploadVideo).mockResolvedValue({
+      url: 'https://example.com/uploaded.mp4',
+      contentType: 'video/mp4',
+      originalName: 'clip.mp4',
+    })
+    const successSpy = vi.spyOn(toast, 'success')
+    const wrapper = await mountView('/admin/courses/1/lessons/7')
+
+    const input = wrapper.findAll('input[type="file"]')[0]!
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['data'], 'clip.mp4', { type: 'video/mp4' })],
+    })
+    await input.trigger('change')
+    await flushPromises()
+
+    expect(uploadVideo).toHaveBeenCalled()
+    expect(successSpy).toHaveBeenCalledWith('Video uploaded.')
+  })
+
+  it('raises a matching toast when a sub-lesson video upload fails', async () => {
+    vi.mocked(uploadVideo).mockRejectedValue(new Error('The file is too large.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const wrapper = await mountView('/admin/courses/1/lessons/7')
+
+    const input = wrapper.findAll('input[type="file"]')[0]!
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['data'], 'clip.mp4', { type: 'video/mp4' })],
+    })
+    await input.trigger('change')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('The file is too large.')
   })
 
   it('saves sub-lessons in their dragged order when adding a lesson', async () => {
