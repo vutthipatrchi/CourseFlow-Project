@@ -10,6 +10,13 @@ export interface CheckoutCourse {
   id: number
   name: string
   price: number
+  category: string | null
+  summary: string | null
+  description: string | null
+  learningTime: number | null
+  lessons: number
+  imageName: string | null
+  accent: string | null
 }
 export interface OrderCreated {
   orderId: string
@@ -97,6 +104,9 @@ export function getPaymentConfig() {
 }
 export function getCheckoutCourses() {
   return request<CheckoutCourse[]>({ url: '/catalog/courses' })
+}
+export function getCheckoutCourse(courseId: number) {
+  return request<CheckoutCourse>({ url: `/catalog/courses/${courseId}` })
 }
 export function createOrder(courseId: number, promotionCode: string) {
   return request<OrderCreated>({

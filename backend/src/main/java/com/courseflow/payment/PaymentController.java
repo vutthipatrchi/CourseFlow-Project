@@ -28,6 +28,11 @@ class PaymentController {
     @GetMapping("/catalog/courses")
     List<CheckoutCourse> checkoutCourses() { return payments.checkoutCourses(); }
 
+    @GetMapping("/catalog/courses/{courseId}")
+    CheckoutCourse checkoutCourse(@PathVariable Long courseId) {
+        return payments.checkoutCourse(courseId);
+    }
+
     @GetMapping("/payments/config")
     Map<String, Object> config() {
         return Map.of("enabled", payments.providerEnabled(), "publicKey", payments.providerPublicKey());

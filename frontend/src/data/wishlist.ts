@@ -1,5 +1,4 @@
-import { courses } from './courses'
+import type { Course } from '@/types/course'
 
-const wishlistCourseIds = ['course-1', 'course-2', 'course-3', 'course-4', 'course-5', 'course-6']
-
-export const wishlistCourses = courses.filter((course) => wishlistCourseIds.includes(course.id))
+/** Wishlist still has no backend API; keep the page empty until that exists. */
+export const wishlistCourses: Course[] = []

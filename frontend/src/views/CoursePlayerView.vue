@@ -3,7 +3,7 @@
 // Course learning page: sidebar progress/module tree, video + assignment, prev/next nav
 // Demo readings and available videos use explicit, server-backed completion.
 
-import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
@@ -14,9 +14,9 @@ import AuthorizedVideo from '@/components/course/AuthorizedVideo.vue'
 import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
 import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
 import { DEMO_VIDEO_LABEL, getLessonVideo } from '@/data/demoVideo'
-import { courses } from '@/data/courses'
 import {
   completeSubLesson,
+  getCheckoutCourse,
   getCourseProgress,
   getSubscriptions,
   type CourseProgressView,
@@ -24,6 +24,8 @@ import {
 import { listMyAssignments, submitAssignment } from '@/api/submissions'
 import { toApiError } from '@/api/client'
 import { toCardAssignment } from '@/lib/assignmentCard'
+import { catalogRouteId, toStorefrontCourse } from '@/lib/catalogCourses'
+import { hasScrolledToPageBottom } from '@/lib/scrollComplete'
 import type { Course } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
 
@@ -62,8 +64,12 @@ const completionSaving = ref(false)
 
 watch(
   () => currentEntry.value?.subLesson.id,
-  () => {
+  (nextId, prevId) => {
+    if (!nextId || nextId === prevId) return
     videoFailed.value = false
+    // Only jump to the top when moving to a different lesson — not when progress
+    // re-renders the current lesson (that was causing the pre-green stutter).
+    if (prevId) window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   },
 )
 
@@ -112,6 +118,26 @@ function applyProgress(progress: CourseProgressView) {
   progressPercent.value = progress.progressPercent
 }
 
+/** Update completion flags in place so the lesson body is not remounted. */
+function syncProgressFlags(progress: CourseProgressView) {
+  lastProgress = progress
+  progressPercent.value = progress.progressPercent
+  if (!course.value) return
+  const completedById = new Map(
+    progress.subLessons.map((item) => [
+      `sub-${item.lessonPosition}-${item.subLessonPosition}`,
+      item.completed,
+    ]),
+  )
+  for (const module of course.value.modules) {
+    for (const subLesson of module.subLessons) {
+      const completed = completedById.get(subLesson.id)
+      if (completed === undefined) continue
+      subLesson.progress = completed ? 'completed' : 'not-started'
+    }
+  }
+}
+
 async function loadProgress() {
   const request = ++progressRequest
   const requestedCourseId = backendCourseId.value
@@ -148,12 +174,28 @@ async function loadProgress() {
       return [] as DemoContentRow[]
     })
     if (request !== progressRequest) return
-    const preview = courses.find((item) => item.title === subscription.courseTitle)
+    const preview = await getCheckoutCourse(requestedCourseId).catch(() => null)
+    if (request !== progressRequest) return
+    const storefront = preview
+      ? toStorefrontCourse(preview)
+      : {
+          id: catalogRouteId(subscription.courseId),
+          category: 'Course',
+          title: subscription.courseTitle,
+          description: 'Continue learning through the lessons in this course.',
+          longDescription: '',
+          imageUrl: '',
+          lessonCount: 0,
+          hourCount: 0,
+          price: 0,
+          modules: [],
+        }
     course.value = {
-      ...(preview ?? courses[0]!),
-      id: `course-${subscription.courseId}`,
+      ...storefront,
+      id: catalogRouteId(subscription.courseId),
       title: subscription.courseTitle,
-      description: preview?.description ?? 'Continue learning through the lessons in this course.',
+      description:
+        storefront.description || 'Continue learning through the lessons in this course.',
       modules: [],
     }
     applyProgress(progress)
@@ -180,7 +222,8 @@ let loadingTimer: ReturnType<typeof setTimeout> | undefined
 
 watch(
   () => route.params.subLessonId,
-  () => {
+  (nextId, prevId) => {
+    if (nextId === prevId) return
     isLoading.value = true
     clearTimeout(loadingTimer)
     loadingTimer = setTimeout(() => {
@@ -189,7 +232,16 @@ watch(
   },
 )
 
-onUnmounted(() => clearTimeout(loadingTimer))
+onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true })
+  void nextTick().then(observeLessonEnd)
+})
+
+onUnmounted(() => {
+  clearTimeout(loadingTimer)
+  window.removeEventListener('scroll', onScroll)
+  lessonEndObserver?.disconnect()
+})
 
 watchEffect(() => {
   if (progressLoading.value || !course.value || flatSubLessons.value.length === 0) return
@@ -235,7 +287,7 @@ const handleComplete = async () => {
       Number(positions[2]),
     )
     if (request !== progressRequest) return
-    applyProgress(progress)
+    syncProgressFlags(progress)
     progressError.value = ''
   } catch (error) {
     if (request === progressRequest)
@@ -245,6 +297,41 @@ const handleComplete = async () => {
     completionSaving.value = false
   }
 }
+
+function tryCompleteFromScroll() {
+  if (hasScrolledToPageBottom()) void handleComplete()
+}
+
+function onScroll() {
+  tryCompleteFromScroll()
+}
+
+const lessonEndSentinel = ref<HTMLElement | null>(null)
+let lessonEndObserver: IntersectionObserver | undefined
+
+function observeLessonEnd() {
+  lessonEndObserver?.disconnect()
+  const target = lessonEndSentinel.value
+  if (!target || typeof IntersectionObserver === 'undefined') return
+  lessonEndObserver = new IntersectionObserver(
+    (entries) => {
+      // Require some scroll so short pages do not auto-complete on first paint.
+      if (!entries.some((entry) => entry.isIntersecting)) return
+      if ((Number.isFinite(window.scrollY) ? window.scrollY : 0) < 24) return
+      void handleComplete()
+    },
+    { root: null, threshold: 0, rootMargin: '0px 0px 80px 0px' },
+  )
+  lessonEndObserver.observe(target)
+}
+
+watch(
+  () => currentEntry.value?.subLesson.id,
+  async () => {
+    await nextTick()
+    observeLessonEnd()
+  },
+)
 
 const handleAssignmentSubmit = async (answer: string) => {
   const assignment = currentEntry.value?.subLesson.assignment
@@ -320,8 +407,8 @@ const handleAssignmentSubmit = async (answer: string) => {
           role="alert"
           class="rounded-lg bg-amber-50 p-4 text-sm text-amber-900"
         >
-          ไม่สามารถโหลดเนื้อหาบทเรียนได้: {{ demoContentError }}
-          <button type="button" class="ml-2 underline" @click="loadProgress">ลองอีกครั้ง</button>
+          Unable to load lesson content: {{ demoContentError }}
+          <button type="button" class="ml-2 underline" @click="loadProgress">Try again</button>
         </p>
         <Transition
           name="fade"
@@ -350,7 +437,7 @@ const handleAssignmentSubmit = async (answer: string) => {
               {{ DEMO_VIDEO_LABEL }}
             </p>
             <p v-if="videoFailed" role="alert" class="rounded-lg bg-amber-50 p-4 text-amber-900">
-              ไม่สามารถโหลดวิดีโอได้ กรุณาลองใหม่ภายหลัง
+              Unable to load the video. Please try again later.
             </p>
             <LessonReading
               v-if="currentEntry.subLesson.demoLesson"
@@ -362,24 +449,8 @@ const handleAssignmentSubmit = async (answer: string) => {
               role="status"
               class="rounded-lg bg-gray-50 p-5 text-gray-600"
             >
-              บทนี้ยังไม่มีเนื้อหาให้อ่านหรือวิดีโอสำหรับเรียน
+              This lesson does not have a reading or video yet.
             </p>
-
-            <button
-              v-if="canComplete && currentEntry.subLesson.progress !== 'completed'"
-              type="button"
-              :disabled="completionSaving"
-              class="self-start rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-              @click="handleComplete"
-            >
-              {{
-                completionSaving
-                  ? 'กำลังบันทึก…'
-                  : currentEntry.subLesson.demoLesson
-                    ? 'อ่านจบแล้ว'
-                    : 'เรียนจบแล้ว'
-              }}
-            </button>
 
             <p class="text-base text-[#646D89]">{{ currentEntry.subLesson.description }}</p>
 
@@ -388,17 +459,8 @@ const handleAssignmentSubmit = async (answer: string) => {
               :assignment="currentEntry.subLesson.assignment"
               @submit="handleAssignmentSubmit"
             />
-            <div
-              v-else-if="currentEntry.subLesson.progress === 'completed'"
-              class="flex items-center gap-3 rounded-lg bg-blue-100 p-6"
-            >
-              <svg class="h-6 w-6 shrink-0" viewBox="0 0 20 20" fill="#2FAC8E">
-                <path
-                  d="M10 1a9 9 0 100 18 9 9 0 000-18zm-1.2 13.2l-4-4 1.4-1.4 2.6 2.6 6-6 1.4 1.4-7.4 7.4z"
-                />
-              </svg>
-              <p class="text-base font-medium text-black">Completed</p>
-            </div>
+            <!-- Marks the lesson complete once this end-of-reading marker enters view. -->
+            <div ref="lessonEndSentinel" class="h-px w-full" aria-hidden="true"></div>
           </div>
         </Transition>
       </div>

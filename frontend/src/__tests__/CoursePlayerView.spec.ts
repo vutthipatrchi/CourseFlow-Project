@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import CoursePlayerView from '../views/CoursePlayerView.vue'
@@ -12,6 +12,18 @@ import { getEnrolledDemoContent } from '@/api/demoContent'
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
   getCourseProgress: vi.fn<(courseId: number) => Promise<CourseProgressView>>(),
+  getCheckoutCourse: vi.fn(async (courseId: number) => ({
+    id: courseId,
+    name: courseId === 9 ? 'Software Developer' : 'Service Design Essentials',
+    price: 3559,
+    category: 'Course',
+    summary: 'Catalog summary',
+    description: 'Catalog description',
+    learningTime: 8,
+    lessons: 6,
+    imageName: null,
+    accent: '#dce8fb',
+  })),
   completeSubLesson:
     vi.fn<
       (
@@ -47,10 +59,10 @@ const progress: CourseProgressView = {
   subLessons: [
     {
       id: 99,
-      title: 'Introduction to Programming',
+      title: 'Welcome to Software Development',
       videoUrl: null,
       lessonPosition: 1,
-      lessonTitle: 'Introduction to Programming',
+      lessonTitle: 'Getting Started as a Developer',
       subLessonPosition: 1,
       completed: false,
     },
@@ -58,7 +70,31 @@ const progress: CourseProgressView = {
 }
 
 beforeEach(() => {
-  vi.resetAllMocks()
+  vi.clearAllMocks()
+  // jsdom has no IntersectionObserver; avoid auto-complete noise from a fake one.
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return []
+      }
+    },
+  )
+  mocks.getCheckoutCourse.mockImplementation(async (courseId: number) => ({
+    id: courseId,
+    name: courseId === 9 ? 'Software Developer' : 'Service Design Essentials',
+    price: 3559,
+    category: 'Course',
+    summary: 'Catalog summary',
+    description: 'Catalog description',
+    learningTime: 8,
+    lessons: 6,
+    imageName: null,
+    accent: '#dce8fb',
+  }))
   submissionMocks.listMyAssignments.mockResolvedValue([])
   mocks.getSubscriptions.mockResolvedValue([
     {
@@ -74,6 +110,13 @@ beforeEach(() => {
     },
   ])
   mocks.getCourseProgress.mockResolvedValue(structuredClone(progress))
+  vi.mocked(getEnrolledDemoContent).mockImplementation(async (courseId) =>
+    demoContentFixtures(courseId === 9 ? 'Software Developer' : 'Service Design Essentials'),
+  )
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 async function mountPlayer(path = '/courses/course-9/learn/sub-1-1') {
@@ -97,6 +140,28 @@ async function mountPlayer(path = '/courses/course-9/learn/sub-1-1') {
     },
   })
   return wrapper
+}
+
+function scrollToBottom() {
+  Object.defineProperty(document.documentElement, 'scrollHeight', {
+    configurable: true,
+    value: 2000,
+  })
+  Object.defineProperty(document.body, 'scrollHeight', {
+    configurable: true,
+    value: 2000,
+  })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+  Object.defineProperty(window, 'scrollY', { configurable: true, value: 1200 })
+  Object.defineProperty(document.documentElement, 'scrollTop', {
+    configurable: true,
+    value: 1200,
+  })
+  window.dispatchEvent(new Event('scroll'))
+}
+
+function sidebarProgress(wrapper: Awaited<ReturnType<typeof mountPlayer>>) {
+  return wrapper.getComponent({ name: 'CoursePlayerSidebar' }).props('progressPercent')
 }
 
 describe('purchased course player', () => {
@@ -161,13 +226,10 @@ describe('purchased course player', () => {
     await flushPromises()
     expect(wrapper.get('article').text()).toContain(title)
     expect(wrapper.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
-    await wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'อ่านจบแล้ว')!
-      .trigger('click')
+    scrollToBottom()
     await flushPromises()
     expect(mocks.completeSubLesson).toHaveBeenCalledExactlyOnceWith(1, 3, subLessonPosition)
-    expect(wrapper.text()).toContain('Completed')
+    expect(sidebarProgress(wrapper)).toBe(100)
     wrapper.unmount()
   })
 
@@ -175,13 +237,23 @@ describe('purchased course player', () => {
     const wrapper = await mountPlayer()
     await flushPromises()
     expect(wrapper.get('article').text()).toContain('input, process')
-    expect(wrapper.get('article').text()).toContain('60, 75 และ 90')
-    expect(wrapper.get('details summary').text()).toBe('ดูแนวคำตอบ')
+    expect(wrapper.get('article').text()).toContain('60, 75 and 90')
+    expect(wrapper.get('details summary').text()).toBe('Show suggested answer')
     expect(wrapper.get('details').attributes('open')).toBeUndefined()
     expect(wrapper.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
     expect(wrapper.text()).toContain(DEMO_VIDEO_LABEL)
     await wrapper.get('video').trigger('play')
     await wrapper.get('video').trigger('ended')
+    expect(mocks.completeSubLesson).not.toHaveBeenCalled()
+
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 2000,
+    })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 })
+    window.dispatchEvent(new Event('scroll'))
+    await flushPromises()
     expect(mocks.completeSubLesson).not.toHaveBeenCalled()
 
     mocks.completeSubLesson.mockResolvedValue({
@@ -191,13 +263,10 @@ describe('purchased course player', () => {
       status: 'completed',
       subLessons: [{ ...progress.subLessons[0]!, completed: true }],
     })
-    await wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'อ่านจบแล้ว')!
-      .trigger('click')
+    scrollToBottom()
     await flushPromises()
     expect(mocks.completeSubLesson).toHaveBeenCalledExactlyOnceWith(9, 1, 1)
-    expect(wrapper.text()).toContain('Completed')
+    expect(sidebarProgress(wrapper)).toBe(100)
     expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
     wrapper.unmount()
   })
@@ -206,19 +275,22 @@ describe('purchased course player', () => {
     mocks.completeSubLesson.mockRejectedValue(new Error('Could not save progress'))
     const wrapper = await mountPlayer()
     await flushPromises()
-    await wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'อ่านจบแล้ว')!
-      .trigger('click')
+    scrollToBottom()
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('Could not save progress')
-    expect(wrapper.text()).not.toContain('Completed')
-    expect(
-      wrapper
-        .findAll('button')
-        .find((button) => button.text() === 'อ่านจบแล้ว')!
-        .attributes('disabled'),
-    ).toBeUndefined()
+    expect(sidebarProgress(wrapper)).toBe(0)
+    expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
+    mocks.completeSubLesson.mockResolvedValue({
+      ...progress,
+      completedLessons: 1,
+      progressPercent: 100,
+      status: 'completed',
+      subLessons: [{ ...progress.subLessons[0]!, completed: true }],
+    })
+    scrollToBottom()
+    await flushPromises()
+    expect(mocks.completeSubLesson).toHaveBeenCalledTimes(2)
+    expect(sidebarProgress(wrapper)).toBe(100)
     wrapper.unmount()
   })
 
@@ -237,7 +309,7 @@ describe('purchased course player', () => {
     await flushPromises()
     expect(wrapper.find('article').exists()).toBe(false)
     expect(wrapper.find('video').exists()).toBe(false)
-    expect(wrapper.text()).toContain('บทนี้ยังไม่มีเนื้อหา')
+    expect(wrapper.text()).toContain('This lesson does not have a reading or video yet')
     expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
     expect(wrapper.text()).not.toContain('เรียนจบแล้ว')
     wrapper.unmount()
@@ -263,7 +335,7 @@ describe('purchased course player', () => {
     await video.trigger('play')
     expect(mocks.completeSubLesson).not.toHaveBeenCalled()
     await video.trigger('error')
-    expect(wrapper.get('[role="alert"]').text()).toContain('ไม่สามารถโหลดวิดีโอได้')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to load the video')
     expect(wrapper.text()).not.toContain('เรียนจบแล้ว')
     wrapper.unmount()
   })
@@ -280,8 +352,9 @@ describe('purchased course player', () => {
     expect(wrapper.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
     expect(wrapper.text()).toContain(DEMO_VIDEO_LABEL)
     await wrapper.get('video').trigger('error')
-    expect(wrapper.get('[role="alert"]').text()).toContain('ไม่สามารถโหลดวิดีโอได้')
-    expect(wrapper.text()).toContain('อ่านจบแล้ว')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to load the video')
+    expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
+    expect(wrapper.text()).not.toContain('เรียนจบแล้ว')
     wrapper.unmount()
   })
 
@@ -312,10 +385,10 @@ describe('purchased course player', () => {
       subLessons: [
         {
           id: 99,
-          title: 'Introduction to Programming',
+          title: 'Welcome to Software Development',
           videoUrl: null,
           lessonPosition: 1,
-          lessonTitle: 'Introduction',
+          lessonTitle: 'Getting Started as a Developer',
           subLessonPosition: 1,
           completed: false,
         },
@@ -339,7 +412,7 @@ describe('purchased course player', () => {
       },
     ])
     await flushPromises()
-    expect(wrapper.text()).toContain('Introduction to Programming')
+    expect(wrapper.text()).toContain('Welcome to Software Development')
     expect(wrapper.text()).not.toContain('UX/UI Design Beginner')
     wrapper.unmount()
   })
@@ -542,10 +615,7 @@ describe('CoursePlayerView assignments on a real course', () => {
     expect(submissionMocks.submitAssignment).toHaveBeenCalledExactlyOnceWith(5, 'People, process')
     expect(wrapper.find('article').exists()).toBe(true)
 
-    await wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'อ่านจบแล้ว')!
-      .trigger('click')
+    scrollToBottom()
     await flushPromises()
     expect(mocks.completeSubLesson).toHaveBeenCalledExactlyOnceWith(1, 1, 1)
     expect(wrapper.text()).toContain('Submitted')

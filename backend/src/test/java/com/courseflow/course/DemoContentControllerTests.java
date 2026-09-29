@@ -30,14 +30,16 @@ class DemoContentControllerTests {
         var reading = new DemoContentRepository.DemoReading(
             "Course Overview", "Understand the course", List.of("First", "Second"),
             "An example", "A question", "A suggested answer");
-        var first = new DemoContentRepository.DemoContentRow("Lesson 1", "Course Overview", "Course Overview", reading);
-        var locked = new DemoContentRepository.DemoContentRow("Lesson 2", "Private lesson", "Private lesson", reading);
+        var first = new DemoContentRepository.DemoContentRow(
+            "Course Overview", "Course Overview", "Course Overview", reading);
+        var locked = new DemoContentRepository.DemoContentRow(
+            "Private lesson", "Private lesson", "Private lesson", reading);
         when(content.listByTitle("Service Design Essentials")).thenReturn(List.of(first, locked));
 
         mvc.perform(get("/api/catalog/demo-content")
                 .param("courseTitle", "Service Design Essentials"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].lessonName").value("Lesson 1"))
+            .andExpect(jsonPath("$[0].lessonName").value("Course Overview"))
             .andExpect(jsonPath("$[0].subLessonName").value("Course Overview"))
             .andExpect(jsonPath("$[0].reading.paragraphs[1]").value("Second"))
             .andExpect(jsonPath("$[1].title").value("Private lesson"))

@@ -1,7 +1,37 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import LearningProgressView from '../views/LearningProgressView.vue'
+import { getCheckoutCourse } from '@/api/payments'
+import { getCourseAccess } from '@/lib/courseAccess'
+
+vi.mock('@/api/payments', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/payments')>()
+  return {
+    ...actual,
+    getCheckoutCourse: vi.fn(async () => ({
+      id: 1,
+      name: 'Service Design Essentials',
+      price: 3559,
+      category: 'Course',
+      summary: 'Learn service design',
+      description: 'Learn service design',
+      learningTime: 8,
+      lessons: 6,
+      imageName: null,
+      accent: '#dce8fb',
+    })),
+  }
+})
+
+vi.mock('@/lib/courseAccess', () => ({
+  getCourseAccess: vi.fn(async () => ({
+    enrolled: false,
+    checkoutCourse: null,
+    subscriptionCourseId: null,
+  })),
+  learningPathForSubscription: (courseId: number) => `/courses/course-${courseId}/learn/sub-1-1`,
+}))
 
 async function mountView(path = '/learn/course-1') {
   const router = createRouter({
@@ -12,98 +42,52 @@ async function mountView(path = '/learn/course-1') {
         name: 'learning-progress',
         component: LearningProgressView,
       },
+      { path: '/courses/:id', component: { template: '<div>Detail</div>' } },
+      { path: '/my-courses', component: { template: '<div>My Courses</div>' } },
+      { path: '/payment', name: 'payment', component: { template: '<div>Payment</div>' } },
+      {
+        path: '/courses/:id/learn/:subLessonId',
+        name: 'course-player',
+        component: { template: '<div>Player</div>' },
+      },
     ],
   })
   await router.push(path)
   await router.isReady()
 
-  return mount(LearningProgressView, {
+  const wrapper = mount(LearningProgressView, {
     global: {
       plugins: [router],
       stubs: { AppNavbar: true, AppFooter: true },
     },
   })
+  await flushPromises()
+  return { wrapper, router }
 }
 
-describe('learning progress', () => {
+describe('learning progress access gate', () => {
   beforeEach(() => {
-    localStorage.clear()
-  })
-
-  it('shows course progress and the current lesson', async () => {
-    const wrapper = await mountView()
-
-    expect(wrapper.text()).toContain('Service Design Essentials')
-    expect(wrapper.text()).toContain('21% Complete')
-    expect(wrapper.text()).not.toContain('"videoUrl"')
-    expect(wrapper.get('h2').text()).toBe('4 Levels of Service Design in an Organization')
-    expect(wrapper.text()).toContain('product, service, business, and societal level')
-    expect(wrapper.text()).toContain('Example')
-    expect(wrapper.text()).toContain('Try it yourself')
-    expect(wrapper.text()).toContain('Pending')
-  })
-
-  it('shows a reading for a lesson that has no assignment', async () => {
-    const wrapper = await mountView('/learn/course-3?lesson=sub-2-2')
-
-    expect(wrapper.get('h2').text()).toBe('Personas and Jobs to Be Done')
-    expect(wrapper.text()).toContain('personas and job statements')
-    expect(wrapper.text()).toContain('Example')
-    expect(wrapper.text()).toContain('Try it yourself')
-  })
-
-  it('opens the course and lesson selected from the course list', async () => {
-    const software = await mountView('/learn/course-2')
-    expect(software.text()).toContain('Software Developer')
-    expect(software.get('h2').text()).toBe('Git Basics for Beginners')
-    expect(software.text()).toContain('Programming Fundamentals')
-
-    const scoped = await mountView('/learn/course-1?lesson=sub-1-7')
-    expect(scoped.text()).toContain('Service Design Essentials')
-    expect(scoped.get('h2').text()).toBe('Scope of Service Design')
-  })
-
-  it('moves to the next lesson', async () => {
-    const wrapper = await mountView()
-
-    const nextLesson = wrapper.findAll('button').find((button) => button.text() === 'Next Lesson')
-    await nextLesson?.trigger('click')
-
-    expect(wrapper.get('h2').text()).toBe('Scope of Service Design')
-  })
-
-  it('marks the current lesson complete after scrolling to the bottom', async () => {
-    const wrapper = await mountView()
-    const current = wrapper.get('[aria-current="true"]')
-    expect(current.text()).toContain('4 Levels of Service Design in an Organization')
-    expect(current.html()).toContain('>i<')
-
-    Object.defineProperty(document.documentElement, 'scrollHeight', {
-      configurable: true,
-      value: 2000,
+    vi.mocked(getCourseAccess).mockResolvedValue({
+      enrolled: false,
+      checkoutCourse: null,
+      subscriptionCourseId: null,
     })
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1200 })
-    window.dispatchEvent(new Event('scroll'))
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.get('[aria-current="true"]').html()).not.toContain('>i<')
-    expect(wrapper.text()).toContain('25% Complete')
-
-    wrapper.unmount()
-    const reloaded = await mountView()
-    expect(reloaded.text()).toContain('25% Complete')
-    expect(reloaded.get('[aria-current="true"]').html()).not.toContain('>i<')
   })
 
-  it('marks an assignment as submitted', async () => {
-    const wrapper = await mountView()
+  it('blocks learning when the course is not purchased', async () => {
+    const { wrapper } = await mountView()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Purchase this course to start learning')
+    expect(wrapper.text()).toContain('Subscribe this course')
+  })
 
-    await wrapper.get('textarea').setValue('People, processes, products, and partners.')
-    await wrapper.get('form').trigger('submit')
-
-    expect(wrapper.text()).toContain('Submitted')
-    expect(wrapper.text()).toContain('People, processes, products, and partners.')
-    expect(wrapper.find('textarea').exists()).toBe(false)
+  it('sends purchased learners to the course player', async () => {
+    vi.mocked(getCourseAccess).mockResolvedValue({
+      enrolled: true,
+      checkoutCourse: null,
+      subscriptionCourseId: 1,
+    })
+    const { router } = await mountView()
+    expect(router.currentRoute.value.fullPath).toBe('/courses/course-1/learn/sub-1-1')
+    expect(vi.mocked(getCheckoutCourse)).toHaveBeenCalled()
   })
 })

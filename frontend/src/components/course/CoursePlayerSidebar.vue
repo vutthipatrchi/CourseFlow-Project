@@ -20,15 +20,15 @@ defineEmits<{ select: [subLessonId: string] }>()
 
 <template>
   <aside
-    class="no-scrollbar flex w-full shrink-0 flex-col gap-6 overflow-y-auto rounded-lg bg-white p-7 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] md:w-89.5"
+    class="no-scrollbar flex w-full shrink-0 flex-col gap-5 overflow-y-auto rounded-lg bg-white p-6 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] md:w-89.5"
     style="position: sticky; top: 6rem; max-height: calc(100vh - 7rem)"
   >
     <p class="text-sm text-orange-500">{{ course.category }}</p>
-    <div class="flex flex-col gap-2">
-      <h2 class="text-2xl leading-tight font-medium tracking-[-0.02em] text-black">
+    <div class="flex flex-col gap-1.5">
+      <h2 class="text-xl leading-tight font-medium tracking-[-0.02em] text-black">
         {{ course.title }}
       </h2>
-      <p class="text-base text-[#646D89]">{{ course.description }}</p>
+      <p class="text-sm text-[#646D89]">{{ course.description }}</p>
     </div>
     <div class="flex flex-col gap-2">
       <p class="text-sm text-[#646D89]">{{ progressPercent }}% Complete</p>
@@ -47,6 +47,7 @@ defineEmits<{ select: [subLessonId: string] }>()
         :index="index"
         :default-open="module.id === activeModuleId"
         interactive
+        compact
         :active-sub-lesson-id="activeSubLessonId"
         @select="$emit('select', $event)"
       />

@@ -47,7 +47,7 @@ export function createDemoModules(content: DemoContentRow[]): Module[] {
   for (const row of content) {
     let module = modules.find((item) => item.id === row.lessonName)
     if (!module) {
-      module = { id: row.lessonName, title: row.title, subLessons: [] }
+      module = { id: row.lessonName, title: row.lessonName, subLessons: [] }
       modules.push(module)
     }
     module.subLessons.push({

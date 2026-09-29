@@ -55,7 +55,18 @@ record OrderCreated(
     long subtotalSatang, long discountSatang, long totalSatang,
     String currency, Instant expiresAt, PaymentView payment
 ) {}
-record CheckoutCourse(Long id, String name, java.math.BigDecimal price) {}
+record CheckoutCourse(
+    Long id,
+    String name,
+    java.math.BigDecimal price,
+    String category,
+    String summary,
+    String description,
+    Integer learningTime,
+    int lessons,
+    String imageName,
+    String accent
+) {}
 record PaymentView(
     UUID paymentId, UUID orderId, Long courseId, String reference, String method,
     String status, long amountSatang, String currency, String qrUrl, String authorizeUrl,
