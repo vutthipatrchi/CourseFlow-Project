@@ -10,7 +10,7 @@ import { toast } from 'vue-sonner'
 
 function notify(type: 'success' | 'error', message: string, durationMs?: number) {
   const fn = type === 'success' ? toast.success : toast.error
-  return fn(message, durationMs === undefined ? undefined : { duration: durationMs })
+  return durationMs === undefined ? fn(message) : fn(message, { duration: durationMs })
 }
 
 export function useToast() {
