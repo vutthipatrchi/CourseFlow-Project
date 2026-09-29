@@ -12,7 +12,9 @@ describe('uploaded lesson video access', () => {
   })
 
   it('gets a scoped playback cookie from the backend before the browser streams the video', async () => {
-    const fetchVideo = vi.fn<() => Promise<Response>>(async () => new Response(null, { status: 204 }))
+    const fetchVideo = vi.fn<() => Promise<Response>>(
+      async () => new Response(null, { status: 204 }),
+    )
     vi.stubGlobal('fetch', fetchVideo)
 
     await authorizeVideoPlayback('/api/uploads/videos/lesson.mp4')

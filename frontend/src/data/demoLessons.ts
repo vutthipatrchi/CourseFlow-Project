@@ -33,11 +33,13 @@ export function getDemoLesson(content: DemoContentRow[], reference: LessonRefere
   }
 
   // The newer storefront seeds name the lesson and sub-lesson identically.
-  return content.find(
-    (row) =>
-      normalize(row.lessonName) === normalize(row.subLessonName) &&
-      normalize(row.subLessonName) === subLessonName,
-  )?.reading ?? undefined
+  return (
+    content.find(
+      (row) =>
+        normalize(row.lessonName) === normalize(row.subLessonName) &&
+        normalize(row.subLessonName) === subLessonName,
+    )?.reading ?? undefined
+  )
 }
 
 export function createDemoModules(content: DemoContentRow[]): Module[] {

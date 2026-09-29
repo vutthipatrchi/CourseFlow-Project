@@ -11,8 +11,11 @@ import { getPublicDemoContent } from '@/api/demoContent'
 afterEach(() => vi.restoreAllMocks())
 
 vi.mock('@/api/demoContent', () => ({
-  getPublicDemoContent: vi.fn<(courseTitle: string) => Promise<DemoContentRow[]>>(async (courseTitle) =>
-    demoContentFixtures(courseTitle).map((row, index) => index === 0 ? row : { ...row, reading: null }),
+  getPublicDemoContent: vi.fn<(courseTitle: string) => Promise<DemoContentRow[]>>(
+    async (courseTitle) =>
+      demoContentFixtures(courseTitle).map((row, index) =>
+        index === 0 ? row : { ...row, reading: null },
+      ),
   ),
 }))
 

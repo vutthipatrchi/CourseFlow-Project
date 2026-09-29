@@ -101,7 +101,9 @@ async function mountPlayer(path = '/courses/course-9/learn/sub-1-1') {
 
 describe('purchased course player', () => {
   it('does not substitute local readings when the content API fails', async () => {
-    vi.mocked(getEnrolledDemoContent).mockRejectedValueOnce(new Error('Content service unavailable'))
+    vi.mocked(getEnrolledDemoContent).mockRejectedValueOnce(
+      new Error('Content service unavailable'),
+    )
     const wrapper = await mountPlayer()
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('Content service unavailable')

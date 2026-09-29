@@ -13,12 +13,7 @@ const router = useRouter()
 const route = useRoute()
 const courseStore = useCourseStore()
 const { courses } = storeToRefs(courseStore)
-const {
-  add: addCourse,
-  find: getCourse,
-  remove: removeCourse,
-  update: updateCourse,
-} = courseStore
+const { add: addCourse, find: getCourse, remove: removeCourse, update: updateCourse } = courseStore
 const courseId = Number(route.params.id)
 const cachedCourse = Number.isInteger(courseId)
   ? courses.value.find((course) => course.id === courseId)

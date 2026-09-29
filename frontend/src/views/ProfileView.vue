@@ -104,7 +104,10 @@ async function handleSubmit() {
       <div class="relative mx-auto max-w-4xl px-6">
         <h1 class="text-3xl font-bold text-gray-900">Profile</h1>
 
-        <form class="mt-10 grid grid-cols-1 gap-12 md:grid-cols-[minmax(0,280px)_1fr]" @submit.prevent="handleSubmit">
+        <form
+          class="mt-10 grid grid-cols-1 gap-12 md:grid-cols-[minmax(0,280px)_1fr]"
+          @submit.prevent="handleSubmit"
+        >
           <div>
             <div class="aspect-square w-full overflow-hidden rounded-lg bg-blue-50">
               <img

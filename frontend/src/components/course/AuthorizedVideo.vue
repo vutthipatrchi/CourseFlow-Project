@@ -23,11 +23,14 @@ watch(
       await authorizeVideoPlayback(source)
       if (current !== request) return
       playable.value = source
-      renewal = setInterval(() => {
-        void authorizeVideoPlayback(source).catch(() => {
-          if (current === request) emit('error')
-        })
-      }, 10 * 60 * 1000)
+      renewal = setInterval(
+        () => {
+          void authorizeVideoPlayback(source).catch(() => {
+            if (current === request) emit('error')
+          })
+        },
+        10 * 60 * 1000,
+      )
     } catch {
       if (current === request) emit('error')
     }
