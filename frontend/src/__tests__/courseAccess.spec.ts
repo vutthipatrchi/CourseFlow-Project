@@ -5,6 +5,7 @@ import {
   learningPathForSubscription,
 } from '@/lib/courseAccess'
 import type { CheckoutCourse, SubscriptionView } from '@/api/payments'
+import { checkoutCourseFixture } from './checkoutCourseFixture'
 
 const subscriptions: SubscriptionView[] = [
   {
@@ -21,8 +22,8 @@ const subscriptions: SubscriptionView[] = [
 ]
 
 const catalog: CheckoutCourse[] = [
-  { id: 1, name: 'Service Design Essentials', price: 3559 },
-  { id: 9, name: 'Software Developer', price: 3559 },
+  checkoutCourseFixture({ id: 1, name: 'Service Design Essentials' }),
+  checkoutCourseFixture({ id: 9, name: 'Software Developer' }),
 ]
 
 describe('courseAccess', () => {
@@ -32,11 +33,9 @@ describe('courseAccess', () => {
   })
 
   it('finds the checkout course used for payment', () => {
-    expect(findCheckoutCourseByTitle(catalog, 'Software Developer')).toEqual({
-      id: 9,
-      name: 'Software Developer',
-      price: 3559,
-    })
+    expect(findCheckoutCourseByTitle(catalog, 'Software Developer')).toEqual(
+      checkoutCourseFixture({ id: 9, name: 'Software Developer' }),
+    )
     expect(findCheckoutCourseByTitle(catalog, 'Missing Course')).toBeNull()
   })
 

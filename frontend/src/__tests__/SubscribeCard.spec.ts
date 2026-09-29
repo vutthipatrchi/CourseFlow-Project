@@ -3,6 +3,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
 import { getCourseAccess } from '@/lib/courseAccess'
+import { checkoutCourseFixture } from './checkoutCourseFixture'
 
 vi.mock('@/lib/courseAccess', () => ({
   getCourseAccess: vi.fn(),
@@ -45,7 +46,7 @@ describe('SubscribeCard', () => {
   it('uses the backend course ID and price for checkout', async () => {
     vi.mocked(getCourseAccess).mockResolvedValue({
       enrolled: false,
-      checkoutCourse: { id: 9, name: 'Software Developer', price: 3559 },
+      checkoutCourse: checkoutCourseFixture({ id: 9, name: 'Software Developer' }),
       subscriptionCourseId: null,
     })
     const { wrapper, router } = await mountCard()
@@ -60,7 +61,7 @@ describe('SubscribeCard', () => {
   it('shows Start learning instead of Subscribe when already purchased', async () => {
     vi.mocked(getCourseAccess).mockResolvedValue({
       enrolled: true,
-      checkoutCourse: { id: 9, name: 'Software Developer', price: 3559 },
+      checkoutCourse: checkoutCourseFixture({ id: 9, name: 'Software Developer' }),
       subscriptionCourseId: 9,
     })
     const { wrapper, router } = await mountCard()
