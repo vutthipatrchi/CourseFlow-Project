@@ -17,25 +17,30 @@ class DemoContentRepositoryTests {
     @Autowired private DemoContentRepository repository;
 
     @Test
-    void migrationProvidesAllReadingsWithDescriptiveLessonNames() {
+    void migrationProvidesAllReadingsGroupedUnderSharedLessons() {
         assertThat(jdbc.queryForObject(
-            "SELECT COUNT(*) FROM courseflow.demo_lesson_content", Integer.class)).isEqualTo(74);
+            "SELECT COUNT(*) FROM courseflow.demo_lesson_content", Integer.class)).isEqualTo(118);
         assertThat(jdbc.queryForObject(
             "SELECT COUNT(DISTINCT course_title) FROM courseflow.demo_lesson_content", Integer.class))
             .isEqualTo(10);
 
         var readings = repository.listByTitle("Service Design Essentials");
         assertThat(readings).hasSize(9);
-        assertThat(readings).allSatisfy(row -> {
-            assertThat(row.lessonName()).isEqualTo(row.title());
-            assertThat(row.subLessonName()).isEqualTo(row.title());
-        });
-        assertThat(readings.stream().map(DemoContentRepository.DemoContentRow::title))
-            .contains(
+        assertThat(readings.stream()
+                .filter(row -> row.lessonName().equals("Introduction to Service Design"))
+                .map(DemoContentRepository.DemoContentRow::subLessonName))
+            .containsExactly(
                 "Introduction to Service Design",
                 "Course Overview",
                 "Getting to Know You",
-                "What is Service Design ?",
-                "Service Design Principles");
+                "What is Service Design ?");
+
+        Integer maxSubs = jdbc.queryForObject("""
+            SELECT MAX(sub_lessons)
+              FROM courseflow.course_lessons lesson
+              JOIN courseflow.courses course ON course.id = lesson.course_id
+             WHERE course.name = 'Service Design Essentials'
+            """, Integer.class);
+        assertThat(maxSubs).isEqualTo(4);
     }
 }

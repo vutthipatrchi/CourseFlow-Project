@@ -3,13 +3,13 @@ import { createDemoModules, getDemoLesson, getDemoLessonLabels } from '@/data/de
 import { demoContentFixtures } from './demoContentFixtures'
 
 describe('demo content returned by the backend', () => {
-  it('matches readings by descriptive lesson and sub-lesson names', () => {
+  it('matches readings under a shared lesson with multiple sub-lessons', () => {
     const content = demoContentFixtures('Design Thinking Fundamentals')
     const reference = {
       title: 'Empathy and Observation',
-      lessonTitle: 'Empathy and Observation',
-      lessonPosition: 2,
-      subLessonPosition: 1,
+      lessonTitle: 'Discover',
+      lessonPosition: 1,
+      subLessonPosition: 2,
     }
     expect(getDemoLesson(content, reference)?.title).toBe('Empathy and Observation')
     expect(getDemoLessonLabels(reference, getDemoLesson(content, reference)).title).toBe(
@@ -17,11 +17,12 @@ describe('demo content returned by the backend', () => {
     )
     expect(
       getDemoLesson(content, {
-        ...reference,
-        title: 'Problem Framing',
-        lessonTitle: 'Problem Framing',
+        title: 'Generating Ideas',
+        lessonTitle: 'Define and Ideate',
+        lessonPosition: 2,
+        subLessonPosition: 2,
       })?.title,
-    ).toBe('Problem Framing')
+    ).toBe('Generating Ideas')
     expect(
       getDemoLesson(content, {
         title: 'Unknown sub-lesson',
@@ -33,27 +34,7 @@ describe('demo content returned by the backend', () => {
     expect(getDemoLesson([], reference)).toBeUndefined()
   })
 
-  it('still resolves legacy Lesson N labels via title fallback', () => {
-    const content = demoContentFixtures('Design Thinking Fundamentals')
-    const reference = {
-      title: 'Sub-lesson 1',
-      lessonTitle: 'Lesson 2',
-      lessonPosition: 2,
-      subLessonPosition: 1,
-    }
-    // Generic labels alone cannot pick a row; labels helper uses the matched reading title.
-    expect(getDemoLesson(content, reference)).toBeUndefined()
-    expect(
-      getDemoLesson(content, {
-        title: 'Empathy and Observation',
-        lessonTitle: 'Lesson 2',
-        lessonPosition: 2,
-        subLessonPosition: 1,
-      })?.title,
-    ).toBe('Empathy and Observation')
-  })
-
-  it('provides all named Service Design seed readings', () => {
+  it('provides all named Service Design seed readings under shared lessons', () => {
     const content = demoContentFixtures('Service Design Essentials')
     for (const name of [
       'Introduction to Service Design',
@@ -63,7 +44,7 @@ describe('demo content returned by the backend', () => {
     ]) {
       const lesson = getDemoLesson(content, {
         title: name,
-        lessonTitle: name,
+        lessonTitle: 'Introduction to Service Design',
         lessonPosition: 1,
         subLessonPosition: 1,
       })
@@ -79,10 +60,15 @@ describe('demo content returned by the backend', () => {
     ).toBeUndefined()
   })
 
-  it('builds public previews only from backend rows', () => {
+  it('builds public previews grouped by lesson name', () => {
     const modules = createDemoModules(demoContentFixtures('Service Design Essentials'))
-    expect(modules).toHaveLength(4)
+    expect(modules).toHaveLength(3)
     expect(modules.map((module) => module.title)).toEqual([
+      'Introduction to Service Design',
+      'Research and Framing',
+      'Prototyping and Improvement',
+    ])
+    expect(modules[0]?.subLessons.map((lesson) => lesson.title)).toEqual([
       'Introduction to Service Design',
       'Course Overview',
       'Getting to Know You',
