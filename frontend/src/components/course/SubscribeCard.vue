@@ -4,7 +4,8 @@
 
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCheckoutCourses, type CheckoutCourse } from '@/api/payments'
+import { getCourseAccess, learningPathForSubscription } from '@/lib/courseAccess'
+import type { CheckoutCourse } from '@/api/payments'
 
 type Props = {
   category: string
@@ -17,6 +18,8 @@ const props = defineProps<Props>()
 const router = useRouter()
 const showWishlistToast = ref(false)
 const checkoutCourse = ref<CheckoutCourse | null>(null)
+const enrolled = ref(false)
+const subscriptionCourseId = ref<number | null>(null)
 const loadingCourse = ref(true)
 const checkoutError = ref('')
 
@@ -24,12 +27,16 @@ async function loadCheckoutCourse() {
   const title = props.title
   loadingCourse.value = true
   checkoutCourse.value = null
+  enrolled.value = false
+  subscriptionCourseId.value = null
   checkoutError.value = ''
   try {
-    const catalog = await getCheckoutCourses()
+    const access = await getCourseAccess(title)
     if (title !== props.title) return
-    checkoutCourse.value = catalog.find((course) => course.name === title) ?? null
-    if (!checkoutCourse.value)
+    checkoutCourse.value = access.checkoutCourse
+    enrolled.value = access.enrolled
+    subscriptionCourseId.value = access.subscriptionCourseId
+    if (!access.checkoutCourse && !access.enrolled)
       checkoutError.value = 'This course is not available for checkout yet.'
   } catch {
     if (title === props.title)
@@ -44,6 +51,11 @@ watch(() => props.title, loadCheckoutCourse, { immediate: true })
 function goToPayment() {
   if (!checkoutCourse.value) return
   router.push({ name: 'payment', query: { courseId: checkoutCourse.value.id } })
+}
+
+function goToLearning() {
+  if (!subscriptionCourseId.value) return
+  router.push(learningPathForSubscription(subscriptionCourseId.value))
 }
 
 const addToWishlist = () => {
@@ -64,7 +76,8 @@ const addToWishlist = () => {
       <p class="text-base text-[#646D89]">{{ description }}</p>
     </div>
     <p class="text-2xl leading-tight font-medium tracking-[-0.02em] text-[#646D89]">
-      <template v-if="checkoutCourse">
+      <template v-if="enrolled">Already purchased</template>
+      <template v-else-if="checkoutCourse">
         THB {{ checkoutCourse.price.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
       </template>
       <template v-else>{{ loadingCourse ? 'Loading price…' : 'Price unavailable' }}</template>
@@ -74,21 +87,39 @@ const addToWishlist = () => {
       <button type="button" class="ml-1 underline" @click="loadCheckoutCourse">Try again</button>
     </p>
     <div class="flex flex-col gap-4 border-t border-[#D6D9E4] pt-16">
-      <button
-        type="button"
-        class="cursor-pointer rounded-xl border border-orange-500 bg-white px-8 py-4.5 text-base font-bold text-orange-500 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-orange-500 hover:text-white active:scale-95"
-        @click="addToWishlist"
-      >
-        Add to Wishlist
-      </button>
-      <button
-        type="button"
-        :disabled="!checkoutCourse || loadingCourse"
-        class="cursor-pointer rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-        @click="goToPayment"
-      >
-        Subscribe This Course
-      </button>
+      <template v-if="enrolled">
+        <button
+          type="button"
+          :disabled="!subscriptionCourseId || loadingCourse"
+          class="cursor-pointer rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="goToLearning"
+        >
+          Start learning
+        </button>
+        <RouterLink
+          to="/my-courses"
+          class="cursor-pointer rounded-xl border border-blue-600 bg-white px-8 py-4.5 text-center text-base font-bold text-blue-600 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-50 active:scale-95"
+        >
+          Go to My Courses
+        </RouterLink>
+      </template>
+      <template v-else>
+        <button
+          type="button"
+          class="cursor-pointer rounded-xl border border-orange-500 bg-white px-8 py-4.5 text-base font-bold text-orange-500 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-orange-500 hover:text-white active:scale-95"
+          @click="addToWishlist"
+        >
+          Add to Wishlist
+        </button>
+        <button
+          type="button"
+          :disabled="!checkoutCourse || loadingCourse"
+          class="cursor-pointer rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="goToPayment"
+        >
+          Subscribe This Course
+        </button>
+      </template>
     </div>
   </aside>
 

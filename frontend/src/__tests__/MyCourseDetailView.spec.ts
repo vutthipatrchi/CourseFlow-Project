@@ -9,6 +9,18 @@ import type { DemoContentRow } from '@/api/demoContent'
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
   getCourseProgress: vi.fn<(courseId: number) => Promise<CourseProgressView>>(),
+  getCheckoutCourse: vi.fn(async (courseId: number) => ({
+    id: courseId,
+    name: courseId === 1 ? 'Service Design Essentials' : 'Software Developer',
+    price: 3559,
+    category: 'Course',
+    summary: 'Catalog summary',
+    description: 'Catalog description',
+    learningTime: 8,
+    lessons: 6,
+    imageName: null,
+    accent: '#dce8fb',
+  })),
 }))
 vi.mock('@/api/payments', () => mocks)
 vi.mock('@/api/demoContent', () => ({

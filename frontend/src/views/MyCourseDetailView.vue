@@ -4,27 +4,36 @@ import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import {
+  getCheckoutCourse,
   getCourseProgress,
   getSubscriptions,
+  type CheckoutCourse,
   type CourseProgressView,
   type SubscriptionView,
 } from '@/api/payments'
-import { courses } from '@/data/courses'
 import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
 import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
+import { resolveCatalogImage } from '@/lib/catalogCourses'
 
 const route = useRoute()
 const courseId = computed(() => Number(route.params.courseId))
 const subscription = ref<SubscriptionView | null>(null)
 const progress = ref<CourseProgressView | null>(null)
+const catalogCourse = ref<CheckoutCourse | null>(null)
 const demoContent = ref<DemoContentRow[]>([])
 const contentError = ref('')
 const loading = ref(true)
 const error = ref('')
 
-const coursePreview = computed(() =>
-  courses.find((course) => course.title === subscription.value?.courseTitle),
-)
+const coursePreview = computed(() => {
+  if (!catalogCourse.value) return undefined
+  return {
+    title: catalogCourse.value.name,
+    description: catalogCourse.value.summary ?? '',
+    imageUrl: resolveCatalogImage(catalogCourse.value),
+    price: catalogCourse.value.price,
+  }
+})
 const modules = computed(() => {
   const lessons = (progress.value?.subLessons ?? []).map((lesson) => ({
     ...lesson,
@@ -74,14 +83,16 @@ async function load() {
       error.value = 'This course is not in your courses.'
       return
     }
-    const [courseProgress, readings] = await Promise.all([
+    const [courseProgress, readings, catalog] = await Promise.all([
       getCourseProgress(courseId.value),
       getEnrolledDemoContent(courseId.value).catch(() => {
         contentError.value = 'Could not load the lesson readings.'
         return [] as DemoContentRow[]
       }),
+      getCheckoutCourse(courseId.value).catch(() => null),
     ])
     demoContent.value = readings
+    catalogCourse.value = catalog
     progress.value = courseProgress
   } catch (failure) {
     error.value = failure instanceof Error ? failure.message : 'Unable to load course details'

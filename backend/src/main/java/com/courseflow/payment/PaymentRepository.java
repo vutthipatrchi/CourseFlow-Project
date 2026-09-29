@@ -20,9 +20,46 @@ class PaymentRepository {
     PaymentRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     List<CheckoutCourse> listCheckoutCourses() {
-        return jdbc.query("SELECT id, name, price FROM courseflow.courses ORDER BY id",
-            (rs, row) -> new CheckoutCourse(rs.getLong("id"), rs.getString("name"),
-                rs.getBigDecimal("price")));
+        return jdbc.query("""
+            SELECT c.id, c.name, c.price, c.category, c.summary, c.description,
+                   c.learning_time, c.image_name, c.accent,
+                   COALESCE((
+                     SELECT COUNT(*)::INT FROM courseflow.course_lessons l WHERE l.course_id = c.id
+                   ), 0) AS lessons
+              FROM courseflow.courses c
+             ORDER BY c.id
+            """, (rs, row) -> mapCheckoutCourse(rs));
+    }
+
+    Optional<CheckoutCourse> findCheckoutCourse(Long courseId) {
+        try {
+            return Optional.ofNullable(jdbc.queryForObject("""
+                SELECT c.id, c.name, c.price, c.category, c.summary, c.description,
+                       c.learning_time, c.image_name, c.accent,
+                       COALESCE((
+                         SELECT COUNT(*)::INT FROM courseflow.course_lessons l WHERE l.course_id = c.id
+                       ), 0) AS lessons
+                  FROM courseflow.courses c
+                 WHERE c.id = ?
+                """, (rs, row) -> mapCheckoutCourse(rs), courseId));
+        } catch (EmptyResultDataAccessException ignored) {
+            return Optional.empty();
+        }
+    }
+
+    private static CheckoutCourse mapCheckoutCourse(ResultSet rs) throws SQLException {
+        Integer learningTime = rs.getObject("learning_time") == null ? null : rs.getInt("learning_time");
+        return new CheckoutCourse(
+            rs.getLong("id"),
+            rs.getString("name"),
+            rs.getBigDecimal("price"),
+            rs.getString("category"),
+            rs.getString("summary"),
+            rs.getString("description"),
+            learningTime,
+            rs.getInt("lessons"),
+            rs.getString("image_name"),
+            rs.getString("accent"));
     }
 
     void lockCheckout(String subject, Long courseId) {

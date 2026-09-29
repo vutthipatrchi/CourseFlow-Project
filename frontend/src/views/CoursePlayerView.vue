@@ -14,9 +14,9 @@ import AuthorizedVideo from '@/components/course/AuthorizedVideo.vue'
 import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
 import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
 import { DEMO_VIDEO_LABEL, getLessonVideo } from '@/data/demoVideo'
-import { courses } from '@/data/courses'
 import {
   completeSubLesson,
+  getCheckoutCourse,
   getCourseProgress,
   getSubscriptions,
   type CourseProgressView,
@@ -24,6 +24,7 @@ import {
 import { listMyAssignments, submitAssignment } from '@/api/submissions'
 import { toApiError } from '@/api/client'
 import { toCardAssignment } from '@/lib/assignmentCard'
+import { catalogRouteId, toStorefrontCourse } from '@/lib/catalogCourses'
 import { hasScrolledToPageBottom } from '@/lib/scrollComplete'
 import type { Course } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
@@ -173,12 +174,28 @@ async function loadProgress() {
       return [] as DemoContentRow[]
     })
     if (request !== progressRequest) return
-    const preview = courses.find((item) => item.title === subscription.courseTitle)
+    const preview = await getCheckoutCourse(requestedCourseId).catch(() => null)
+    if (request !== progressRequest) return
+    const storefront = preview
+      ? toStorefrontCourse(preview)
+      : {
+          id: catalogRouteId(subscription.courseId),
+          category: 'Course',
+          title: subscription.courseTitle,
+          description: 'Continue learning through the lessons in this course.',
+          longDescription: '',
+          imageUrl: '',
+          lessonCount: 0,
+          hourCount: 0,
+          price: 0,
+          modules: [],
+        }
     course.value = {
-      ...(preview ?? courses[0]!),
-      id: `course-${subscription.courseId}`,
+      ...storefront,
+      id: catalogRouteId(subscription.courseId),
       title: subscription.courseTitle,
-      description: preview?.description ?? 'Continue learning through the lessons in this course.',
+      description:
+        storefront.description || 'Continue learning through the lessons in this course.',
       modules: [],
     }
     applyProgress(progress)
@@ -355,8 +372,8 @@ const handleAssignmentSubmit = async (answer: string) => {
           role="alert"
           class="rounded-lg bg-amber-50 p-4 text-sm text-amber-900"
         >
-          ไม่สามารถโหลดเนื้อหาบทเรียนได้: {{ demoContentError }}
-          <button type="button" class="ml-2 underline" @click="loadProgress">ลองอีกครั้ง</button>
+          Unable to load lesson content: {{ demoContentError }}
+          <button type="button" class="ml-2 underline" @click="loadProgress">Try again</button>
         </p>
         <Transition
           name="fade"
@@ -385,7 +402,7 @@ const handleAssignmentSubmit = async (answer: string) => {
               {{ DEMO_VIDEO_LABEL }}
             </p>
             <p v-if="videoFailed" role="alert" class="rounded-lg bg-amber-50 p-4 text-amber-900">
-              ไม่สามารถโหลดวิดีโอได้ กรุณาลองใหม่ภายหลัง
+              Unable to load the video. Please try again later.
             </p>
             <LessonReading
               v-if="currentEntry.subLesson.demoLesson"
@@ -397,7 +414,7 @@ const handleAssignmentSubmit = async (answer: string) => {
               role="status"
               class="rounded-lg bg-gray-50 p-5 text-gray-600"
             >
-              บทนี้ยังไม่มีเนื้อหาให้อ่านหรือวิดีโอสำหรับเรียน
+              This lesson does not have a reading or video yet.
             </p>
 
             <p class="text-base text-[#646D89]">{{ currentEntry.subLesson.description }}</p>

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { findCheckoutCourseByTitle, isEnrolledInCourseTitle } from '@/lib/courseAccess'
+import {
+  findCheckoutCourseByTitle,
+  isEnrolledInCourseTitle,
+  learningPathForSubscription,
+} from '@/lib/courseAccess'
 import type { CheckoutCourse, SubscriptionView } from '@/api/payments'
 
 const subscriptions: SubscriptionView[] = [
@@ -34,5 +38,9 @@ describe('courseAccess', () => {
       price: 3559,
     })
     expect(findCheckoutCourseByTitle(catalog, 'Missing Course')).toBeNull()
+  })
+
+  it('builds the enrolled course player path', () => {
+    expect(learningPathForSubscription(9)).toBe('/courses/course-9/learn/sub-1-1')
   })
 })

@@ -12,7 +12,7 @@ type Props = {
   defaultOpen?: boolean
   interactive?: boolean
   activeSubLessonId?: string
-  courseId?: string
+  courseId?: string // kept for callers; lesson rows use the slot / interactive mode only
 }
 
 const props = withDefaults(defineProps<Props>(), { defaultOpen: false, interactive: false })
@@ -91,17 +91,6 @@ const toggle = () => {
             </svg>
             <span class="flex-1">{{ subLesson.title }}</span>
           </button>
-          <RouterLink
-            v-else-if="courseId"
-            class="block rounded-lg px-2 py-2 transition-colors duration-200 hover:bg-gray-50"
-            :to="{
-              name: 'learning-progress',
-              params: { courseId },
-              query: { lesson: subLesson.id },
-            }"
-          >
-            {{ subLesson.title }}
-          </RouterLink>
           <slot v-else name="lesson" :sub-lesson="subLesson">
             <span>{{ subLesson.title }}</span>
           </slot>

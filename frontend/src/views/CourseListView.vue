@@ -1,21 +1,47 @@
 <script setup lang="ts">
 // ── CourseListView ────────────────────────────────────────────────────────
 // Guest-facing page listing all available courses in a grid
-// แก้ไขได้: heading text, search placeholder, grid columns, course data source
 
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import CtaBanner from '@/components/landing/CtaBanner.vue'
 import CourseCard from '@/components/course/CourseCard.vue'
-import { courses } from '@/data/courses'
+import { getCheckoutCourses } from '@/api/payments'
+import { toStorefrontCourse } from '@/lib/catalogCourses'
+import type { Course } from '@/types/course'
 
 const searchQuery = ref('')
+const courses = ref<Course[]>([])
+const loading = ref(true)
+const loadError = ref('')
 
 const filteredCourses = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  if (!query) return courses
-  return courses.filter((course) => course.title.toLowerCase().includes(query))
+  if (!query) return courses.value
+  return courses.value.filter(
+    (course) =>
+      course.title.toLowerCase().includes(query) ||
+      course.description.toLowerCase().includes(query),
+  )
+})
+
+async function loadCourses() {
+  loading.value = true
+  loadError.value = ''
+  try {
+    const catalog = await getCheckoutCourses()
+    courses.value = catalog.map(toStorefrontCourse)
+  } catch (error) {
+    loadError.value = error instanceof Error ? error.message : 'Unable to load courses.'
+    courses.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  void loadCourses()
 })
 </script>
 
@@ -76,8 +102,15 @@ const filteredCourses = computed(() => {
           />
         </div>
       </section>
+      <p v-if="loading" role="status" class="pb-20 text-base text-[#646D89]">Loading courses…</p>
+      <div v-else-if="loadError" role="alert" class="pb-20 text-center text-base text-red-700">
+        <p>{{ loadError }}</p>
+        <button type="button" class="mt-2 text-blue-600 underline" @click="loadCourses">
+          Try again
+        </button>
+      </div>
       <section
-        v-if="filteredCourses.length > 0"
+        v-else-if="filteredCourses.length > 0"
         class="mx-auto grid max-w-289.5 grid-cols-3 gap-x-6 gap-y-15 pb-20"
       >
         <CourseCard

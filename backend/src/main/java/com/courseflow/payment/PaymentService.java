@@ -39,6 +39,11 @@ class PaymentService {
 
     List<CheckoutCourse> checkoutCourses() { return repository.listCheckoutCourses(); }
 
+    CheckoutCourse checkoutCourse(Long courseId) {
+        return repository.findCheckoutCourse(courseId)
+            .orElseThrow(() -> new com.courseflow.common.web.ResourceNotFoundException("Course not found"));
+    }
+
     OrderCreated createOrder(String subject, Long courseId, String promotionCode) {
         requireSubject(subject);
         String code = promotionCode == null ? "" : promotionCode.trim().toUpperCase(Locale.ROOT);

@@ -13,7 +13,7 @@ function row(
     reading: {
       title,
       objective: `Learn ${title}`,
-      paragraphs: [`${detail}: input, process, output.`, 'Try 60, 75 และ 90. Use the Terminal.'],
+      paragraphs: [`${detail}: input, process, output.`, 'Try 60, 75 and 90. Use the Terminal.'],
       example: `Example for ${title}`,
       exercise: `Practice ${title}`,
       solution: `Suggested answer for ${title}`,
@@ -36,15 +36,19 @@ export function demoContentFixtures(courseTitle: string): DemoContentRow[] {
       return [row('Design Foundations', 'Design Foundations', 'Design Foundations')]
     case 'Service Design Essentials':
       return [
-        row('Lesson 1', 'Welcome to the Course', 'Introduction to Service Design'),
-        row('Lesson 1', 'Course Overview', 'Course Overview'),
-        row('Lesson 1', 'Getting to Know You', 'Getting to Know You'),
-        row('Lesson 1', 'What is Service Design ?', 'What is Service Design ?'),
+        row(
+          'Introduction to Service Design',
+          'Introduction to Service Design',
+          'Introduction to Service Design',
+        ),
+        row('Course Overview', 'Course Overview', 'Course Overview'),
+        row('Getting to Know You', 'Getting to Know You', 'Getting to Know You'),
+        row('What is Service Design ?', 'What is Service Design ?', 'What is Service Design ?'),
       ]
     case 'Design Thinking Fundamentals':
       return [
-        row('Lesson 2', 'Sub-lesson 1', 'Empathy and Observation'),
-        row('Lesson 3', 'Sub-lesson 1', 'Problem Framing'),
+        row('Empathy and Observation', 'Empathy and Observation', 'Empathy and Observation'),
+        row('Problem Framing', 'Problem Framing', 'Problem Framing'),
       ]
     default:
       return []

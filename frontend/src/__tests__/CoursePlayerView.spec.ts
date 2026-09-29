@@ -12,6 +12,18 @@ import { getEnrolledDemoContent } from '@/api/demoContent'
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
   getCourseProgress: vi.fn<(courseId: number) => Promise<CourseProgressView>>(),
+  getCheckoutCourse: vi.fn(async (courseId: number) => ({
+    id: courseId,
+    name: courseId === 9 ? 'Software Developer' : 'Service Design Essentials',
+    price: 3559,
+    category: 'Course',
+    summary: 'Catalog summary',
+    description: 'Catalog description',
+    learningTime: 8,
+    lessons: 6,
+    imageName: null,
+    accent: '#dce8fb',
+  })),
   completeSubLesson:
     vi.fn<
       (
@@ -184,8 +196,8 @@ describe('purchased course player', () => {
     const wrapper = await mountPlayer()
     await flushPromises()
     expect(wrapper.get('article').text()).toContain('input, process')
-    expect(wrapper.get('article').text()).toContain('60, 75 และ 90')
-    expect(wrapper.get('details summary').text()).toBe('ดูแนวคำตอบ')
+    expect(wrapper.get('article').text()).toContain('60, 75 and 90')
+    expect(wrapper.get('details summary').text()).toBe('Show suggested answer')
     expect(wrapper.get('details').attributes('open')).toBeUndefined()
     expect(wrapper.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
     expect(wrapper.text()).toContain(DEMO_VIDEO_LABEL)
@@ -256,7 +268,7 @@ describe('purchased course player', () => {
     await flushPromises()
     expect(wrapper.find('article').exists()).toBe(false)
     expect(wrapper.find('video').exists()).toBe(false)
-    expect(wrapper.text()).toContain('บทนี้ยังไม่มีเนื้อหา')
+    expect(wrapper.text()).toContain('This lesson does not have a reading or video yet')
     expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
     expect(wrapper.text()).not.toContain('เรียนจบแล้ว')
     wrapper.unmount()
@@ -282,7 +294,7 @@ describe('purchased course player', () => {
     await video.trigger('play')
     expect(mocks.completeSubLesson).not.toHaveBeenCalled()
     await video.trigger('error')
-    expect(wrapper.get('[role="alert"]').text()).toContain('ไม่สามารถโหลดวิดีโอได้')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to load the video')
     expect(wrapper.text()).not.toContain('เรียนจบแล้ว')
     wrapper.unmount()
   })
@@ -299,7 +311,7 @@ describe('purchased course player', () => {
     expect(wrapper.get('video').attributes('src')).toBe(DEMO_VIDEO_URL)
     expect(wrapper.text()).toContain(DEMO_VIDEO_LABEL)
     await wrapper.get('video').trigger('error')
-    expect(wrapper.get('[role="alert"]').text()).toContain('ไม่สามารถโหลดวิดีโอได้')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to load the video')
     expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
     expect(wrapper.text()).not.toContain('เรียนจบแล้ว')
     wrapper.unmount()
