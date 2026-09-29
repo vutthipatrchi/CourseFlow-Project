@@ -27,11 +27,12 @@ describe('ToastContainer', () => {
     expect(wrapper.text()).toContain('Added to wishlist successfully!')
   })
 
-  it('configures the toaster to match the app: bottom-center, rich colors, a close button', () => {
+  it('configures the toaster to match the app: top-right below the navbar, rich colors, a close button', () => {
     const wrapper = mount(ToastContainer)
 
     expect(wrapper.findComponent(Toaster).props()).toMatchObject({
-      position: 'bottom-center',
+      position: 'top-right',
+      offset: { top: 96 },
       duration: 2500,
       richColors: true,
       closeButton: true,

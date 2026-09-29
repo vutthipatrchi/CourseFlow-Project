@@ -7,7 +7,10 @@ import 'vue-sonner/style.css'
 </script>
 
 <template>
-  <Toaster position="bottom-center" :duration="2500" close-button rich-colors />
+  <!-- Top-right, not bottom-center: CoursePlayerView has a Previous/Next Lesson bar fixed to the
+       bottom of the viewport that a bottom toast would sit on top of. The 96px top offset clears
+       every navbar in the app (76-88px tall) with room to spare. -->
+  <Toaster position="top-right" :offset="{ top: 96 }" :duration="2500" close-button rich-colors />
 </template>
 
 <style>
