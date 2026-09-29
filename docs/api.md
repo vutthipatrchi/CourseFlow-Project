@@ -4,10 +4,501 @@ The frontend calls relative `/api` URLs. Vite proxies them to
 `http://localhost:8080` during development. Production hosting must route
 `/api/*` to the backend and serve the frontend build separately.
 
+Authenticated endpoints expect a Clerk JWT (`Authorization: Bearer …`).
+
 ## GET /api/health
 
 Returns HTTP 200 and `{"status":"UP","application":"CourseFlow"}`.
 This is a liveness check, not a database readiness check.
 
-Business endpoints, authentication and the course data model will be added
-with their features. No public user or course APIs exist yet.
+## Demo learning content
+
+`GET /api/catalog/demo-video` streams the public sample clip from the backend
+and supports range requests. It does not require a subscription.
+
+`GET /api/catalog/demo-content?courseTitle=Service%20Design%20Essentials` is public
+and available with the database-backed profile. It returns the first reading as a
+free sample, followed by titles only for the remaining seed lessons. Their
+`reading` field is `null`. A course without demo content returns `[]`.
+
+```json
+[
+  {
+    "lessonName": "Lesson 1",
+    "subLessonName": "Welcome to the Course",
+    "title": "Introduction to Service Design",
+    "reading": {
+      "title": "Introduction to Service Design",
+      "objective": "...",
+      "paragraphs": ["...", "..."],
+      "example": "...",
+      "exercise": "...",
+      "solution": "..."
+    }
+  },
+  {
+    "lessonName": "Lesson 1",
+    "subLessonName": "Course Overview",
+    "title": "Course Overview",
+    "reading": null
+  }
+]
+```
+
+`GET /api/me/courses/{courseId}/demo-content` requires a Clerk JWT and an active
+subscription for that course. The backend checks the JWT subject against the
+subscription before returning all readings and suggested answers. An anonymous
+request returns 401; a user without an active subscription receives 404. The
+response uses `Cache-Control: no-store`.
+
+`lessonName` and `subLessonName` identify the original seed. Their database
+positions may change without breaking the reading match. Custom lessons without
+a matching seed name do not receive demo content.
+
+## Admin courses
+
+These endpoints are available when the backend runs with a database-enabled
+profile such as `local`:
+
+- `GET /api/admin/courses` lists courses and their lessons.
+- `GET /api/admin/courses/{id}` returns one course.
+- `POST /api/admin/courses` creates a course.
+- `PUT /api/admin/courses/{id}` replaces the editable course data and lessons.
+- `DELETE /api/admin/courses/{id}` deletes a course and its lessons.
+
+Create and update requests contain the editable course fields and a
+`lessonItems` array. Price and monetary amounts must be non-negative. A
+percentage discount cannot exceed 100. Promo fields are required when
+`hasPromo` is true.
+
+The current UI stores uploaded file names in `imageName`, `videoName`, and
+`resourceName`; binary file upload/storage is not part of these JSON endpoints.
+`lessonItems` must contain at least one lesson. Each item may include an optional
+`id` for an existing lesson. On update the backend upserts by id (preserving
+nested `sub_lessons` and assignments) and deletes lessons omitted from the list.
+Do not omit `id` for existing lessons when saving a course, or those lessons will
+be re-created and their sub-lessons will be lost.
+
+## Admin video uploads
+
+These endpoints require a database-backed profile (`local`). Uploaded files are
+stored on the **backend host filesystem** (`courseflow.upload.dir`, default
+`uploads/` under the backend working directory). This is intended for local
+development and a single backend instance with persistent disk.
+
+Production note: a multi-instance or serverless frontend (e.g. Vercel-only)
+cannot rely on this path — move binary storage to object storage (S3 / Supabase
+Storage) in a follow-up. Until then, run the Spring Boot `local` profile on a
+host that keeps the `uploads/` directory.
+
+### POST /api/admin/uploads/videos
+
+Multipart form field `file` (mp4, webm, mov, m4v). Requires admin JWT.
+
+```json
+{
+  "url": "/api/uploads/videos/<uuid>.mp4",
+  "contentType": "video/mp4",
+  "originalName": "intro.mp4"
+}
+```
+
+### POST /api/uploads/videos/{filename}/access
+
+Requires a Clerk JWT. The backend checks for an active subscription to a course
+containing the video, or `metadata.role=admin`, then sets a 15-minute HttpOnly
+cookie scoped to that video. Other callers receive 401 or 404.
+
+### GET /api/uploads/videos/{filename}
+
+The browser streams the video directly from the backend using the scoped cookie.
+The backend rechecks the learner's active subscription for each request, including
+range requests. A missing or expired cookie returns 404. The player refreshes
+the cookie during long playback. External video URLs follow their host's access
+rules.
+
+## Admin lessons and sub-lessons
+
+These endpoints require a database-backed profile (`local`). They are not
+available under the default `standalone` profile.
+
+Hierarchy: `courses` → `course_lessons` → `sub_lessons` (each sub-lesson has a
+`videoUrl`). Create/update lesson payloads send the nested sub-lesson list;
+order in the array becomes `position`. On update, sub-lessons omitted from
+the list are deleted; items without `id` are created; items with `id` are
+updated. The `course_lessons.sub_lessons` count column is kept in sync.
+
+### GET /api/admin/courses/{courseId}/lessons
+
+Lesson table for a course (includes sub-lesson counts).
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Introduction",
+    "position": 1,
+    "subLessonCount": 4
+  }
+]
+```
+
+### POST /api/admin/courses/{courseId}/lessons
+
+Create a lesson with nested sub-lessons.
+
+```json
+{
+  "name": "Introduction",
+  "subLessons": [
+    {
+      "name": "Welcome to the Course",
+      "videoUrl": "https://cdn.example/welcome.mp4"
+    }
+  ]
+}
+```
+
+`201 Created` with `Location: /api/admin/lessons/{id}` and the lesson detail
+body (same shape as GET below).
+
+### GET /api/admin/lessons/{lessonId}
+
+```json
+{
+  "id": 1,
+  "courseId": 1,
+  "name": "Introduction",
+  "position": 1,
+  "subLessons": [
+    {
+      "id": 10,
+      "name": "Welcome to the Course",
+      "videoUrl": "https://cdn.example/welcome.mp4",
+      "position": 1
+    }
+  ]
+}
+```
+
+### PUT /api/admin/lessons/{lessonId}
+
+Replace lesson name and sync sub-lessons.
+
+```json
+{
+  "name": "Introduction",
+  "subLessons": [
+    {
+      "id": 10,
+      "name": "Welcome to the Course",
+      "videoUrl": "https://cdn.example/welcome.mp4"
+    },
+    {
+      "name": "Course Overview",
+      "videoUrl": "https://cdn.example/overview.mp4"
+    }
+  ]
+}
+```
+
+### DELETE /api/admin/lessons/{lessonId}
+
+`204 No Content`. Cascades to sub-lessons.
+
+## Admin assignments
+
+These endpoints require the `local` (or another database-backed) profile —
+they are unavailable when running with the default `standalone` profile.
+All of them require a valid Clerk-issued bearer token (any signed-in user;
+the backend has no admin-role check yet).
+
+### GET /api/admin/sub-lessons
+
+Returns every sub-lesson with its lesson and course context, for populating
+the "create assignment" form's sub-lesson picker.
+
+```json
+[
+  {
+    "subLessonId": 1,
+    "subLessonName": "Sub-lesson 1",
+    "lessonName": "Lesson 1",
+    "courseName": "Service Design Essentials"
+  }
+]
+```
+
+### POST /api/admin/assignments
+
+Creates an assignment attached to a sub-lesson.
+
+Request body:
+
+```json
+{
+  "subLessonId": 1,
+  "description": "Write a short essay",
+  "durationDays": 3
+}
+```
+
+`durationDays` is optional: the number of days suggested to finish the
+assignment. It is only a hint (students see "Assign within N days"): courses are
+self-paced, so nothing is enforced and an assignment never becomes overdue. Omit
+it or send `null` for no hint. When present it must be a positive integer.
+
+Responses:
+
+- `201 Created` with a `Location` header and the created assignment:
+
+  ```json
+  {
+    "id": 10,
+    "subLessonId": 1,
+    "description": "Write a short essay",
+    "durationDays": 3,
+    "createdAt": "2026-09-16T10:00:00Z"
+  }
+  ```
+
+- `400 Bad Request` when validation fails:
+
+  ```json
+  {
+    "message": "Validation failed",
+    "fieldErrors": { "description": "must not be blank" }
+  }
+  ```
+
+- `404 Not Found` when `subLessonId` does not reference an existing sub-lesson:
+
+  ```json
+  { "message": "Sub-lesson 999 not found" }
+  ```
+
+### GET /api/admin/assignments
+
+Returns every assignment with its course/lesson/sub-lesson context, newest
+first.
+
+```json
+[
+  {
+    "id": 10,
+    "description": "Write a short essay",
+    "courseName": "Service Design Essentials",
+    "lessonName": "Lesson 1",
+    "subLessonName": "Sub-lesson 1",
+    "durationDays": 3,
+    "createdAt": "2026-09-16T10:00:00Z"
+  }
+]
+```
+
+### GET /api/admin/assignments/{id}
+
+Returns one assignment. Response body is the same shape as the `POST`
+response above. `404 Not Found` (`{ "message": "Assignment 999 not found" }`)
+when `id` does not exist.
+
+### PUT /api/admin/assignments/{id}
+
+Updates an assignment's sub-lesson, description and deadline. Same request
+body and validation as `POST` (send `"durationDays": null` to remove the
+deadline), same success response shape. `404 Not Found` when
+either `id` or the request's `subLessonId` does not exist.
+
+### DELETE /api/admin/assignments/{id}
+
+Deletes an assignment. `204 No Content` on success, `404 Not Found` when
+`id` does not exist.
+
+## My assignments
+
+Student-facing endpoints for the "My Assignments" page. They require the
+`local` (or another database-backed) profile and a valid Clerk-issued bearer
+token; the token's subject identifies the student.
+
+Only assignments of courses the caller has an **active subscription** for are
+returned or accepted (`subscriptions.status = 'active'`, matched to the caller
+through `orders.customer_subject`). A signed-in user with no subscription gets
+an empty list.
+
+### GET /api/me/assignments
+
+Returns the caller's assignments with their status, newest first.
+
+```json
+[
+  {
+    "id": 10,
+    "description": "What are the 4 elements of service design?",
+    "courseId": 1,
+    "courseName": "Service Design Essentials",
+    "lessonName": "Lesson 1",
+    "lessonPosition": 1,
+    "subLessonId": 7,
+    "subLessonName": "Sub-lesson 1",
+    "subLessonPosition": 1,
+    "durationDays": 2,
+    "status": "pending",
+    "answer": null,
+    "submittedAt": null
+  }
+]
+```
+
+`lessonPosition` and `subLessonPosition` are the `position` of the lesson in its
+course and of the sub-lesson in its lesson, the same values the course progress
+API returns. The course player builds its URLs from them:
+`/courses/course-{courseId}/learn/sub-{lessonPosition}-{subLessonPosition}`.
+
+`durationDays` is the admin's suggested number of days, or `null`. It is a hint
+for the UI, not a deadline. `answer` and `submittedAt` are `null` until the
+caller submits. `submittedAt` is the time of the first submission and does not
+change when the answer is overwritten.
+
+`status` is derived on every request:
+
+| status | when |
+| --- | --- |
+| `submitted` | the caller has saved an answer (it can still be overwritten) |
+| `pending` | no answer yet |
+
+`overdue` is never returned: courses are self-paced, so there is no deadline.
+The card component still knows how to draw it. `in-progress` is not returned
+either. It would need learning-progress data (whether the student has started
+the sub-lesson), which the backend does not store yet.
+
+### POST /api/me/assignments/{id}/submissions
+
+Saves the caller's answer. Submitting again overwrites the previous answer.
+
+Request body:
+
+```json
+{ "answer": "People, process, products and partners" }
+```
+
+`answer` must not be blank and is limited to 4000 characters.
+
+Responses:
+
+- `200 OK` with the refreshed assignment, same shape as a list item above with
+  `"status": "submitted"`.
+- `400 Bad Request` when validation fails:
+
+  ```json
+  {
+    "message": "Validation failed",
+    "fieldErrors": { "answer": "must not be blank" }
+  }
+  ```
+
+- `404 Not Found` when the assignment does not exist **or** belongs to a course
+  the caller is not subscribed to. The two cases are intentionally
+  indistinguishable.
+
+## Admin promo codes
+
+Same auth requirement as admin assignments (a valid Clerk bearer token;
+no admin-role check yet) and same profile restriction (`local` or another
+database-backed profile).
+
+`courseIds` is a list of course ids the promo applies to; an **empty
+list means "all courses"**.
+
+### GET /api/admin/promo-codes
+
+Returns every promo code, newest first.
+
+```json
+[
+  {
+    "id": 1,
+    "code": "NEWYEAR200",
+    "minimumPurchase": 500,
+    "discountType": "fixed",
+    "discountValue": 200,
+    "courseIds": [],
+    "createdAt": "2026-09-16T10:00:00Z",
+    "updatedAt": "2026-09-16T10:00:00Z"
+  }
+]
+```
+
+### GET /api/admin/promo-codes/{id}
+
+Returns one promo code, same shape as above. `404 Not Found` when `id`
+does not exist.
+
+### POST /api/admin/promo-codes
+
+Creates a promo code.
+
+Request body:
+
+```json
+{
+  "code": "NEWYEAR200",
+  "minimumPurchase": 500,
+  "discountType": "fixed",
+  "discountValue": 200,
+  "courseIds": []
+}
+```
+
+- `code`: letters and numbers only, required.
+- `discountType`: `"fixed"` or `"percent"`.
+- `discountValue`: must be greater than 0; a `"percent"` value cannot
+  exceed 100; a `"fixed"` value cannot exceed `minimumPurchase`.
+- `courseIds`: omit or send `[]` for "all courses".
+
+Responses:
+
+- `201 Created` with a `Location` header and the created promo code.
+- `400 Bad Request` for validation failures or a duplicate code
+  (case-insensitive), both shaped like:
+
+  ```json
+  { "message": "Promo code \"NEWYEAR200\" already exists", "fieldErrors": { "code": "..." } }
+  ```
+
+### PUT /api/admin/promo-codes/{id}
+
+Updates a promo code. Same request body and validation as `POST`, same
+success response shape. `404 Not Found` when `id` does not exist.
+
+### DELETE /api/admin/promo-codes/{id}
+
+Deletes a promo code. `204 No Content` on success, `404 Not Found` when
+`id` does not exist.
+
+## Payment checkout
+
+Payment endpoints are enabled when the backend runs with a database profile.
+All monetary values are integer satang and the backend calculates the final
+amount from its own course and promotion records.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/payments/config` | Return provider availability and the publishable key used for browser tokenization. |
+| `POST` | `/api/orders` | Return a server-priced checkout for the signed-in buyer, reusing an open order when possible. |
+| `POST` | `/api/orders/{orderId}/payments/card` | Charge a provider card token. |
+| `POST` | `/api/orders/{orderId}/payments/promptpay` | Create a provider PromptPay charge and QR image. |
+| `GET` | `/api/payments/{paymentId}` | Refresh a charge from the provider and return its verified status. |
+| `GET` | `/api/payments/{paymentId}/qr` | Download the provider QR image through the authenticated proxy. |
+| `GET` | `/api/me/subscriptions` | List paid course subscriptions owned by the signed-in buyer. |
+| `POST` | `/api/webhooks/opn` | Receive an Opn event and reconcile it after retrieving the charge from Opn. |
+
+Send the Clerk bearer token on order, payment, status, QR, and subscription
+requests. Send a UUID as `Idempotency-Key` on both payment-creation endpoints.
+Card requests contain only `{ "cardToken": "tokn_test_..." }`; raw card numbers
+and security codes must never reach this API.
+
+The backend binds orders and subscriptions to the Clerk JWT subject. It trusts
+only its own course and promotion records for the amount, verifies provider
+amount/currency/metadata before activating access, and never resubmits a charge
+whose provider outcome is unknown. Webhooks and the scheduled reconciliation
+job recover those attempts safely.

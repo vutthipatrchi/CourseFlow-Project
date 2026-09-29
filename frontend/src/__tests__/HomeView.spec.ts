@@ -1,36 +1,44 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
 import HomeView from '../views/HomeView.vue'
 
-afterEach(() => vi.unstubAllGlobals())
+vi.mock('@clerk/vue', async () => {
+  const { defineComponent, h } = await vi.importActual<typeof import('vue')>('vue')
 
-describe('backend connection', () => {
-  it('shows a successful health response', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ status: 'UP' }))
-    vi.stubGlobal('fetch', fetchMock)
+  return {
+    Show: defineComponent({
+      props: { when: { type: String, required: true } },
+      setup(props, { slots }) {
+        return () => (props.when === 'signed-out' ? slots.default?.() : null)
+      },
+    }),
+    SignInButton: defineComponent({
+      setup(_, { slots }) {
+        return () => h('a', { href: '/sign-in' }, slots.default?.())
+      },
+    }),
+    UserButton: defineComponent({
+      setup() {
+        return () => h('div', { 'data-testid': 'user-button' })
+      },
+    }),
+  }
+})
+
+describe('home page', () => {
+  it('renders the CourseFlow landing content', () => {
     const wrapper = mount(HomeView)
-    await flushPromises()
-    expect(fetchMock).toHaveBeenCalledWith('/api/health')
-    expect(wrapper.get('[role="status"]').text()).toBe('Backend connected')
-    wrapper.unmount()
+
+    expect(wrapper.get('h1').text()).toContain('Best Virtual Classroom Software')
+    expect(wrapper.text()).toContain('Our Professional Instructors')
+    expect(wrapper.text()).toContain('Our Graduates')
   })
 
-  it.each([new Response(null, { status: 503 }), Response.json({ status: 'DOWN' })])(
-    'shows an unavailable backend for an unhealthy response',
-    async (response) => {
-      vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(response))
-      const wrapper = mount(HomeView)
-      await flushPromises()
-      expect(wrapper.get('[role="status"]').text()).toContain('Backend unavailable')
-      wrapper.unmount()
-    },
-  )
-
-  it('handles a network failure', async () => {
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockRejectedValue(new Error('Connection refused')))
+  it('links signed-out users to Clerk authentication routes', () => {
     const wrapper = mount(HomeView)
-    await flushPromises()
-    expect(wrapper.get('[role="status"]').text()).toContain('Backend unavailable')
-    wrapper.unmount()
+
+    expect(wrapper.get('a[href="/sign-in"]').text()).toBe('Log in')
+    expect(wrapper.get('a[href="/sign-up"]').text()).toBe('Register here')
+    expect(wrapper.find('[data-testid="user-button"]').exists()).toBe(false)
   })
 })
