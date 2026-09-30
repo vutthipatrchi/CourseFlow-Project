@@ -16,11 +16,13 @@ import { getPublicDemoContent } from '@/api/demoContent'
 import { createDemoModules } from '@/data/demoLessons'
 import { catalogCourseId, toStorefrontCourse } from '@/lib/catalogCourses'
 import { getCourseAccess, learningPathForSubscription } from '@/lib/courseAccess'
+import { useToast } from '@/composables/useToast'
 import type { Course, Module } from '@/types/course'
 import { DEMO_VIDEO_LABEL, DEMO_VIDEO_URL } from '@/data/demoVideo'
 
 const route = useRoute()
 const router = useRouter()
+const { error: notifyError } = useToast()
 
 const course = ref<Course | undefined>()
 const courseLoading = ref(true)
@@ -47,6 +49,7 @@ async function loadCourse() {
   course.value = undefined
   if (!id) {
     courseError.value = 'Course not found.'
+    notifyError(courseError.value)
     courseLoading.value = false
     return
   }
@@ -57,6 +60,7 @@ async function loadCourse() {
   } catch (error) {
     if (request !== courseRequest) return
     courseError.value = error instanceof Error ? error.message : 'Unable to load this course.'
+    notifyError(courseError.value)
   } finally {
     if (request === courseRequest) courseLoading.value = false
   }
@@ -86,6 +90,7 @@ async function startLearning() {
   if (!course.value || !enrolled.value || startLearningBusy.value) return
   if (!subscriptionCourseId.value) {
     accessError.value = 'Purchase this course before you start learning.'
+    notifyError(accessError.value)
     enrolled.value = false
     return
   }
@@ -97,12 +102,13 @@ async function startLearning() {
       enrolled.value = false
       subscriptionCourseId.value = null
       accessError.value = 'Purchase this course before you start learning.'
+      notifyError(accessError.value)
       return
     }
     await router.push(learningPathForSubscription(access.subscriptionCourseId))
   } catch (error) {
-    accessError.value =
-      error instanceof Error ? error.message : 'Unable to open the learning page.'
+    accessError.value = error instanceof Error ? error.message : 'Unable to open the learning page.'
+    notifyError(accessError.value)
   } finally {
     startLearningBusy.value = false
   }
@@ -134,18 +140,19 @@ watch(
   { immediate: true },
 )
 
-watch(
-  course,
-  () => {
-    videoFailed.value = false
-    void loadPreview()
-    void loadAccess()
-  },
-)
+watch(course, () => {
+  videoFailed.value = false
+  void loadPreview()
+  void loadAccess()
+})
 </script>
 
 <template>
-  <div v-if="courseLoading" class="grid min-h-screen place-items-center text-[#646D89]" role="status">
+  <div
+    v-if="courseLoading"
+    class="grid min-h-screen place-items-center text-[#646D89]"
+    role="status"
+  >
     Loading course…
   </div>
   <div v-else-if="courseError || !course" class="flex min-h-screen flex-col">
