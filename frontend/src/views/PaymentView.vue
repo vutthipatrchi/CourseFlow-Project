@@ -78,6 +78,7 @@ async function prepareOrder() {
   order.value = next
   promoCode.value = next.promotionCode || ''
   if (next.payment) await openPayment(next.payment)
+  return next
 }
 
 async function initialize() {
@@ -186,10 +187,18 @@ async function confirmPayment() {
     }
     await openPayment(payment, true)
   } catch (error) {
-    recovering.value = chargeRequested
-    errorMessage.value = chargeRequested
-      ? 'We could not confirm the result. Check your payment status before trying again.'
-      : messageFrom(error)
+    if (!chargeRequested) {
+      errorMessage.value = messageFrom(error)
+      return
+    }
+    recovering.value = true
+    try {
+      const recoveredOrder = await prepareOrder()
+      if (recoveredOrder.payment) return
+    } catch {
+      // Keep the existing recovery action available if the status request also fails.
+    }
+    errorMessage.value = 'We could not confirm the result. Check your payment status before trying again.'
   } finally {
     processing.value = false
   }
