@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import MyAssignmentsView from '../views/MyAssignmentsView.vue'
 import { listMyAssignments, submitAssignment } from '@/api/submissions'
 import type { MyAssignment } from '@/types/submission'
@@ -85,9 +86,11 @@ describe('MyAssignmentsView', () => {
     vi.mocked(listMyAssignments)
       .mockRejectedValueOnce(new Error('Network down'))
       .mockResolvedValueOnce([pending])
+    const errorSpy = vi.spyOn(toast, 'error')
 
     const wrapper = await mountView()
     expect(wrapper.get('[role="alert"]').text()).toBe('Network down')
+    expect(errorSpy).toHaveBeenCalledWith('Network down')
 
     await wrapper.get('button.cursor-pointer.font-bold').trigger('click')
     await flushPromises()
@@ -120,6 +123,7 @@ describe('MyAssignmentsView', () => {
       answer: 'People, process, products, partners',
       submittedAt: '2026-09-24T00:00:00Z',
     })
+    const successSpy = vi.spyOn(toast, 'success')
     const wrapper = await mountView()
 
     await wrapper.get('textarea').setValue('People, process, products, partners')
@@ -133,11 +137,16 @@ describe('MyAssignmentsView', () => {
     expect(wrapper.find('textarea').exists()).toBe(false)
     expect(wrapper.text()).toContain('Submitted')
     expect(wrapper.text()).toContain('People, process, products, partners')
+    expect(successSpy).toHaveBeenCalledWith('Assignment submitted successfully!', {
+      description: 'Service Design Essentials · Introduction: 4 Levels of Service Design',
+    })
   })
 
   it('keeps the card editable and shows the error when submitting fails', async () => {
     vi.mocked(listMyAssignments).mockResolvedValue([pending])
     vi.mocked(submitAssignment).mockRejectedValue(new Error('Assignment 5 not found'))
+    const successSpy = vi.spyOn(toast, 'success')
+    const errorSpy = vi.spyOn(toast, 'error')
     const wrapper = await mountView()
 
     await wrapper.get('textarea').setValue('my answer')
@@ -149,5 +158,9 @@ describe('MyAssignmentsView', () => {
 
     expect(wrapper.get('[role="alert"]').text()).toBe('Assignment 5 not found')
     expect(wrapper.find('textarea').exists()).toBe(true)
+    expect(errorSpy).toHaveBeenCalledWith('Assignment 5 not found', {
+      description: 'Service Design Essentials · Introduction: 4 Levels of Service Design',
+    })
+    expect(successSpy).not.toHaveBeenCalled()
   })
 })

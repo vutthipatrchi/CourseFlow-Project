@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'vue-sonner'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
 import { getCourseAccess } from '@/lib/courseAccess'
 import { checkoutCourseFixture } from './checkoutCourseFixture'
@@ -39,6 +40,9 @@ async function mountCard() {
 }
 
 describe('SubscribeCard', () => {
+  // Block body, not an implicit return: mockReset() returns the mock itself, and returning that
+  // from a Vitest hook makes the hook's own async handling misfire, surfacing an unrelated
+  // in-test promise rejection as an unhandled one (only visible once a test actually rejects).
   beforeEach(() => {
     vi.mocked(getCourseAccess).mockReset()
   })
@@ -92,6 +96,31 @@ describe('SubscribeCard', () => {
         .find((button) => button.text() === 'Subscribe This Course')
         ?.attributes('disabled'),
     ).toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when the course price fails to load', async () => {
+    vi.mocked(getCourseAccess).mockRejectedValue(new Error('network down'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountCard()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to load the course price')
+    expect(errorSpy).toHaveBeenCalledWith('Unable to load the course price. Please try again.')
+    wrapper.unmount()
+  })
+
+  it('raises a success toast when adding the course to the wishlist', async () => {
+    vi.mocked(getCourseAccess).mockResolvedValue({
+      enrolled: false,
+      checkoutCourse: checkoutCourseFixture({ id: 1, name: 'Software Developer' }),
+      subscriptionCourseId: null,
+    })
+    const successSpy = vi.spyOn(toast, 'success')
+    const { wrapper } = await mountCard()
+
+    await wrapper.get('button:first-of-type').trigger('click')
+
+    expect(successSpy).toHaveBeenCalledWith('Added to wishlist successfully!')
     wrapper.unmount()
   })
 })

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import CoursePlayerView from '../views/CoursePlayerView.vue'
 import type { CourseProgressView, SubscriptionView } from '@/api/payments'
 import type { MyAssignment } from '@/types/submission'
@@ -273,11 +274,13 @@ describe('purchased course player', () => {
 
   it('keeps an unsuccessful completion retryable and does not claim success', async () => {
     mocks.completeSubLesson.mockRejectedValue(new Error('Could not save progress'))
+    const errorSpy = vi.spyOn(toast, 'error')
     const wrapper = await mountPlayer()
     await flushPromises()
     scrollToBottom()
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('Could not save progress')
+    expect(errorSpy).toHaveBeenCalledWith('Could not save progress')
     expect(sidebarProgress(wrapper)).toBe(0)
     expect(wrapper.text()).not.toContain('อ่านจบแล้ว')
     mocks.completeSubLesson.mockResolvedValue({
@@ -539,6 +542,7 @@ describe('CoursePlayerView assignments on a real course', () => {
       answer: 'People, process',
       submittedAt: '2026-09-24T00:00:00Z',
     })
+    const successSpy = vi.spyOn(toast, 'success')
     const wrapper = await mountAssignmentPlayer()
 
     await wrapper.get('textarea').setValue('People, process')
@@ -552,11 +556,13 @@ describe('CoursePlayerView assignments on a real course', () => {
     expect(wrapper.find('textarea').exists()).toBe(false)
     expect(wrapper.text()).toContain('Submitted')
     expect(wrapper.text()).toContain('People, process')
-    expect(wrapper.text()).toContain('Assignment submitted successfully!')
+    expect(successSpy).toHaveBeenCalledWith('Assignment submitted successfully!')
   })
 
   it('keeps the card editable and shows the error when saving fails', async () => {
     submissionMocks.submitAssignment.mockRejectedValue(new Error('Assignment 5 not found'))
+    const successSpy = vi.spyOn(toast, 'success')
+    const errorSpy = vi.spyOn(toast, 'error')
     const wrapper = await mountAssignmentPlayer()
 
     await wrapper.get('textarea').setValue('my answer')
@@ -568,16 +574,19 @@ describe('CoursePlayerView assignments on a real course', () => {
 
     expect(wrapper.get('[role="alert"]').text()).toBe('Assignment 5 not found')
     expect(wrapper.find('textarea').exists()).toBe(true)
-    expect(wrapper.text()).not.toContain('Assignment submitted successfully!')
+    expect(errorSpy).toHaveBeenCalledWith('Assignment 5 not found')
+    expect(successSpy).not.toHaveBeenCalled()
   })
 
   it('still shows the course when the assignments request fails', async () => {
     submissionMocks.listMyAssignments.mockRejectedValue(new Error('Network down'))
+    const errorSpy = vi.spyOn(toast, 'error')
     const wrapper = await mountAssignmentPlayer()
 
     expect(wrapper.get('[role="alert"]').text()).toBe('Network down')
     expect(wrapper.text()).toContain('4 Levels of Service Design')
     expect(wrapper.find('textarea').exists()).toBe(false)
+    expect(errorSpy).toHaveBeenCalledWith('Network down')
   })
 
   it('preserves the demo reading and submitted assignment when completing the lesson', async () => {

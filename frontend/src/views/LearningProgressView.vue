@@ -6,9 +6,11 @@ import AppNavbar from '@/components/landing/AppNavbar.vue'
 import { getCheckoutCourse } from '@/api/payments'
 import { catalogCourseId } from '@/lib/catalogCourses'
 import { getCourseAccess, learningPathForSubscription } from '@/lib/courseAccess'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
+const { error: notifyError } = useToast()
 
 const accessLoading = ref(true)
 const accessDenied = ref(false)
@@ -30,6 +32,7 @@ async function verifyAccess() {
   if (!id) {
     accessDenied.value = true
     accessError.value = 'Course not found.'
+    notifyError(accessError.value)
     accessLoading.value = false
     return
   }
@@ -46,10 +49,12 @@ async function verifyAccess() {
     }
     accessDenied.value = true
     accessError.value = 'Purchase this course to start learning.'
+    notifyError(accessError.value)
   } catch (error) {
     if (request !== accessRequest) return
     accessDenied.value = true
     accessError.value = error instanceof Error ? error.message : 'Unable to verify course access'
+    notifyError(accessError.value)
   } finally {
     if (request === accessRequest) accessLoading.value = false
   }

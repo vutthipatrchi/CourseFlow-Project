@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import AdminAssignmentCreateView from '../views/AdminAssignmentCreateView.vue'
 import {
   createAssignment,
@@ -80,6 +81,7 @@ describe('AdminAssignmentCreateView', () => {
       durationDays: null,
       createdAt: '2026-01-01T00:00:00Z',
     })
+    const successSpy = vi.spyOn(toast, 'success')
 
     const { wrapper, router } = await mountView('/admin/assignments/create')
     expect(wrapper.text()).toContain('Add Assignment')
@@ -98,11 +100,41 @@ describe('AdminAssignmentCreateView', () => {
     })
     expect(updateAssignment).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-assignments')
+    expect(successSpy).toHaveBeenCalledWith('Assignment created.', {
+      description: 'Build a todo app',
+    })
+  })
+
+  it('raises a matching toast when creating an assignment fails', async () => {
+    vi.mocked(createAssignment).mockRejectedValue(new Error('That sub-lesson already has one.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+
+    const { wrapper } = await mountView('/admin/assignments/create')
+    await wrapper.get('#course').setValue('Web Development')
+    await wrapper.get('#lesson').setValue('Vue Basics')
+    await wrapper.get('#sub-lesson').setValue('1')
+    await wrapper.get('#description').setValue('Build a todo app')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('That sub-lesson already has one.', {
+      description: 'Build a todo app',
+    })
+  })
+
+  it('raises a matching toast when the sub-lesson options fail to load', async () => {
+    vi.mocked(listSubLessonOptions).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+
+    await mountView('/admin/assignments/create')
+
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
   })
 
   it('loads and pre-fills the assignment when editing, and saves via update', async () => {
     vi.mocked(getAssignment).mockResolvedValue(existingAssignment)
     vi.mocked(updateAssignment).mockResolvedValue({ ...existingAssignment, description: 'Edited' })
+    const successSpy = vi.spyOn(toast, 'success')
 
     const { wrapper, router } = await mountView('/admin/assignments/5/edit')
 
@@ -124,5 +156,15 @@ describe('AdminAssignmentCreateView', () => {
     })
     expect(createAssignment).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-assignments')
+    expect(successSpy).toHaveBeenCalledWith('Assignment updated.', { description: 'Edited' })
+  })
+
+  it('raises a matching toast when loading the assignment to edit fails', async () => {
+    vi.mocked(getAssignment).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+
+    await mountView('/admin/assignments/5/edit')
+
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
   })
 })

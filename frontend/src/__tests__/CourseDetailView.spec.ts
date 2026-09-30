@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import CourseDetailView from '@/views/CourseDetailView.vue'
 import ModuleAccordion from '@/components/course/ModuleAccordion.vue'
 import { createDemoModules } from '@/data/demoLessons'
@@ -121,6 +122,76 @@ describe('Module Samples previews', () => {
     await start!.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.fullPath).toBe('/courses/course-9/learn/sub-1-1')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when the course fails to load', async () => {
+    vi.mocked(getCheckoutCourse).mockRejectedValueOnce(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when start-learning is clicked with a stale access state', async () => {
+    vi.mocked(getCourseAccess).mockResolvedValueOnce({
+      enrolled: true,
+      checkoutCourse: null,
+      subscriptionCourseId: null,
+    })
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+
+    const start = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Start learning'))
+    await start!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      'Purchase this course before you start learning.',
+    )
+    expect(errorSpy).toHaveBeenCalledWith('Purchase this course before you start learning.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when access is revoked before opening the learning page', async () => {
+    vi.mocked(getCourseAccess)
+      .mockResolvedValueOnce({ enrolled: true, checkoutCourse: null, subscriptionCourseId: 9 })
+      .mockResolvedValueOnce({ enrolled: false, checkoutCourse: null, subscriptionCourseId: null })
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+
+    const start = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Start learning'))
+    await start!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      'Purchase this course before you start learning.',
+    )
+    expect(errorSpy).toHaveBeenCalledWith('Purchase this course before you start learning.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when opening the learning page fails', async () => {
+    vi.mocked(getCourseAccess)
+      .mockResolvedValueOnce({ enrolled: true, checkoutCourse: null, subscriptionCourseId: 9 })
+      .mockRejectedValueOnce(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+
+    const start = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Start learning'))
+    await start!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
     wrapper.unmount()
   })
 

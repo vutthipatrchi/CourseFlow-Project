@@ -15,6 +15,7 @@ import {
   type OrderCreated,
   type PaymentView,
 } from '@/api/payments'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
@@ -33,6 +34,7 @@ const errorMessage = ref('')
 const paymentConfig = ref<PaymentConfig | null>(null)
 const card = reactive({ number: '', owner: '', expiry: '', cvv: '' })
 let attemptKey = crypto.randomUUID()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const methodLabel = computed(() =>
   paymentMethod.value === 'card' ? 'Credit card / Debit card' : 'QR code',
@@ -57,6 +59,14 @@ const courseId = computed(() => {
 
 function messageFrom(error: unknown) {
   return error instanceof Error ? error.message : 'Unable to process payment'
+}
+
+// Sets the inline error and raises a matching toast. Only for genuine failures — not the
+// "please review and confirm again" notices below, which reuse errorMessage's styling but
+// aren't errors.
+function fail(message: string) {
+  errorMessage.value = message
+  notifyError(message)
 }
 
 async function openPayment(payment: PaymentView, authorize = false) {
@@ -90,7 +100,7 @@ async function initialize() {
       throw new Error('Payment is not configured yet. Please contact support.')
     await prepareOrder()
   } catch (error) {
-    errorMessage.value = messageFrom(error)
+    fail(messageFrom(error))
   } finally {
     processing.value = false
   }
@@ -114,9 +124,13 @@ async function applyPromo() {
   promoMessage.value = ''
   try {
     await prepareOrder()
-    promoMessage.value = 'Promotion code applied. Please review your total.'
+    // Success has no inline text: the summary's discount/total lines already show it worked,
+    // and the toast confirms it. The field-adjacent message is reserved for the failure reason,
+    // which the toast alone wouldn't leave visible while the user fixes the code.
+    notifySuccess('Promotion code applied. Please review your total.')
   } catch (error) {
     promoMessage.value = messageFrom(error)
+    notifyError(promoMessage.value)
   } finally {
     processing.value = false
   }
@@ -134,7 +148,7 @@ async function confirmPayment() {
       recovering.value = false
       errorMessage.value = 'Please review the payment details before continuing.'
     } catch (error) {
-      errorMessage.value = messageFrom(error)
+      fail(messageFrom(error))
     } finally {
       processing.value = false
     }
@@ -150,7 +164,7 @@ async function confirmPayment() {
       errorMessage.value =
         'Your checkout has been updated. Please review the total and confirm again.'
     } catch (error) {
-      errorMessage.value = messageFrom(error)
+      fail(messageFrom(error))
     } finally {
       processing.value = false
     }
@@ -188,7 +202,7 @@ async function confirmPayment() {
     await openPayment(payment, true)
   } catch (error) {
     if (!chargeRequested) {
-      errorMessage.value = messageFrom(error)
+      fail(messageFrom(error))
       return
     }
     recovering.value = true
@@ -198,7 +212,7 @@ async function confirmPayment() {
     } catch {
       // Keep the existing recovery action available if the status request also fails.
     }
-    errorMessage.value = 'We could not confirm the result. Check your payment status before trying again.'
+    fail('We could not confirm the result. Check your payment status before trying again.')
   } finally {
     processing.value = false
   }
@@ -375,14 +389,7 @@ async function confirmPayment() {
                   Apply
                 </button>
               </div>
-              <p
-                v-if="promoMessage"
-                role="status"
-                :class="[
-                  'mt-2 text-sm',
-                  promoMessage.includes('applied') ? 'text-[#9B2FAC]' : 'text-red-700',
-                ]"
-              >
+              <p v-if="promoMessage" role="alert" class="mt-2 text-sm text-red-700">
                 {{ promoMessage }}
               </p>
             </div>

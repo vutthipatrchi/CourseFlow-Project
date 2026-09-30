@@ -7,10 +7,12 @@ import AppNavbar from '@/components/landing/AppNavbar.vue'
 import dotSmall from '@/assets/landing/dot-small.svg'
 import heroCross from '@/assets/landing/hero-cross.svg'
 import { getRoleFromToken } from '@/lib/jwt'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
 const { isLoaded, signIn, setActive } = useSignIn()
+const { success, error: notifyError } = useToast()
 
 const email = ref('')
 const password = ref('')
@@ -19,10 +21,19 @@ const step = ref<'credentials' | 'verify'>('credentials')
 const errorMessage = ref('')
 const isSubmitting = ref(false)
 
+// Sets the inline, near-the-field error and raises a toast with the same message, so a failure
+// is never silent even if the user has scrolled the banner out of view.
+function fail(message: string) {
+  errorMessage.value = message
+  notifyError(message)
+}
+
 async function finishSignIn(result: SignInResource) {
   const activateSession = setActive.value
   if (!activateSession || !result.createdSessionId) return
   await activateSession({ session: result.createdSessionId })
+  // The toast is mounted outside <RouterView> in App.vue, so it survives the navigation below.
+  success('Signed in successfully!')
 
   if (typeof route.query.redirect === 'string') {
     const requestedPath = route.query.redirect
@@ -55,11 +66,11 @@ async function handleSubmit() {
       await activeSignIn.prepareSecondFactor({ strategy: 'email_code' })
       step.value = 'verify'
     } else {
-      errorMessage.value = 'Additional verification is required to finish signing in.'
+      fail('Additional verification is required to finish signing in.')
     }
   } catch (err) {
     const clerkError = err as { errors?: { message?: string }[] }
-    errorMessage.value = clerkError.errors?.[0]?.message ?? 'Could not sign in. Please try again.'
+    fail(clerkError.errors?.[0]?.message ?? 'Could not sign in. Please try again.')
   } finally {
     isSubmitting.value = false
   }
@@ -80,11 +91,11 @@ async function handleVerify() {
     if (result.status === 'complete') {
       await finishSignIn(result)
     } else {
-      errorMessage.value = 'That code didn’t work. Please try again.'
+      fail('That code didn’t work. Please try again.')
     }
   } catch (err) {
     const clerkError = err as { errors?: { message?: string }[] }
-    errorMessage.value = clerkError.errors?.[0]?.message ?? 'Could not verify that code.'
+    fail(clerkError.errors?.[0]?.message ?? 'Could not verify that code.')
   } finally {
     isSubmitting.value = false
   }

@@ -8,9 +8,11 @@ import { getCourse } from '../admin/courseStore'
 import { createLesson, deleteLesson, fetchLesson, updateLesson } from '../api/lessons'
 import { uploadVideo } from '../api/uploads'
 import { emptySubLesson, toFormSubLessons, type SubLessonFormItem } from '../types/lesson'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const courseId = computed(() => {
   const raw = String(route.params.courseId ?? '')
@@ -140,8 +142,11 @@ async function onVideoSelected(item: SubLessonFormItem, event: Event) {
   try {
     const uploaded = await uploadVideo(file)
     item.videoUrl = uploaded.url
+    // A lesson can have several sub-lessons uploading independently; say which one.
+    notifySuccess('Video uploaded.', { description: item.name || undefined })
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Video upload failed'
+    notifyError(errorMessage.value, { description: item.name || undefined })
   } finally {
     uploadingKey.value = null
   }
@@ -183,21 +188,26 @@ async function save() {
         videoUrl: item.videoUrl.trim(),
       })),
     }
+    // This toast is still visible after goToCourse() navigates back to the course's lesson
+    // table, where "Lesson updated." alone wouldn't say which one.
     if (isCreate.value) {
       await createLesson(courseId.value, {
         name: payload.name,
         subLessons: payload.subLessons.map(({ name, videoUrl }) => ({ name, videoUrl })),
       })
+      notifySuccess('Lesson created.', { description: payload.name })
       goToCourse()
       return
     }
     await updateLesson(Number(lessonIdParam.value), payload)
+    notifySuccess('Lesson updated.', { description: payload.name })
     goToCourse()
   } catch (error) {
     errorMessage.value =
       error instanceof Error
         ? `${error.message} (API needs backend profile local + database)`
         : 'Save failed'
+    notifyError(errorMessage.value, { description: lessonName.value.trim() })
   } finally {
     saving.value = false
   }
@@ -212,9 +222,11 @@ async function onDeleteLesson() {
   if (!window.confirm('Delete this lesson and all of its sub-lessons?')) return
   try {
     await deleteLesson(Number(lessonIdParam.value))
+    notifySuccess('Lesson deleted.', { description: lessonName.value.trim() })
     goToCourse()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Delete failed'
+    notifyError(errorMessage.value, { description: lessonName.value.trim() })
   }
 }
 </script>

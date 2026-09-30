@@ -6,8 +6,10 @@ import AppFooter from '@/components/landing/AppFooter.vue'
 import iconPerson from '@/assets/landing/icon-person.svg'
 import heroTriangle from '@/assets/landing/hero-triangle.svg'
 import { loadProfile, updateProfile } from '@/profile/profileStore'
+import { useToast } from '@/composables/useToast'
 
 const { user } = useUser()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const name = ref('')
 const dateOfBirth = ref('')
@@ -17,8 +19,8 @@ const email = computed(() => user.value?.primaryEmailAddress?.emailAddress ?? ''
 const fileInput = ref<HTMLInputElement | null>(null)
 const isSaving = ref(false)
 const isUploadingPhoto = ref(false)
-const feedback = ref('')
 const errorMessage = ref('')
+const loadErrorMessage = ref('')
 
 onMounted(async () => {
   try {
@@ -26,8 +28,11 @@ onMounted(async () => {
     name.value = loaded.name ?? ''
     dateOfBirth.value = loaded.dateOfBirth ?? ''
     educationalBackground.value = loaded.educationalBackground ?? ''
-  } catch {
-    // profileStore.profileError already carries the message for display elsewhere.
+  } catch (error) {
+    // Previously silent: profileStore.profileError was set but nothing ever read it, so a
+    // failed load just left every field blank with no indication anything had gone wrong.
+    loadErrorMessage.value = error instanceof Error ? error.message : 'Unable to load profile'
+    notifyError(loadErrorMessage.value)
   }
 })
 
@@ -42,6 +47,11 @@ async function onPhotoSelected(event: Event) {
   isUploadingPhoto.value = true
   try {
     await user.value.setProfileImage({ file })
+    notifySuccess('Profile photo updated.')
+  } catch (error) {
+    // Previously silent: nothing caught a failed upload, so it only ever surfaced as an
+    // unhandled rejection in the browser console.
+    notifyError(error instanceof Error ? error.message : 'Unable to update profile photo.')
   } finally {
     isUploadingPhoto.value = false
     if (fileInput.value) fileInput.value.value = ''
@@ -53,6 +63,9 @@ async function removePhoto() {
   isUploadingPhoto.value = true
   try {
     await user.value.setProfileImage({ file: null })
+    notifySuccess('Profile photo removed.')
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : 'Unable to remove profile photo.')
   } finally {
     isUploadingPhoto.value = false
   }
@@ -60,7 +73,6 @@ async function removePhoto() {
 
 async function handleSubmit() {
   if (isSaving.value) return
-  feedback.value = ''
   errorMessage.value = ''
   isSaving.value = true
   try {
@@ -70,9 +82,10 @@ async function handleSubmit() {
       educationalBackground: educationalBackground.value.trim() || null,
       email: email.value,
     })
-    feedback.value = 'Profile updated.'
+    notifySuccess('Profile updated.')
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Unable to update profile.'
+    notifyError(errorMessage.value)
   } finally {
     isSaving.value = false
   }
@@ -103,6 +116,10 @@ async function handleSubmit() {
 
       <div class="relative mx-auto max-w-4xl px-6">
         <h1 class="text-3xl font-bold text-gray-900">Profile</h1>
+
+        <p v-if="loadErrorMessage" role="alert" class="mt-6 text-sm text-red-600">
+          {{ loadErrorMessage }}
+        </p>
 
         <form
           class="mt-10 grid grid-cols-1 gap-12 md:grid-cols-[minmax(0,280px)_1fr]"
@@ -194,7 +211,6 @@ async function handleSubmit() {
               />
             </div>
 
-            <p v-if="feedback" role="status" class="mt-6 text-sm text-green-600">{{ feedback }}</p>
             <p v-if="errorMessage" role="alert" class="mt-6 text-sm text-red-600">
               {{ errorMessage }}
             </p>
