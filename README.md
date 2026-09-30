@@ -1,11 +1,11 @@
 # CourseFlow
 
-Vue 3 + TypeScript frontend and Java 21 + Spring Boot backend in one repository.
+Vue 3 + TypeScript frontend and Java 25 + Spring Boot backend in one repository.
 
 ## Requirements
 
 - Node.js 22.18+ on the 22.x line (use `.nvmrc`) and npm.
-- JDK 21 with `JAVA_HOME` set and Java on `PATH`.
+- JDK 25 with `JAVA_HOME` set and Java on `PATH`.
 - Docker Compose, only when using the local PostgreSQL profile.
 - Maven is downloaded by the committed Maven Wrapper.
 
@@ -136,7 +136,7 @@ With PostgreSQL running, verify database startup and migrations using
 `.\mvnw.cmd test "-Dspring.profiles.active=local"`.
 
 CI runs these checks on pull requests to `main` and pushes to `main` using
-Node 22 and Java 21; its database check uses a PostgreSQL service.
+Node 22 and Java 25; its database check uses a PostgreSQL service.
 
 ## Layout and collaboration
 
