@@ -99,7 +99,7 @@ describe('AdminPromoCodeCreateView', () => {
     })
     expect(updatePromoCode).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-promo-codes')
-    expect(successSpy).toHaveBeenCalledWith('Promo code created.')
+    expect(successSpy).toHaveBeenCalledWith('Promo code created.', { description: 'SAVE20' })
   })
 
   it('raises a matching toast when creating a promo code fails', async () => {
@@ -116,7 +116,7 @@ describe('AdminPromoCodeCreateView', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(errorSpy).toHaveBeenCalledWith('That code already exists.')
+    expect(errorSpy).toHaveBeenCalledWith('That code already exists.', { description: 'SAVE20' })
   })
 
   it('raises a matching toast when the existing promo codes fail to load', async () => {
@@ -153,7 +153,9 @@ describe('AdminPromoCodeCreateView', () => {
     })
     expect(createPromoCode).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-promo-codes')
-    expect(successSpy).toHaveBeenCalledWith('Promo code updated.')
+    expect(successSpy).toHaveBeenCalledWith('Promo code updated.', {
+      description: 'NEWYEAR300',
+    })
   })
 
   it('raises a matching toast when loading the promo code to edit fails', async () => {

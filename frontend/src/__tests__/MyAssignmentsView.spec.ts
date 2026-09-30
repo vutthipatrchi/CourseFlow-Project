@@ -137,7 +137,9 @@ describe('MyAssignmentsView', () => {
     expect(wrapper.find('textarea').exists()).toBe(false)
     expect(wrapper.text()).toContain('Submitted')
     expect(wrapper.text()).toContain('People, process, products, partners')
-    expect(successSpy).toHaveBeenCalledWith('Assignment submitted successfully!')
+    expect(successSpy).toHaveBeenCalledWith('Assignment submitted successfully!', {
+      description: 'Service Design Essentials · Introduction: 4 Levels of Service Design',
+    })
   })
 
   it('keeps the card editable and shows the error when submitting fails', async () => {
@@ -156,7 +158,9 @@ describe('MyAssignmentsView', () => {
 
     expect(wrapper.get('[role="alert"]').text()).toBe('Assignment 5 not found')
     expect(wrapper.find('textarea').exists()).toBe(true)
-    expect(errorSpy).toHaveBeenCalledWith('Assignment 5 not found')
+    expect(errorSpy).toHaveBeenCalledWith('Assignment 5 not found', {
+      description: 'Service Design Essentials · Introduction: 4 Levels of Service Design',
+    })
     expect(successSpy).not.toHaveBeenCalled()
   })
 })

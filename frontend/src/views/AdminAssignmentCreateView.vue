@@ -70,13 +70,17 @@ async function handleSubmit(payload: CreateAssignmentPayload) {
     } else {
       await createAssignment(payload)
     }
-    notifySuccess(`Assignment ${isEditing.value ? 'updated' : 'created'}.`)
+    // This toast is still visible after navigating to the assignment list, where "Assignment
+    // updated." alone wouldn't say which one.
+    notifySuccess(`Assignment ${isEditing.value ? 'updated' : 'created'}.`, {
+      description: payload.description,
+    })
     router.push({ name: 'admin-assignments' })
   } catch (err) {
     const apiError = toApiError(err)
     serverError.value = apiError.message
     serverFieldErrors.value = apiError.fieldErrors
-    notifyError(serverError.value)
+    notifyError(serverError.value, { description: payload.description })
   } finally {
     submitting.value = false
   }

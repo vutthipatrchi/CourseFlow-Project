@@ -69,14 +69,16 @@ function openInCourseHref(assignment: MyAssignment): string {
 
 async function handleSubmit(assignment: MyAssignment, answer: string) {
   submitError.value = ''
+  // The page lists assignments across every course; say which one was submitted.
+  const which = `${assignment.courseName} · ${assignment.lessonName}: ${assignment.subLessonName}`
   try {
     const updated = await submitAssignment(assignment.id, answer)
     const index = assignments.value.findIndex((item) => item.id === updated.id)
     if (index !== -1) assignments.value[index] = updated
-    notifySuccess('Assignment submitted successfully!')
+    notifySuccess('Assignment submitted successfully!', { description: which })
   } catch (failure) {
     submitError.value = toApiError(failure).message
-    notifyError(submitError.value)
+    notifyError(submitError.value, { description: which })
   }
 }
 </script>

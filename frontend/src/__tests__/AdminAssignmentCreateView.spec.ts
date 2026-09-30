@@ -100,7 +100,9 @@ describe('AdminAssignmentCreateView', () => {
     })
     expect(updateAssignment).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-assignments')
-    expect(successSpy).toHaveBeenCalledWith('Assignment created.')
+    expect(successSpy).toHaveBeenCalledWith('Assignment created.', {
+      description: 'Build a todo app',
+    })
   })
 
   it('raises a matching toast when creating an assignment fails', async () => {
@@ -115,7 +117,9 @@ describe('AdminAssignmentCreateView', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(errorSpy).toHaveBeenCalledWith('That sub-lesson already has one.')
+    expect(errorSpy).toHaveBeenCalledWith('That sub-lesson already has one.', {
+      description: 'Build a todo app',
+    })
   })
 
   it('raises a matching toast when the sub-lesson options fail to load', async () => {
@@ -152,7 +156,7 @@ describe('AdminAssignmentCreateView', () => {
     })
     expect(createAssignment).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-assignments')
-    expect(successSpy).toHaveBeenCalledWith('Assignment updated.')
+    expect(successSpy).toHaveBeenCalledWith('Assignment updated.', { description: 'Edited' })
   })
 
   it('raises a matching toast when loading the assignment to edit fails', async () => {

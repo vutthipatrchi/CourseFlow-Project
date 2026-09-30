@@ -55,11 +55,11 @@ async function confirmDeletion() {
   try {
     await deletePromoCode(promoCode.id)
     pendingDeletion.value = null
-    notifySuccess('Promo code deleted.')
+    notifySuccess('Promo code deleted.', { description: promoCode.code })
     await loadPromoCodes()
   } catch (err) {
     deleteError.value = toApiError(err).message
-    notifyError(deleteError.value)
+    notifyError(deleteError.value, { description: promoCode.code })
   }
 }
 </script>

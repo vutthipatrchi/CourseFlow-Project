@@ -124,7 +124,7 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
         { id: 12, name: 'Overview', videoUrl: 'https://example.com/b.mp4' },
       ],
     })
-    expect(successSpy).toHaveBeenCalledWith('Lesson updated.')
+    expect(successSpy).toHaveBeenCalledWith('Lesson updated.', { description: 'Introduction' })
   })
 
   it('raises a matching toast when saving the lesson fails', async () => {
@@ -140,6 +140,7 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       'The lesson name is taken. (API needs backend profile local + database)',
+      { description: 'Introduction' },
     )
   })
 
@@ -156,7 +157,7 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
     await flushPromises()
 
     expect(deleteLesson).toHaveBeenCalledWith(7)
-    expect(successSpy).toHaveBeenCalledWith('Lesson deleted.')
+    expect(successSpy).toHaveBeenCalledWith('Lesson deleted.', { description: 'Introduction' })
   })
 
   it('raises a matching toast when deleting the lesson fails', async () => {
@@ -171,7 +172,9 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
       .trigger('click')
     await flushPromises()
 
-    expect(errorSpy).toHaveBeenCalledWith('The lesson has active students.')
+    expect(errorSpy).toHaveBeenCalledWith('The lesson has active students.', {
+      description: 'Introduction',
+    })
   })
 
   it('raises a matching toast when a sub-lesson video is uploaded', async () => {
@@ -191,7 +194,7 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
     await flushPromises()
 
     expect(uploadVideo).toHaveBeenCalled()
-    expect(successSpy).toHaveBeenCalledWith('Video uploaded.')
+    expect(successSpy).toHaveBeenCalledWith('Video uploaded.', { description: 'Welcome' })
   })
 
   it('raises a matching toast when a sub-lesson video upload fails', async () => {
@@ -206,10 +209,11 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
     await input.trigger('change')
     await flushPromises()
 
-    expect(errorSpy).toHaveBeenCalledWith('The file is too large.')
+    expect(errorSpy).toHaveBeenCalledWith('The file is too large.', { description: 'Welcome' })
   })
 
   it('saves sub-lessons in their dragged order when adding a lesson', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
     const wrapper = await mountView('/admin/courses/1/lessons/new')
 
     await wrapper.get('label input[type="text"]').setValue('Basics')
@@ -240,6 +244,7 @@ describe('AdminLessonView sub-lesson drag and drop', () => {
         { name: 'First', videoUrl: 'https://example.com/1.mp4' },
       ],
     })
+    expect(successSpy).toHaveBeenCalledWith('Lesson created.', { description: 'Basics' })
   })
 
   it('does not reorder when the Delete button or a row input is used', async () => {

@@ -60,13 +60,15 @@ async function handleSubmit(payload: PromoCodePayload) {
     } else {
       await createPromoCode(payload)
     }
-    notifySuccess(`Promo code ${isEditing.value ? 'updated' : 'created'}.`)
+    notifySuccess(`Promo code ${isEditing.value ? 'updated' : 'created'}.`, {
+      description: payload.code,
+    })
     router.push({ name: 'admin-promo-codes' })
   } catch (err) {
     const apiError = toApiError(err)
     serverError.value = apiError.message
     serverFieldErrors.value = apiError.fieldErrors
-    notifyError(serverError.value)
+    notifyError(serverError.value, { description: payload.code })
   } finally {
     submitting.value = false
   }

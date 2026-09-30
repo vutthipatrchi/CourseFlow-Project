@@ -121,7 +121,7 @@ describe('AdminPromoCodeListView', () => {
 
     expect(deletePromoCode).toHaveBeenCalledWith(1)
     expect(wrapper.text()).toContain('No promo codes yet.')
-    expect(successSpy).toHaveBeenCalledWith('Promo code deleted.')
+    expect(successSpy).toHaveBeenCalledWith('Promo code deleted.', { description: 'NEWYEAR200' })
   })
 
   it('raises a matching toast when the promo code list fails to load', async () => {
@@ -153,7 +153,9 @@ describe('AdminPromoCodeListView', () => {
     await confirmButton!.trigger('click')
     await flushPromises()
 
-    expect(errorSpy).toHaveBeenCalledWith('This promo code is in use.')
+    expect(errorSpy).toHaveBeenCalledWith('This promo code is in use.', {
+      description: 'NEWYEAR200',
+    })
   })
 
   it('closing the confirmation modal does not delete the promo code', async () => {

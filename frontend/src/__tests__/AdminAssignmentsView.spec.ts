@@ -94,7 +94,9 @@ describe('AdminAssignmentsView', () => {
 
     expect(deleteAssignment).toHaveBeenCalledWith(1)
     expect(wrapper.text()).not.toContain('Confirmation')
-    expect(successSpy).toHaveBeenCalledWith('Assignment deleted.')
+    expect(successSpy).toHaveBeenCalledWith('Assignment deleted.', {
+      description: 'Build a todo app',
+    })
     wrapper.unmount()
   })
 
@@ -128,7 +130,9 @@ describe('AdminAssignmentsView', () => {
     await confirmButton!.trigger('click')
     await flushPromises()
 
-    expect(errorSpy).toHaveBeenCalledWith('This assignment has submissions.')
+    expect(errorSpy).toHaveBeenCalledWith('This assignment has submissions.', {
+      description: 'Build a todo app',
+    })
     wrapper.unmount()
   })
 

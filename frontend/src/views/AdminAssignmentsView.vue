@@ -56,11 +56,12 @@ async function confirmDeletion() {
   try {
     await deleteAssignment(assignment.id)
     pendingDeletion.value = null
-    notifySuccess('Assignment deleted.')
+    // The title alone doesn't say which one on a page that lists several; the description does.
+    notifySuccess('Assignment deleted.', { description: assignment.description })
     await loadAssignments()
   } catch (err) {
     deleteError.value = toApiError(err).message
-    notifyError(deleteError.value)
+    notifyError(deleteError.value, { description: assignment.description })
   }
 }
 </script>
