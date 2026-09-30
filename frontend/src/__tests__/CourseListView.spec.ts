@@ -4,11 +4,12 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import CourseListView from '@/views/CourseListView.vue'
 import { getCheckoutCourses } from '@/api/payments'
+import type { CheckoutCourse } from '@/api/payments'
 import { checkoutCourseFixture } from './checkoutCourseFixture'
 
 vi.mock('@/api/payments', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/payments')>()
-  return { ...actual, getCheckoutCourses: vi.fn() }
+  return { ...actual, getCheckoutCourses: vi.fn<() => Promise<CheckoutCourse[]>>() }
 })
 
 async function mountView() {
