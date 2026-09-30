@@ -15,6 +15,7 @@ import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
 import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
 import { resolveCatalogImage } from '@/lib/catalogCourses'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const { error: notifyError } = useToast()
 const route = useRoute()
@@ -122,7 +123,7 @@ watch(courseId, load, { immediate: true })
         <span aria-hidden="true">←</span> Back to My Courses
       </RouterLink>
 
-      <p v-if="loading" class="mt-8 text-gray-600" role="status">Loading course details…</p>
+      <p v-if="loading" class="mt-8" role="status"><Spinner label="Loading course details…" /></p>
       <div v-else-if="error" class="mt-8">
         <p role="alert" class="text-red-700">{{ error }}</p>
         <button class="mt-4 text-blue-600 underline" type="button" @click="load">Try again</button>

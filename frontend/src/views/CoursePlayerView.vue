@@ -11,6 +11,7 @@ import CoursePlayerSidebar from '@/components/course/CoursePlayerSidebar.vue'
 import AssignmentCard from '@/components/course/AssignmentCard.vue'
 import LessonReading from '@/components/course/LessonReading.vue'
 import AuthorizedVideo from '@/components/course/AuthorizedVideo.vue'
+import Spinner from '@/components/common/Spinner.vue'
 import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
 import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
 import { DEMO_VIDEO_LABEL, getLessonVideo } from '@/data/demoVideo'
@@ -371,7 +372,7 @@ const handleAssignmentSubmit = async (answer: string) => {
     class="grid min-h-screen place-items-center text-gray-700"
     role="status"
   >
-    Loading your course…
+    <Spinner label="Loading your course…" size="md" vertical />
   </div>
   <div v-else-if="!course || !currentEntry" class="flex min-h-screen flex-col">
     <AppNavbar />
@@ -507,19 +508,9 @@ const handleAssignmentSubmit = async (answer: string) => {
       <div
         v-if="isLoading"
         class="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-white"
+        role="status"
       >
-        <svg class="h-10 w-10 animate-spin text-blue-600" viewBox="0 0 24 24" fill="none">
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V4a8 8 0 00-8 8H4z" />
-        </svg>
-        <p class="text-sm text-[#646D89]">Loading...</p>
+        <Spinner label="Loading..." size="md" vertical />
       </div>
     </Transition>
   </div>

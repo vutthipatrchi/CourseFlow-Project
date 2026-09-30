@@ -9,6 +9,7 @@ import { downloadQr } from '@/api/payments'
 import { usePaymentStatus } from '@/lib/usePaymentStatus'
 import { formatThb } from '@/lib/payment'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const route = useRoute()
 const paymentId = computed(() =>
@@ -85,8 +86,8 @@ function saveQrImage() {
         <p v-if="payment" class="mt-3 text-lg font-medium text-orange-500">
           {{ formatThb(payment.amountSatang / 100) }}
         </p>
-        <p v-if="loading || downloading" role="status" class="mt-8 text-sm text-gray-700">
-          Loading secure QR code…
+        <p v-if="loading || downloading" role="status" class="mt-8 text-sm">
+          <Spinner label="Loading secure QR code…" />
         </p>
         <p v-if="errorMessage || qrError" role="alert" class="mt-8 text-sm text-red-700">
           {{ errorMessage || qrError }}

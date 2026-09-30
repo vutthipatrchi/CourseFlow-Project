@@ -9,6 +9,7 @@ import { createLesson, deleteLesson, fetchLesson, updateLesson } from '../api/le
 import { uploadVideo } from '../api/uploads'
 import { emptySubLesson, toFormSubLessons, type SubLessonFormItem } from '../types/lesson'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -251,7 +252,7 @@ async function onDeleteLesson() {
       </button>
     </template>
 
-    <div v-if="loading" class="text-[#646D89]">Loading lesson…</div>
+    <div v-if="loading" role="status"><Spinner label="Loading lesson…" /></div>
 
     <div v-else class="flex flex-col gap-6">
       <p

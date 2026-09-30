@@ -11,6 +11,7 @@ import { listMyAssignments, submitAssignment } from '@/api/submissions'
 import { toApiError } from '@/api/client'
 import { toCardAssignment } from '@/lib/assignmentCard'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 import type { AssignmentStatus } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
 
@@ -150,7 +151,9 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
       </section>
 
       <p v-if="submitError" role="alert" class="pb-6 text-base text-red-600">{{ submitError }}</p>
-      <p v-if="loading" role="status" class="text-base text-[#646D89]">Loading your assignments…</p>
+      <p v-if="loading" role="status" class="text-base">
+        <Spinner label="Loading your assignments…" />
+      </p>
       <div v-else-if="loadError" class="flex flex-col items-center gap-3">
         <p role="alert" class="text-base text-red-600">{{ loadError }}</p>
         <button

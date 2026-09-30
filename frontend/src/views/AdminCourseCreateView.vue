@@ -9,6 +9,7 @@ import { useCourseStore } from '@/stores/course'
 import { useToast } from '@/composables/useToast'
 import type { AdminCourse, AdminCourseLesson, AdminCoursePayload } from '@/types/course'
 import FormFieldError from '../components/admin/FormFieldError.vue'
+import Spinner from '@/components/common/Spinner.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -439,7 +440,9 @@ async function saveCourse() {
 
         <main class="content">
           <p v-if="apiError" class="api-error" role="alert">{{ apiError }}</p>
-          <p v-if="isLoadingCourse" class="loading-state" role="status">Loading course...</p>
+          <p v-if="isLoadingCourse" class="loading-state" role="status">
+            <Spinner label="Loading course..." />
+          </p>
           <section class="package-card" aria-label="Course details">
             <label class="field full-width" :class="{ 'has-error': fieldErrors.name }">
               <span>Course name <b aria-hidden="true">*</b></span>

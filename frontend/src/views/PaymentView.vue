@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
 import { formatThb } from '@/lib/payment'
+import Spinner from '@/components/common/Spinner.vue'
 import {
   createCardPayment,
   createOrder,
@@ -23,7 +24,6 @@ const paymentMethod = ref<'card' | 'qr'>('card')
 const promoCode = ref('')
 const promoMessage = ref('')
 const order = ref<OrderCreated | null>(null)
-const courseTitle = computed(() => order.value?.courseTitle ?? 'Loading your course…')
 const subtotal = computed(() => (order.value?.subtotalSatang ?? 0) / 100)
 const discount = computed(() => (order.value?.discountSatang ?? 0) / 100)
 const total = computed(() => (order.value?.totalSatang ?? 0) / 100)
@@ -381,8 +381,12 @@ async function confirmPayment() {
             <p class="text-sm leading-[21px] text-orange-500">Summary</p>
             <div class="space-y-2">
               <p class="text-base text-gray-700">Subscription</p>
-              <h2 class="text-2xl leading-[30px] font-medium tracking-[-0.02em] text-black">
-                {{ courseTitle }}
+              <h2
+                class="text-2xl leading-[30px] font-medium tracking-[-0.02em] text-black"
+                role="status"
+              >
+                <Spinner v-if="!order" label="Loading your course…" />
+                <template v-else>{{ order.courseTitle }}</template>
               </h2>
             </div>
 

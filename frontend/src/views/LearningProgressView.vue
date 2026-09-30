@@ -7,6 +7,7 @@ import { getCheckoutCourse } from '@/api/payments'
 import { catalogCourseId } from '@/lib/catalogCourses'
 import { getCourseAccess, learningPathForSubscription } from '@/lib/courseAccess'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -73,7 +74,7 @@ watch(
   <div v-if="accessLoading" class="flex min-h-screen flex-col bg-white">
     <AppNavbar />
     <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-      <p role="status" class="text-[#646D89]">Checking course access…</p>
+      <p role="status"><Spinner label="Checking course access…" /></p>
     </main>
     <AppFooter />
   </div>
