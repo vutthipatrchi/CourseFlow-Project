@@ -5,6 +5,7 @@ import AdminLayout from '@/components/admin/AdminLayout.vue'
 import AssignmentTable from '@/components/admin/AssignmentTable.vue'
 import { deleteAssignment, listAssignments } from '@/api/assignments'
 import { toApiError } from '@/api/client'
+import { useToast } from '@/composables/useToast'
 import type { Assignment } from '@/types/assignment'
 
 const assignments = ref<Assignment[]>([])
@@ -13,6 +14,7 @@ const error = ref<string | null>(null)
 const search = ref('')
 const pendingDeletion = ref<Assignment | null>(null)
 const deleteError = ref<string | null>(null)
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const filteredAssignments = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -30,6 +32,7 @@ async function loadAssignments() {
     assignments.value = await listAssignments()
   } catch (err) {
     error.value = toApiError(err).message
+    notifyError(error.value)
   } finally {
     loading.value = false
   }
@@ -53,9 +56,11 @@ async function confirmDeletion() {
   try {
     await deleteAssignment(assignment.id)
     pendingDeletion.value = null
+    notifySuccess('Assignment deleted.')
     await loadAssignments()
   } catch (err) {
     deleteError.value = toApiError(err).message
+    notifyError(deleteError.value)
   }
 }
 </script>

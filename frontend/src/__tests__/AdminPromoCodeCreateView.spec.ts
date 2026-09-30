@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import AdminPromoCodeCreateView from '../views/AdminPromoCodeCreateView.vue'
 import { createPromoCode, getPromoCode, listPromoCodes, updatePromoCode } from '@/api/promoCodes'
 import { resetCourses } from '@/admin/courseStore'
@@ -71,6 +72,7 @@ function submitButton(wrapper: Awaited<ReturnType<typeof mountView>>['wrapper'])
 describe('AdminPromoCodeCreateView', () => {
   it('keeps Create disabled until the form is valid, then creates on submit', async () => {
     vi.mocked(createPromoCode).mockResolvedValue({ ...existingPromoCode, id: 9, code: 'SAVE20' })
+    const successSpy = vi.spyOn(toast, 'success')
 
     const { wrapper, router } = await mountView('/admin/promo-codes/new')
     expect(wrapper.text()).toContain('Add Promo code')
@@ -97,11 +99,39 @@ describe('AdminPromoCodeCreateView', () => {
     })
     expect(updatePromoCode).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-promo-codes')
+    expect(successSpy).toHaveBeenCalledWith('Promo code created.')
+  })
+
+  it('raises a matching toast when creating a promo code fails', async () => {
+    vi.mocked(createPromoCode).mockRejectedValue(new Error('That code already exists.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+
+    const { wrapper } = await mountView('/admin/promo-codes/new')
+    await wrapper.get('#promo-code').setValue('SAVE20')
+    await wrapper.get('#minimum-purchase').setValue('100')
+    const radios = wrapper.findAll('input[type="radio"]')
+    await radios[1]!.setValue(true)
+    await wrapper.get('input[placeholder="Percent"]').setValue('10')
+    await wrapper.vm.$nextTick()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('That code already exists.')
+  })
+
+  it('raises a matching toast when the existing promo codes fail to load', async () => {
+    vi.mocked(listPromoCodes).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+
+    await mountView('/admin/promo-codes/new')
+
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
   })
 
   it('loads and pre-fills the promo code when editing, and saves via update', async () => {
     vi.mocked(getPromoCode).mockResolvedValue(existingPromoCode)
     vi.mocked(updatePromoCode).mockResolvedValue({ ...existingPromoCode, code: 'NEWYEAR300' })
+    const successSpy = vi.spyOn(toast, 'success')
 
     const { wrapper, router } = await mountView('/admin/promo-codes/5/edit')
 
@@ -123,6 +153,16 @@ describe('AdminPromoCodeCreateView', () => {
     })
     expect(createPromoCode).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('admin-promo-codes')
+    expect(successSpy).toHaveBeenCalledWith('Promo code updated.')
+  })
+
+  it('raises a matching toast when loading the promo code to edit fails', async () => {
+    vi.mocked(getPromoCode).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+
+    await mountView('/admin/promo-codes/5/edit')
+
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
   })
 
   it('does not flag the promo code being edited as a duplicate of itself', async () => {

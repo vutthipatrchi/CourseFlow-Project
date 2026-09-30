@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
+import { toast } from 'vue-sonner'
 import AdminAssignmentsView from '../views/AdminAssignmentsView.vue'
 import { deleteAssignment, listAssignments } from '@/api/assignments'
 import type { Assignment } from '@/types/assignment'
@@ -74,6 +75,7 @@ describe('AdminAssignmentsView', () => {
   it('opens a confirmation modal and only deletes once confirmed', async () => {
     vi.mocked(listAssignments).mockResolvedValue([sampleAssignment])
     vi.mocked(deleteAssignment).mockResolvedValue(undefined)
+    const successSpy = vi.spyOn(toast, 'success')
     const router = makeRouter()
     router.push('/admin/assignments')
     await router.isReady()
@@ -92,6 +94,41 @@ describe('AdminAssignmentsView', () => {
 
     expect(deleteAssignment).toHaveBeenCalledWith(1)
     expect(wrapper.text()).not.toContain('Confirmation')
+    expect(successSpy).toHaveBeenCalledWith('Assignment deleted.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when the assignment list fails to load', async () => {
+    vi.mocked(listAssignments).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = makeRouter()
+    router.push('/admin/assignments')
+    await router.isReady()
+
+    const wrapper = mount(AdminAssignmentsView, { global: { plugins: [router], stubs } })
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when deleting an assignment fails', async () => {
+    vi.mocked(listAssignments).mockResolvedValue([sampleAssignment])
+    vi.mocked(deleteAssignment).mockRejectedValue(new Error('This assignment has submissions.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = makeRouter()
+    router.push('/admin/assignments')
+    await router.isReady()
+
+    const wrapper = mount(AdminAssignmentsView, { global: { plugins: [router], stubs } })
+    await flushPromises()
+
+    await wrapper.get('button[aria-label^="Delete"]').trigger('click')
+    const confirmButton = wrapper.findAll('button').find((button) => button.text() === 'Delete')
+    await confirmButton!.trigger('click')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('This assignment has submissions.')
     wrapper.unmount()
   })
 

@@ -10,10 +10,12 @@ import {
   updateAssignment,
 } from '@/api/assignments'
 import { toApiError } from '@/api/client'
+import { useToast } from '@/composables/useToast'
 import type { CreateAssignmentPayload, SubLessonOption } from '@/types/assignment'
 
 const route = useRoute()
 const router = useRouter()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const assignmentId = computed(() => {
   const id = route.params.id
@@ -37,6 +39,7 @@ onMounted(async () => {
     subLessonOptions.value = await listSubLessonOptions()
   } catch (err) {
     serverError.value = toApiError(err).message
+    notifyError(serverError.value)
   }
 
   if (isEditing.value) {
@@ -49,6 +52,7 @@ onMounted(async () => {
       }
     } catch (err) {
       serverError.value = toApiError(err).message
+      notifyError(serverError.value)
     }
   }
 
@@ -66,11 +70,13 @@ async function handleSubmit(payload: CreateAssignmentPayload) {
     } else {
       await createAssignment(payload)
     }
+    notifySuccess(`Assignment ${isEditing.value ? 'updated' : 'created'}.`)
     router.push({ name: 'admin-assignments' })
   } catch (err) {
     const apiError = toApiError(err)
     serverError.value = apiError.message
     serverFieldErrors.value = apiError.fieldErrors
+    notifyError(serverError.value)
   } finally {
     submitting.value = false
   }
