@@ -124,8 +124,10 @@ async function applyPromo() {
   promoMessage.value = ''
   try {
     await prepareOrder()
-    promoMessage.value = 'Promotion code applied. Please review your total.'
-    notifySuccess(promoMessage.value)
+    // Success has no inline text: the summary's discount/total lines already show it worked,
+    // and the toast confirms it. The field-adjacent message is reserved for the failure reason,
+    // which the toast alone wouldn't leave visible while the user fixes the code.
+    notifySuccess('Promotion code applied. Please review your total.')
   } catch (error) {
     promoMessage.value = messageFrom(error)
     notifyError(promoMessage.value)
@@ -387,14 +389,7 @@ async function confirmPayment() {
                   Apply
                 </button>
               </div>
-              <p
-                v-if="promoMessage"
-                role="status"
-                :class="[
-                  'mt-2 text-sm',
-                  promoMessage.includes('applied') ? 'text-[#9B2FAC]' : 'text-red-700',
-                ]"
-              >
+              <p v-if="promoMessage" role="alert" class="mt-2 text-sm text-red-700">
                 {{ promoMessage }}
               </p>
             </div>

@@ -117,7 +117,6 @@ describe('admin course list', () => {
 
     expect(wrapper.findAll('tbody tr')).toHaveLength(7)
     expect(wrapper.get('tbody').text()).not.toContain('Service Design Essentials')
-    expect(wrapper.get('[role="status"]').text()).toContain('was deleted')
     expect(successSpy).toHaveBeenCalledWith('Service Design Essentials was deleted.')
   })
 

@@ -120,7 +120,6 @@ describe('admin add course', () => {
 
     expect(useCourseStore().courses[0]?.name).toBe('Payment Fundamentals')
     expect(router.currentRoute.value.name).toBe('admin-courses')
-    expect(router.currentRoute.value.query.created).toBe('Payment Fundamentals')
     expect(successSpy).toHaveBeenCalledWith('Payment Fundamentals was created.')
   })
 
@@ -225,7 +224,6 @@ describe('admin edit course', () => {
     )
     expect(useCourseStore().courses.find((course) => course.id === 1)?.price).toBe(4990)
     expect(router.currentRoute.value.name).toBe('admin-courses')
-    expect(router.currentRoute.value.query.updated).toBe('Advanced Service Design')
     expect(successSpy).toHaveBeenCalledWith('Advanced Service Design was updated.')
   })
 

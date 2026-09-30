@@ -19,7 +19,6 @@ const email = computed(() => user.value?.primaryEmailAddress?.emailAddress ?? ''
 const fileInput = ref<HTMLInputElement | null>(null)
 const isSaving = ref(false)
 const isUploadingPhoto = ref(false)
-const feedback = ref('')
 const errorMessage = ref('')
 const loadErrorMessage = ref('')
 
@@ -74,7 +73,6 @@ async function removePhoto() {
 
 async function handleSubmit() {
   if (isSaving.value) return
-  feedback.value = ''
   errorMessage.value = ''
   isSaving.value = true
   try {
@@ -84,8 +82,7 @@ async function handleSubmit() {
       educationalBackground: educationalBackground.value.trim() || null,
       email: email.value,
     })
-    feedback.value = 'Profile updated.'
-    notifySuccess(feedback.value)
+    notifySuccess('Profile updated.')
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Unable to update profile.'
     notifyError(errorMessage.value)
@@ -214,7 +211,6 @@ async function handleSubmit() {
               />
             </div>
 
-            <p v-if="feedback" role="status" class="mt-6 text-sm text-green-600">{{ feedback }}</p>
             <p v-if="errorMessage" role="alert" class="mt-6 text-sm text-red-600">
               {{ errorMessage }}
             </p>

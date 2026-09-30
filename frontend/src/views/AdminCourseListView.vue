@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute } from 'vue-router'
 import AdminLayout from '@/components/admin/AdminLayout.vue'
 import deleteIcon from '@/assets/admin/delete.svg'
 import editIcon from '@/assets/admin/edit.svg'
@@ -18,17 +17,9 @@ const { load: loadCourses, remove: removeCourse } = courseStore
 const { success: notifySuccess, error: notifyError } = useToast()
 
 const search = ref('')
-const route = useRoute()
 const coursePendingDeletion = ref<AdminCourse | null>(null)
 const deleting = ref(false)
 const courseThumbnails = [serviceDesignThumbnail, softwareDeveloperThumbnail, uxUiDesignThumbnail]
-const feedback = ref(
-  typeof route.query.created === 'string'
-    ? `${route.query.created} was created.`
-    : typeof route.query.updated === 'string'
-      ? `${route.query.updated} was updated.`
-      : '',
-)
 
 onMounted(() => {
   // load() already sets coursesError (shown inline in the table); reuse that exact message.
@@ -70,7 +61,6 @@ function formatDateTime(value: string) {
 }
 
 function requestDeletion(course: AdminCourse) {
-  feedback.value = ''
   coursePendingDeletion.value = course
 }
 
@@ -86,12 +76,10 @@ async function deleteCourse() {
   deleting.value = true
   try {
     await removeCourse(course.id)
-    feedback.value = `${course.name} was deleted.`
-    notifySuccess(feedback.value)
+    notifySuccess(`${course.name} was deleted.`)
     coursePendingDeletion.value = null
   } catch (error) {
-    feedback.value = error instanceof Error ? error.message : 'Unable to delete course.'
-    notifyError(feedback.value)
+    notifyError(error instanceof Error ? error.message : 'Unable to delete course.')
   } finally {
     deleting.value = false
   }
@@ -111,8 +99,6 @@ async function deleteCourse() {
       </label>
       <RouterLink class="add-button" to="/admin/courses/new">+ Add Course</RouterLink>
     </template>
-
-    <p v-if="feedback" class="action-feedback" role="status">{{ feedback }}</p>
 
     <div class="table-card">
       <table>
@@ -288,15 +274,6 @@ async function deleteCourse() {
 
 .add-button:hover {
   background: #254f93;
-}
-
-.action-feedback {
-  margin: 0 0 16px;
-  padding: 12px 16px;
-  border: 1px solid #b8dfc7;
-  border-radius: 8px;
-  background: #edf9f1;
-  color: #287c4a;
 }
 
 .table-card {

@@ -81,7 +81,6 @@ describe('ProfileView', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Profile updated.')
     expect(successSpy).toHaveBeenCalledWith('Profile updated.')
   })
 

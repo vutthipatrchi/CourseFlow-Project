@@ -342,10 +342,7 @@ async function saveCourse() {
     }
     notifySuccess(`${name.value.trim()} was ${isEditing ? 'updated' : 'created'}.`)
 
-    await router.push({
-      name: 'admin-courses',
-      query: { [isEditing ? 'updated' : 'created']: name.value.trim() },
-    })
+    await router.push({ name: 'admin-courses' })
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to save course.'
     notifyError(apiError.value)
