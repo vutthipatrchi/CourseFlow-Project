@@ -12,10 +12,16 @@ import AdminCourseCreateView from '../views/AdminCourseCreateView.vue'
 
 vi.mock('@/api/courses')
 
-vi.mock('@clerk/vue', () => ({
-  getToken: vi.fn<() => Promise<string>>(async () => 'test-clerk-token'),
-  SignOutButton: { template: '<div><slot /></div>' },
+const mocks = vi.hoisted(() => ({
+  signOut: vi.fn<() => Promise<void>>(),
 }))
+vi.mock('@clerk/vue', async () => {
+  const { ref } = await import('vue')
+  return {
+    getToken: vi.fn<() => Promise<string>>(async () => 'test-clerk-token'),
+    useClerk: () => ref({ signOut: mocks.signOut }),
+  }
+})
 
 const pinia = createPinia()
 
@@ -49,6 +55,7 @@ beforeEach(() => {
       courseStore.courses.find((course) => course.id === id),
     ),
   )
+  mocks.signOut.mockReset().mockResolvedValue(undefined)
 })
 
 async function mountView(path = '/admin/courses/new') {
@@ -304,5 +311,31 @@ describe('admin edit course', () => {
     expect(payload.lessonItems.map((lesson) => lesson.name)).toEqual(
       reordered.map((lesson) => lesson.name),
     )
+  })
+})
+
+describe('log out', () => {
+  it('raises a success toast and returns to the home page', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
+    const { wrapper, router } = await mountView()
+
+    await wrapper.get('.nav-item.logout').trigger('click')
+    await flushPromises()
+
+    expect(mocks.signOut).toHaveBeenCalled()
+    expect(successSpy).toHaveBeenCalledWith('Signed out successfully!')
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
+  it('raises a matching toast when signing out fails', async () => {
+    mocks.signOut.mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper, router } = await mountView()
+
+    await wrapper.get('.nav-item.logout').trigger('click')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+    expect(router.currentRoute.value.name).not.toBe('home')
   })
 })

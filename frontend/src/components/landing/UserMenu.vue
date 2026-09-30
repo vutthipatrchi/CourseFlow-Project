@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getToken, useUser, useClerk } from '@clerk/vue'
 import { getRoleFromToken } from '@/lib/jwt'
+import { useToast } from '@/composables/useToast'
 import iconPerson from '@/assets/landing/icon-person.svg'
 import iconBook from '@/assets/landing/icon-book.svg'
 import iconChecklist from '@/assets/landing/icon-checklist.svg'
@@ -31,6 +32,7 @@ const menuItems = computed<MenuItem[]>(() => [
 const router = useRouter()
 const clerk = useClerk()
 const { user } = useUser()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const isOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
@@ -47,8 +49,13 @@ function handleClickOutside(event: MouseEvent) {
 
 async function handleLogout() {
   isOpen.value = false
-  await clerk.value?.signOut()
-  router.push('/')
+  try {
+    await clerk.value?.signOut()
+    notifySuccess('Signed out successfully!')
+    router.push('/')
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : 'Unable to sign out. Please try again.')
+  }
 }
 
 onMounted(async () => {
