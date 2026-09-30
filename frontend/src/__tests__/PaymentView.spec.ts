@@ -166,6 +166,34 @@ describe('checkout', () => {
     wrapper.unmount()
   })
 
+  it('automatically shows a successful card payment when the charge response is lost', async () => {
+    const successfulCard = {
+      ...pending,
+      method: 'card' as const,
+      status: 'successful' as const,
+      qrUrl: null,
+    }
+    mocks.createOrder
+      .mockResolvedValueOnce(order)
+      .mockResolvedValueOnce({ ...order, payment: successfulCard })
+    mocks.createCardPayment.mockRejectedValue(new Error('timeout'))
+    mocks.getPayment.mockResolvedValue(successfulCard)
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('input[autocomplete="cc-number"]').setValue('4242424242424242')
+    await wrapper.get('input[autocomplete="cc-name"]').setValue('Test Buyer')
+    await wrapper.get('input[autocomplete="cc-exp"]').setValue('12/30')
+    await wrapper.get('input[autocomplete="cc-csc"]').setValue('123')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(mocks.createCardPayment).toHaveBeenCalledTimes(1)
+    expect(mocks.createOrder).toHaveBeenCalledTimes(2)
+    expect(router.currentRoute.value.name).toBe('payment-status')
+    expect(wrapper.text()).not.toContain('We could not confirm the result')
+    wrapper.unmount()
+  })
+
   it('requires another confirmation after applying a changed promotion', async () => {
     const router = await createTestRouter()
     const wrapper = mount(PaymentView, { global: { plugins: [router] } })
