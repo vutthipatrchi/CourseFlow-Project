@@ -37,7 +37,17 @@ class PaymentService {
     boolean providerEnabled() { return gateway.enabled(); }
     String providerPublicKey() { return gateway.publicKey(); }
 
-    List<CheckoutCourse> checkoutCourses() { return repository.listCheckoutCourses(); }
+    List<CheckoutCourse> checkoutCourses() {
+        long startedAtNanos = System.nanoTime();
+        boolean success = false;
+        try {
+            var courses = repository.listCheckoutCourses();
+            success = true;
+            return courses;
+        } finally {
+            CatalogCourseTiming.log("service", startedAtNanos, success);
+        }
+    }
 
     CheckoutCourse checkoutCourse(Long courseId) {
         return repository.findCheckoutCourse(courseId)
@@ -146,6 +156,11 @@ class PaymentService {
         requireOrder(payment.orderId(), subject, false);
         if (payment.method() != PaymentMethod.PROMPTPAY || payment.qrImageUrl() == null) throw new CheckoutNotFoundException();
         return gateway.downloadQr(payment.qrImageUrl());
+    }
+
+    List<CourseEnrollmentView> enrollments(String subject) {
+        requireSubject(subject);
+        return repository.findEnrollments(subject);
     }
 
     List<SubscriptionView> subscriptions(String subject) {

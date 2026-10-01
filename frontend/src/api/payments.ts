@@ -1,5 +1,6 @@
 import type { AxiosRequestConfig } from 'axios'
 import client, { toApiError } from './client'
+import { cachedPublicRead } from './publicReadCache'
 
 export type PaymentStatus = 'creating' | 'pending' | 'successful' | 'failed' | 'expired' | 'review'
 export interface PaymentConfig {
@@ -44,6 +45,10 @@ export interface PaymentView {
   authorizeUrl: string | null
   failureMessage: string | null
   expiresAt: string
+}
+export interface CourseEnrollment {
+  courseId: number
+  courseTitle: string
 }
 export interface SubscriptionView {
   id: string
@@ -100,10 +105,14 @@ async function request<T>(config: AxiosRequestConfig): Promise<T> {
 }
 
 export function getPaymentConfig() {
-  return request<PaymentConfig>({ url: '/payments/config' })
+  return cachedPublicRead('/payments/config', () =>
+    request<PaymentConfig>({ url: '/payments/config' }),
+  )
 }
 export function getCheckoutCourses() {
-  return request<CheckoutCourse[]>({ url: '/catalog/courses' })
+  return cachedPublicRead('/catalog/courses', () =>
+    request<CheckoutCourse[]>({ url: '/catalog/courses' }),
+  )
 }
 export function getCheckoutCourse(courseId: number) {
   return request<CheckoutCourse>({ url: `/catalog/courses/${courseId}` })
@@ -139,6 +148,10 @@ export function getPayment(paymentId: string) {
 export function downloadQr(paymentId: string) {
   return request<Blob>({ url: `/payments/${paymentId}/qr`, responseType: 'blob' })
 }
+export function getCourseEnrollments() {
+  return request<CourseEnrollment[]>({ url: '/me/enrollments' })
+}
+
 export async function getSubscriptions(): Promise<SubscriptionView[]> {
   const subscriptions = await request<SubscriptionResponse[]>({ url: '/me/subscriptions' })
   return Promise.all(

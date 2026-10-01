@@ -5,7 +5,7 @@ import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import iconPerson from '@/assets/landing/icon-person.svg'
 import heroTriangle from '@/assets/landing/hero-triangle.svg'
-import { loadProfile, updateProfile } from '@/profile/profileStore'
+import { loadProfile, updateProfile, profileLoading, profileError } from '@/profile/profileStore'
 
 const { user } = useUser()
 
@@ -19,17 +19,21 @@ const isSaving = ref(false)
 const isUploadingPhoto = ref(false)
 const feedback = ref('')
 const errorMessage = ref('')
+const profileReady = ref(false)
 
-onMounted(async () => {
+async function initializeProfile() {
+  profileReady.value = false
   try {
     const loaded = await loadProfile()
     name.value = loaded.name ?? ''
     dateOfBirth.value = loaded.dateOfBirth ?? ''
     educationalBackground.value = loaded.educationalBackground ?? ''
+    profileReady.value = true
   } catch {
-    // profileStore.profileError already carries the message for display elsewhere.
+    // The store exposes the error and the page offers a retry below.
   }
-})
+}
+onMounted(initializeProfile)
 
 function pickPhoto() {
   fileInput.value?.click()
@@ -59,7 +63,7 @@ async function removePhoto() {
 }
 
 async function handleSubmit() {
-  if (isSaving.value) return
+  if (isSaving.value || !profileReady.value) return
   feedback.value = ''
   errorMessage.value = ''
   isSaving.value = true
@@ -155,6 +159,7 @@ async function handleSubmit() {
               <input
                 id="name"
                 v-model="name"
+                :disabled="!profileReady"
                 type="text"
                 required
                 class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
@@ -166,6 +171,7 @@ async function handleSubmit() {
               <input
                 id="dob"
                 v-model="dateOfBirth"
+                :disabled="!profileReady"
                 type="date"
                 class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
@@ -178,6 +184,7 @@ async function handleSubmit() {
               <input
                 id="education"
                 v-model="educationalBackground"
+                :disabled="!profileReady"
                 type="text"
                 class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
@@ -194,6 +201,15 @@ async function handleSubmit() {
               />
             </div>
 
+            <p v-if="profileLoading" role="status" class="mt-6 text-sm text-gray-600">
+              Loading profile…
+            </p>
+            <div v-else-if="profileError" role="alert" class="mt-6 text-sm text-red-600">
+              <p>{{ profileError }}</p>
+              <button type="button" class="mt-2 text-blue-600 underline" @click="initializeProfile">
+                Try again
+              </button>
+            </div>
             <p v-if="feedback" role="status" class="mt-6 text-sm text-green-600">{{ feedback }}</p>
             <p v-if="errorMessage" role="alert" class="mt-6 text-sm text-red-600">
               {{ errorMessage }}
@@ -201,7 +217,7 @@ async function handleSubmit() {
 
             <button
               type="submit"
-              :disabled="isSaving"
+              :disabled="isSaving || !profileReady"
               class="mt-6 w-full rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {{ isSaving ? 'Saving…' : 'Update Profile' }}

@@ -1,0 +1,127 @@
+{
+  "measuredAt": "2026-10-01T16:26:38.422Z",
+  "base": "https://courseflow-project-backend.vercel.app",
+  "method": "Sequential GET from development machine; no authentication; first sample is not proven cold; no order/payment creation",
+  "measurements": [
+    {
+      "path": "/api/catalog/courses",
+      "run": 1,
+      "status": 200,
+      "headersMs": 14054,
+      "totalMs": 14073,
+      "bytes": 1907,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "courseCount": 10
+    },
+    {
+      "path": "/api/catalog/courses",
+      "run": 2,
+      "status": 200,
+      "headersMs": 171,
+      "totalMs": 183,
+      "bytes": 1907,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "courseCount": 10
+    },
+    {
+      "path": "/api/catalog/courses",
+      "run": 3,
+      "status": 200,
+      "headersMs": 162,
+      "totalMs": 164,
+      "bytes": 1907,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "courseCount": 10
+    },
+    {
+      "path": "/api/catalog/courses",
+      "run": 4,
+      "status": 200,
+      "headersMs": 160,
+      "totalMs": 162,
+      "bytes": 1907,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "courseCount": 10
+    },
+    {
+      "path": "/api/catalog/courses",
+      "run": 5,
+      "status": 200,
+      "headersMs": 130,
+      "totalMs": 132,
+      "bytes": 1907,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "courseCount": 10
+    },
+    {
+      "path": "/api/payments/config",
+      "run": 1,
+      "status": 200,
+      "headersMs": 136,
+      "totalMs": 137,
+      "bytes": 60,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "paymentEnabled": true
+    },
+    {
+      "path": "/api/payments/config",
+      "run": 2,
+      "status": 200,
+      "headersMs": 133,
+      "totalMs": 134,
+      "bytes": 60,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "paymentEnabled": true
+    },
+    {
+      "path": "/api/payments/config",
+      "run": 3,
+      "status": 200,
+      "headersMs": 129,
+      "totalMs": 130,
+      "bytes": 60,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "paymentEnabled": true
+    },
+    {
+      "path": "/api/payments/config",
+      "run": 4,
+      "status": 200,
+      "headersMs": 125,
+      "totalMs": 126,
+      "bytes": 60,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "paymentEnabled": true
+    },
+    {
+      "path": "/api/payments/config",
+      "run": 5,
+      "status": 200,
+      "headersMs": 119,
+      "totalMs": 121,
+      "bytes": 60,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS",
+      "paymentEnabled": true
+    },
+    {
+      "path": "/api/me/subscriptions",
+      "run": 1,
+      "status": 401,
+      "headersMs": 146,
+      "totalMs": 147,
+      "bytes": 0,
+      "cacheControl": "no-cache, no-store, max-age=0, must-revalidate",
+      "vercelCache": "MISS"
+    }
+  ]
+}

@@ -18,26 +18,33 @@ const qrBlob = ref<Blob | null>(null)
 const qrSrc = ref('')
 const qrError = ref('')
 let disposed = false
-let downloading = false
-watch(payment, async (next) => {
-  if (!next?.qrUrl || next.status !== 'pending' || qrBlob.value || downloading) return
-  downloading = true
+const downloading = ref(false)
+async function loadQr() {
+  const next = payment.value
+  if (disposed || !next?.qrUrl || next.status !== 'pending' || qrBlob.value || downloading.value)
+    return
+  downloading.value = true
+  qrError.value = ''
   try {
     const blob = await downloadQr(next.paymentId)
-    if (disposed || paymentId.value !== next.paymentId) return
+    if (disposed || paymentId.value !== next.paymentId || payment.value?.status !== 'pending')
+      return
     qrBlob.value = blob
     qrSrc.value = URL.createObjectURL(blob)
     qrError.value = ''
   } catch (error) {
-    if (!disposed) qrError.value = error instanceof Error ? error.message : 'Unable to load QR code'
+    if (!disposed && paymentId.value === next.paymentId)
+      qrError.value = error instanceof Error ? error.message : 'Unable to load QR code'
   } finally {
-    downloading = false
+    downloading.value = false
   }
-})
+}
+watch(payment, loadQr)
 watch(paymentId, () => {
   if (qrSrc.value) URL.revokeObjectURL(qrSrc.value)
   qrBlob.value = null
   qrSrc.value = ''
+  qrError.value = ''
 })
 onUnmounted(() => {
   disposed = true
@@ -74,13 +81,21 @@ function saveQrImage() {
         <p v-if="payment" class="mt-3 text-lg font-medium text-orange-500">
           {{ formatThb(payment.amountSatang / 100) }}
         </p>
-        <p v-if="loading" role="status" class="mt-8 text-sm text-gray-700">
+        <p v-if="loading || downloading" role="status" class="mt-8 text-sm text-gray-700">
           Loading secure QR code…
         </p>
         <p v-if="errorMessage || qrError" role="alert" class="mt-8 text-sm text-red-700">
           {{ errorMessage || qrError }}
         </p>
         <template v-if="payment?.status === 'pending'">
+          <button
+            v-if="qrError && !downloading"
+            type="button"
+            class="mt-4 text-sm text-blue-600 underline"
+            @click="loadQr"
+          >
+            Reload QR code
+          </button>
           <img
             v-if="qrSrc"
             :src="qrSrc"

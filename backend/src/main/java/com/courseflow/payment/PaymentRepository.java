@@ -20,7 +20,13 @@ class PaymentRepository {
     PaymentRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     List<CheckoutCourse> listCheckoutCourses() {
-        return jdbc.query("""
+        long repositoryStartedAtNanos = System.nanoTime();
+        boolean repositorySuccess = false;
+        try {
+            long queryStartedAtNanos = System.nanoTime();
+            boolean querySuccess = false;
+            try {
+                var courses = jdbc.query("""
             SELECT c.id, c.name, c.price, c.category, c.summary, c.description,
                    c.learning_time, c.image_name, c.accent,
                    COALESCE((
@@ -29,6 +35,15 @@ class PaymentRepository {
               FROM courseflow.courses c
              ORDER BY c.id
             """, (rs, row) -> mapCheckoutCourse(rs));
+                querySuccess = true;
+                repositorySuccess = true;
+                return courses;
+            } finally {
+                CatalogCourseTiming.log("jdbc.query", queryStartedAtNanos, querySuccess);
+            }
+        } finally {
+            CatalogCourseTiming.log("repository", repositoryStartedAtNanos, repositorySuccess);
+        }
     }
 
     Optional<CheckoutCourse> findCheckoutCourse(Long courseId) {
@@ -199,6 +214,16 @@ class PaymentRepository {
             INSERT INTO courseflow.subscriptions (id, order_id, course_id, status, activated_at)
             VALUES (?, ?, ?, 'active', NOW()) ON CONFLICT (order_id) DO NOTHING
             """, UUID.randomUUID(), order.id(), order.courseId());
+    }
+
+    List<CourseEnrollmentView> findEnrollments(String subject) {
+        return jdbc.query("""
+            SELECT s.course_id, o.course_title
+            FROM courseflow.subscriptions s
+            JOIN courseflow.orders o ON o.id = s.order_id
+            WHERE o.customer_subject = ? AND s.status = 'active'
+            ORDER BY s.activated_at DESC
+            """, (rs, row) -> new CourseEnrollmentView(rs.getLong("course_id"), rs.getString("course_title")), subject);
     }
 
     List<SubscriptionView> findSubscriptions(String subject) {

@@ -1,21 +1,21 @@
 import {
   getCheckoutCourses,
-  getSubscriptions,
+  getCourseEnrollments,
   type CheckoutCourse,
-  type SubscriptionView,
+  type CourseEnrollment,
 } from '@/api/payments'
 
 export function isEnrolledInCourseTitle(
-  subscriptions: SubscriptionView[],
+  subscriptions: CourseEnrollment[],
   courseTitle: string,
 ): boolean {
   return subscriptions.some((subscription) => subscription.courseTitle === courseTitle)
 }
 
-export function findSubscriptionByTitle(
-  subscriptions: SubscriptionView[],
+export function findSubscriptionByTitle<T extends CourseEnrollment>(
+  subscriptions: T[],
   courseTitle: string,
-): SubscriptionView | null {
+): T | null {
   return subscriptions.find((subscription) => subscription.courseTitle === courseTitle) ?? null
 }
 
@@ -37,12 +37,21 @@ export function learningPathForSubscription(courseId: number): string {
   return `/courses/course-${courseId}/learn/sub-1-1`
 }
 
-export async function getCourseAccess(courseTitle: string): Promise<CourseAccess> {
-  const [subscriptions, catalog] = await Promise.all([getSubscriptions(), getCheckoutCourses()])
-  const subscription = findSubscriptionByTitle(subscriptions, courseTitle)
+export async function getCourseAccess(
+  courseTitle: string,
+  knownCourse?: CheckoutCourse,
+): Promise<CourseAccess> {
+  const [enrollments, checkoutCourse] = await Promise.all([
+    getCourseEnrollments(),
+    knownCourse ??
+      getCheckoutCourses().then((catalog) => findCheckoutCourseByTitle(catalog, courseTitle)),
+  ])
+  const enrollment = checkoutCourse
+    ? enrollments.find((item) => item.courseId === checkoutCourse.id)
+    : findSubscriptionByTitle(enrollments, courseTitle)
   return {
-    enrolled: Boolean(subscription),
-    checkoutCourse: findCheckoutCourseByTitle(catalog, courseTitle),
-    subscriptionCourseId: subscription?.courseId ?? null,
+    enrolled: Boolean(enrollment),
+    checkoutCourse,
+    subscriptionCourseId: enrollment?.courseId ?? null,
   }
 }

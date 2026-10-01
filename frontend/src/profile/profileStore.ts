@@ -1,4 +1,4 @@
-import { getToken } from '@clerk/vue'
+import client from '@/api/client'
 import { ref } from 'vue'
 
 export type UserProfile = {
@@ -15,42 +15,17 @@ export type UserProfilePayload = {
   email: string
 }
 
-const API_URL = '/api/me/profile'
+const API_URL = '/me/profile'
 
 export const profile = ref<UserProfile | null>(null)
 export const profileLoading = ref(false)
 export const profileError = ref('')
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const token = await getToken()
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
-  })
-
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`
-    try {
-      const body = (await response.json()) as { detail?: string; message?: string }
-      message = body.detail || body.message || message
-    } catch {
-      // Keep the HTTP fallback when the backend did not return JSON.
-    }
-    throw new Error(message)
-  }
-
-  return (await response.json()) as T
-}
-
 export async function loadProfile() {
   profileLoading.value = true
   profileError.value = ''
   try {
-    profile.value = await request<UserProfile>(API_URL)
+    profile.value = (await client.get<UserProfile>(API_URL)).data
     return profile.value
   } catch (error) {
     profileError.value = error instanceof Error ? error.message : 'Unable to load profile'
@@ -61,10 +36,7 @@ export async function loadProfile() {
 }
 
 export async function updateProfile(payload: UserProfilePayload) {
-  const updated = await request<UserProfile>(API_URL, {
-    method: 'PATCH',
-    body: JSON.stringify(payload),
-  })
+  const { data: updated } = await client.patch<UserProfile>(API_URL, payload)
   profile.value = updated
   return updated
 }

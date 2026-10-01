@@ -36,6 +36,24 @@ enable the PostgreSQL-backed admin course and payment APIs. Clerk handles
 sign-up and sign-in in the frontend, while Spring Security validates Clerk JWTs
 for protected admin endpoints.
 
+To measure a slow `GET /api/catalog/courses` request, start the local backend
+with timing logs enabled:
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local" "-Dspring-boot.run.arguments=--logging.level.com.courseflow.payment.CatalogCourseTiming=DEBUG"
+```
+
+Each request gets a `requestId` shared by the `controller`,
+`service`, `repository`, and `jdbc.query` log lines. Times are in milliseconds
+and the nested stages overlap, so do not add them together. `jdbc.query`
+measures the entire JDBC call, including connection acquisition, SQL execution,
+result transfer, and row mapping; it does not isolate PostgreSQL server time.
+The controller timer does not include HTTP response serialization or network time.
+
+See [request timeout policy and audit](docs/request-timeouts.md) for browser
+deadlines, affected pages, payment retry behavior, and backend timeout boundaries.
+
 Create `frontend/.env.local` and add the Clerk publishable key:
 
 ```properties

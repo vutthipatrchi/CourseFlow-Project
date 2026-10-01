@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -26,7 +27,19 @@ class PaymentController {
     PaymentController(PaymentService payments) { this.payments = payments; }
 
     @GetMapping("/catalog/courses")
-    List<CheckoutCourse> checkoutCourses() { return payments.checkoutCourses(); }
+    List<CheckoutCourse> checkoutCourses() {
+        try (var ignored = MDC.putCloseable(CatalogCourseTiming.REQUEST_ID, UUID.randomUUID().toString())) {
+            long startedAtNanos = System.nanoTime();
+            boolean success = false;
+            try {
+                var courses = payments.checkoutCourses();
+                success = true;
+                return courses;
+            } finally {
+                CatalogCourseTiming.log("controller", startedAtNanos, success);
+            }
+        }
+    }
 
     @GetMapping("/catalog/courses/{courseId}")
     CheckoutCourse checkoutCourse(@PathVariable Long courseId) {
@@ -67,6 +80,12 @@ class PaymentController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.parseMediaType(qr.contentType()))
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=courseflow-qr-" + paymentId + "." + extension)
             .body(qr.bytes());
+    }
+
+    @GetMapping("/me/enrollments")
+    ResponseEntity<List<CourseEnrollmentView>> enrollments(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+            .body(payments.enrollments(jwt.getSubject()));
     }
 
     @GetMapping("/me/subscriptions")

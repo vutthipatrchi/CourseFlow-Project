@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
@@ -33,6 +33,10 @@ const errorMessage = ref('')
 const paymentConfig = ref<PaymentConfig | null>(null)
 const card = reactive({ number: '', owner: '', expiry: '', cvv: '' })
 let attemptKey = crypto.randomUUID()
+let disposed = false
+onUnmounted(() => {
+  disposed = true
+})
 
 const methodLabel = computed(() =>
   paymentMethod.value === 'card' ? 'Credit card / Debit card' : 'QR code',
@@ -60,6 +64,7 @@ function messageFrom(error: unknown) {
 }
 
 async function openPayment(payment: PaymentView, authorize = false) {
+  if (disposed) return
   await router.push({
     name:
       payment.method === 'promptpay' && payment.status === 'pending'
@@ -67,13 +72,20 @@ async function openPayment(payment: PaymentView, authorize = false) {
         : 'payment-status',
     query: { paymentId: payment.paymentId },
   })
-  if (authorize && payment.status === 'pending' && payment.authorizeUrl)
+  if (
+    authorize &&
+    payment.status === 'pending' &&
+    payment.authorizeUrl &&
+    router.currentRoute.value.name === 'payment-status' &&
+    router.currentRoute.value.query.paymentId === payment.paymentId
+  )
     continueCardAuthentication(payment.authorizeUrl)
 }
 
 async function prepareOrder() {
   if (!courseId.value) throw new Error('Please select a valid course.')
   const next = await createOrder(courseId.value, promoCode.value)
+  if (disposed) return
   if (order.value?.orderId !== next.orderId) attemptKey = crypto.randomUUID()
   order.value = next
   promoCode.value = next.promotionCode || ''
@@ -81,10 +93,12 @@ async function prepareOrder() {
 }
 
 async function initialize() {
+  if (processing.value || disposed) return
   processing.value = true
   errorMessage.value = ''
   try {
     paymentConfig.value = await getPaymentConfig()
+    if (disposed) return
     if (!paymentConfig.value.enabled)
       throw new Error('Payment is not configured yet. Please contact support.')
     await prepareOrder()
@@ -181,6 +195,8 @@ async function confirmPayment() {
         card.cvv = ''
         submitted.value = false
       }
+      // Leaving checkout during tokenization must not start a charge afterward.
+      if (disposed) return
       chargeRequested = true
       payment = await createCardPayment(order.value.orderId, token, attemptKey)
     }
@@ -221,7 +237,7 @@ async function confirmPayment() {
           novalidate
           @submit.prevent="confirmPayment"
         >
-          <fieldset :disabled="processing || recovering">
+          <fieldset :disabled="processing || recovering || !order || !paymentConfig?.enabled">
             <legend class="mb-4 text-base leading-6 text-gray-700">Select payment method</legend>
 
             <div class="space-y-2">
@@ -353,13 +369,19 @@ async function confirmPayment() {
                 <input
                   id="promo-code"
                   v-model="promoCode"
-                  :disabled="processing || recovering"
+                  :disabled="processing || recovering || !order || !paymentConfig?.enabled"
                   placeholder="Promotion code"
                   class="h-12 min-w-0 flex-1 rounded-lg border border-gray-400 bg-white px-4 uppercase placeholder:normal-case placeholder:text-gray-600 focus:border-blue-600 focus:outline-none"
                 />
                 <button
                   type="button"
-                  :disabled="!promoCode.trim() || processing || recovering"
+                  :disabled="
+                    !promoCode.trim() ||
+                    processing ||
+                    recovering ||
+                    !order ||
+                    !paymentConfig?.enabled
+                  "
                   class="h-12 rounded-xl bg-blue-600 px-5 font-semibold text-white hover:bg-blue-900 disabled:bg-gray-400 disabled:text-gray-600"
                   @click="applyPromo"
                 >
