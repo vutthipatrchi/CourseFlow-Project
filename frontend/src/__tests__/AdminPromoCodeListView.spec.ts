@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
+import { toast } from 'vue-sonner'
 import AdminPromoCodeListView from '../views/AdminPromoCodeListView.vue'
 import { deletePromoCode, listPromoCodes } from '@/api/promoCodes'
 import { resetCourses } from '@/admin/courseStore'
@@ -101,6 +102,7 @@ describe('AdminPromoCodeListView', () => {
   it('opens a confirmation modal and only deletes once confirmed', async () => {
     vi.mocked(listPromoCodes).mockResolvedValue([samplePromoCode])
     vi.mocked(deletePromoCode).mockResolvedValue(undefined)
+    const successSpy = vi.spyOn(toast, 'success')
     const router = makeRouter()
     router.push('/admin/promo-codes')
     await router.isReady()
@@ -119,6 +121,41 @@ describe('AdminPromoCodeListView', () => {
 
     expect(deletePromoCode).toHaveBeenCalledWith(1)
     expect(wrapper.text()).toContain('No promo codes yet.')
+    expect(successSpy).toHaveBeenCalledWith('Promo code deleted.', { description: 'NEWYEAR200' })
+  })
+
+  it('raises a matching toast when the promo code list fails to load', async () => {
+    vi.mocked(listPromoCodes).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = makeRouter()
+    router.push('/admin/promo-codes')
+    await router.isReady()
+
+    mount(AdminPromoCodeListView, { global: { plugins: [router], stubs } })
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+  })
+
+  it('raises a matching toast when deleting a promo code fails', async () => {
+    vi.mocked(listPromoCodes).mockResolvedValue([samplePromoCode])
+    vi.mocked(deletePromoCode).mockRejectedValue(new Error('This promo code is in use.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const router = makeRouter()
+    router.push('/admin/promo-codes')
+    await router.isReady()
+
+    const wrapper = mount(AdminPromoCodeListView, { global: { plugins: [router], stubs } })
+    await flushPromises()
+
+    await wrapper.get('button[aria-label^="Delete"]').trigger('click')
+    const confirmButton = wrapper.findAll('button').find((button) => button.text() === 'Delete')
+    await confirmButton!.trigger('click')
+    await flushPromises()
+
+    expect(errorSpy).toHaveBeenCalledWith('This promo code is in use.', {
+      description: 'NEWYEAR200',
+    })
   })
 
   it('closing the confirmation modal does not delete the promo code', async () => {

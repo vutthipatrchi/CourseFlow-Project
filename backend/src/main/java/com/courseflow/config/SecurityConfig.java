@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.HEAD, "/api/uploads/videos/*").permitAll()
                 .requestMatchers(
                     "/api/health",
+                    "/api/health/database",
                     "/api/payments/config",
                     "/api/webhooks/opn"
                 ).permitAll()

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import CourseDetailView from '@/views/CourseDetailView.vue'
 import ModuleAccordion from '@/components/course/ModuleAccordion.vue'
 import { createDemoModules } from '@/data/demoLessons'
@@ -124,6 +125,76 @@ describe('Module Samples previews', () => {
     wrapper.unmount()
   })
 
+  it('raises a matching toast when the course fails to load', async () => {
+    vi.mocked(getCheckoutCourse).mockRejectedValueOnce(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when start-learning is clicked with a stale access state', async () => {
+    vi.mocked(getCourseAccess).mockResolvedValueOnce({
+      enrolled: true,
+      checkoutCourse: null,
+      subscriptionCourseId: null,
+    })
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+
+    const start = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Start learning'))
+    await start!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      'Purchase this course before you start learning.',
+    )
+    expect(errorSpy).toHaveBeenCalledWith('Purchase this course before you start learning.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when access is revoked before opening the learning page', async () => {
+    vi.mocked(getCourseAccess)
+      .mockResolvedValueOnce({ enrolled: true, checkoutCourse: null, subscriptionCourseId: 9 })
+      .mockResolvedValueOnce({ enrolled: false, checkoutCourse: null, subscriptionCourseId: null })
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+
+    const start = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Start learning'))
+    await start!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      'Purchase this course before you start learning.',
+    )
+    expect(errorSpy).toHaveBeenCalledWith('Purchase this course before you start learning.')
+    wrapper.unmount()
+  })
+
+  it('raises a matching toast when opening the learning page fails', async () => {
+    vi.mocked(getCourseAccess)
+      .mockResolvedValueOnce({ enrolled: true, checkoutCourse: null, subscriptionCourseId: 9 })
+      .mockRejectedValueOnce(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountPage()
+
+    const start = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Start learning'))
+    await start!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+    wrapper.unmount()
+  })
+
   it('shows a retryable error when the backend cannot supply preview readings', async () => {
     vi.mocked(getPublicDemoContent).mockRejectedValueOnce(new Error('Unavailable'))
     const { wrapper } = await mountPage()
@@ -144,7 +215,7 @@ describe('Module Samples previews', () => {
     expect(module.find('details').exists()).toBe(false)
     await toggle.trigger('click')
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(module.text()).toContain('Development Tools')
+    expect(module.text()).toContain('Programming Fundamentals')
     expect(module.find('details').exists()).toBe(false)
     expect(module.find('article').exists()).toBe(false)
     await toggle.trigger('click')
@@ -199,7 +270,7 @@ describe('Module Samples previews', () => {
     await flushPromises()
     expect(pause).toHaveBeenCalledTimes(2)
     const nextModule = wrapper.findComponent(ModuleAccordion)
-    expect(nextModule.get('summary').text()).toContain('Design Foundations')
+    expect(nextModule.get('button').text()).toContain('Design Foundations')
     expect(nextModule.find('video').exists()).toBe(false)
     wrapper.unmount()
   })

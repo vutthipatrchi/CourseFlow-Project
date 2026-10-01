@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { toast } from 'vue-sonner'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
 import { checkoutCourseFixture } from './checkoutCourseFixture'
 
@@ -47,6 +48,14 @@ describe('SubscribeCard', () => {
     expect(button.attributes('disabled')).toBeDefined()
     await wrapper.get('[role="alert"] button').trigger('click')
     expect(wrapper.emitted('retry')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('raises a success toast when adding the course to the wishlist', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
+    const { wrapper } = await mountCard()
+    await wrapper.get('button:first-of-type').trigger('click')
+    expect(successSpy).toHaveBeenCalledWith('Added to wishlist successfully!')
     wrapper.unmount()
   })
 

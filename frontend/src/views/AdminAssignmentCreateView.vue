@@ -10,10 +10,12 @@ import {
   updateAssignment,
 } from '@/api/assignments'
 import { toApiError } from '@/api/client'
+import { useToast } from '@/composables/useToast'
 import type { CreateAssignmentPayload, SubLessonOption } from '@/types/assignment'
 
 const route = useRoute()
 const router = useRouter()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const assignmentId = computed(() => {
   const id = route.params.id
@@ -37,6 +39,7 @@ onMounted(async () => {
     subLessonOptions.value = await listSubLessonOptions()
   } catch (err) {
     serverError.value = toApiError(err).message
+    notifyError(serverError.value)
   }
 
   if (isEditing.value) {
@@ -49,6 +52,7 @@ onMounted(async () => {
       }
     } catch (err) {
       serverError.value = toApiError(err).message
+      notifyError(serverError.value)
     }
   }
 
@@ -66,11 +70,17 @@ async function handleSubmit(payload: CreateAssignmentPayload) {
     } else {
       await createAssignment(payload)
     }
+    // This toast is still visible after navigating to the assignment list, where "Assignment
+    // updated." alone wouldn't say which one.
+    notifySuccess(`Assignment ${isEditing.value ? 'updated' : 'created'}.`, {
+      description: payload.description,
+    })
     router.push({ name: 'admin-assignments' })
   } catch (err) {
     const apiError = toApiError(err)
     serverError.value = apiError.message
     serverFieldErrors.value = apiError.fieldErrors
+    notifyError(serverError.value, { description: payload.description })
   } finally {
     submitting.value = false
   }

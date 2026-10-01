@@ -1,11 +1,11 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 // ── SubscribeCard ─────────────────────────────────────────────────────────
 // Sticky price card with wishlist and checkout actions.
 
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { learningPathForSubscription } from '@/lib/courseAccess'
 import type { CheckoutCourse } from '@/api/payments'
+import { useToast } from '@/composables/useToast'
 
 type Props = {
   category: string
@@ -22,7 +22,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{ retry: [] }>()
 
 const router = useRouter()
-const showWishlistToast = ref(false)
+const { success } = useToast()
 function goToPayment() {
   if (!props.checkoutCourse || props.loadingCourse || props.checkoutError) return
   router.push({ name: 'payment', query: { courseId: props.checkoutCourse.id } })
@@ -33,11 +33,10 @@ function goToLearning() {
   router.push(learningPathForSubscription(props.subscriptionCourseId))
 }
 
+// Unrelated to the toast migration: this click isn't persisted anywhere yet (out of scope
+// here), so the toast is only confirming the click itself, same as before.
 const addToWishlist = () => {
-  showWishlistToast.value = true
-  setTimeout(() => {
-    showWishlistToast.value = false
-  }, 2500)
+  success('Added to wishlist successfully!')
 }
 </script>
 
@@ -97,18 +96,4 @@ const addToWishlist = () => {
       </template>
     </div>
   </aside>
-
-  <Transition
-    enter-active-class="transition-opacity duration-300"
-    leave-active-class="transition-opacity duration-300"
-    enter-from-class="opacity-0"
-    leave-to-class="opacity-0"
-  >
-    <div
-      v-if="showWishlistToast"
-      class="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-lg bg-utility-green px-6 py-3 text-sm font-semibold text-white shadow-lg"
-    >
-      Added to wishlist successfully!
-    </div>
-  </Transition>
 </template>

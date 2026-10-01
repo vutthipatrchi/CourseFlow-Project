@@ -26,11 +26,13 @@ import { toApiError } from '@/api/client'
 import { toCardAssignment } from '@/lib/assignmentCard'
 import { catalogRouteId, toStorefrontCourse } from '@/lib/catalogCourses'
 import { hasScrolledToPageBottom } from '@/lib/scrollComplete'
+import { useToast } from '@/composables/useToast'
 import type { Course } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
 
 const route = useRoute()
 const router = useRouter()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const course = ref<Course | undefined>()
 
@@ -88,6 +90,16 @@ const assignmentError = ref('')
 const demoContent = ref<DemoContentRow[]>([])
 const demoContentError = ref('')
 let lastProgress: CourseProgressView | null = null
+
+function failProgress(message: string) {
+  progressError.value = message
+  notifyError(message)
+}
+
+function failAssignment(message: string) {
+  assignmentError.value = message
+  notifyError(message)
+}
 
 function applyProgress(progress: CourseProgressView) {
   if (!course.value) return
@@ -148,7 +160,7 @@ async function loadProgress() {
   demoContent.value = []
   course.value = undefined
   if (!requestedCourseId) {
-    progressError.value = 'Invalid course link.'
+    failProgress('Invalid course link.')
     progressLoading.value = false
     return
   }
@@ -157,7 +169,7 @@ async function loadProgress() {
       getSubscriptions(),
       getCourseProgress(requestedCourseId),
       listMyAssignments().catch((error) => {
-        if (request === progressRequest) assignmentError.value = toApiError(error).message
+        if (request === progressRequest) failAssignment(toApiError(error).message)
         return [] as MyAssignment[]
       }),
     ])
@@ -202,8 +214,7 @@ async function loadProgress() {
     progressError.value = ''
   } catch (error) {
     if (request === progressRequest)
-      progressError.value =
-        error instanceof Error ? error.message : 'Unable to load course progress'
+      failProgress(error instanceof Error ? error.message : 'Unable to load course progress')
   } finally {
     if (request === progressRequest) progressLoading.value = false
   }
@@ -216,7 +227,6 @@ const hasNext = computed(
   () => currentIndex.value >= 0 && currentIndex.value < flatSubLessons.value.length - 1,
 )
 
-const showSubmitToast = ref(false)
 const isLoading = ref(false)
 let loadingTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -291,8 +301,7 @@ const handleComplete = async () => {
     progressError.value = ''
   } catch (error) {
     if (request === progressRequest)
-      progressError.value =
-        error instanceof Error ? error.message : 'Unable to save course progress'
+      failProgress(error instanceof Error ? error.message : 'Unable to save course progress')
   } finally {
     completionSaving.value = false
   }
@@ -345,17 +354,14 @@ const handleAssignmentSubmit = async (answer: string) => {
       if (lastProgress) applyProgress(lastProgress)
       assignmentError.value = ''
     } catch (error) {
-      assignmentError.value = toApiError(error).message
+      failAssignment(toApiError(error).message)
       return
     }
   } else {
     assignment.status = 'submitted'
     assignment.answer = answer
   }
-  showSubmitToast.value = true
-  setTimeout(() => {
-    showSubmitToast.value = false
-  }, 2500)
+  notifySuccess('Assignment submitted successfully!')
 }
 </script>
 
@@ -514,20 +520,6 @@ const handleAssignmentSubmit = async (answer: string) => {
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V4a8 8 0 00-8 8H4z" />
         </svg>
         <p class="text-sm text-[#646D89]">Loading...</p>
-      </div>
-    </Transition>
-
-    <Transition
-      enter-active-class="transition-opacity duration-300"
-      leave-active-class="transition-opacity duration-300"
-      enter-from-class="opacity-0"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="showSubmitToast"
-        class="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-lg bg-utility-green px-6 py-3 text-sm font-semibold text-white shadow-lg"
-      >
-        Assignment submitted successfully!
       </div>
     </Transition>
   </div>

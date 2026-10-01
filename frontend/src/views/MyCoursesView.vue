@@ -5,7 +5,9 @@ import MyCoursesProfileCard from '@/components/course/MyCoursesProfileCard.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import { getSubscriptions, type SubscriptionView } from '@/api/payments'
+import { useToast } from '@/composables/useToast'
 
+const { error: notifyError } = useToast()
 const courses = ref<SubscriptionView[]>([])
 const { user } = useUser()
 const userName = computed(
@@ -38,6 +40,7 @@ async function load() {
     courses.value = await getSubscriptions()
   } catch (failure) {
     error.value = failure instanceof Error ? failure.message : 'Unable to load your courses'
+    notifyError(error.value)
   } finally {
     loading.value = false
   }

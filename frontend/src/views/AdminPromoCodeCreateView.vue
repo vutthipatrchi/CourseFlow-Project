@@ -6,10 +6,12 @@ import PromoCodeForm from '@/components/admin/PromoCodeForm.vue'
 import { createPromoCode, getPromoCode, listPromoCodes, updatePromoCode } from '@/api/promoCodes'
 import { toApiError } from '@/api/client'
 import { courses, loadCourses } from '@/admin/courseStore'
+import { useToast } from '@/composables/useToast'
 import type { PromoCode, PromoCodePayload } from '@/types/promoCode'
 
 const route = useRoute()
 const router = useRouter()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const promoCodeId = computed(() => {
   const id = route.params.id
@@ -41,6 +43,7 @@ onMounted(async () => {
     existingPromoCodes.value = promoCodes
   } catch (err) {
     serverError.value = toApiError(err).message
+    notifyError(serverError.value)
   } finally {
     loading.value = false
   }
@@ -57,11 +60,15 @@ async function handleSubmit(payload: PromoCodePayload) {
     } else {
       await createPromoCode(payload)
     }
+    notifySuccess(`Promo code ${isEditing.value ? 'updated' : 'created'}.`, {
+      description: payload.code,
+    })
     router.push({ name: 'admin-promo-codes' })
   } catch (err) {
     const apiError = toApiError(err)
     serverError.value = apiError.message
     serverFieldErrors.value = apiError.fieldErrors
+    notifyError(serverError.value, { description: payload.code })
   } finally {
     submitting.value = false
   }

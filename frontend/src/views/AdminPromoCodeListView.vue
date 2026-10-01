@@ -6,6 +6,7 @@ import PromoCodeTable from '@/components/admin/PromoCodeTable.vue'
 import { deletePromoCode, listPromoCodes } from '@/api/promoCodes'
 import { toApiError } from '@/api/client'
 import { courses, loadCourses } from '@/admin/courseStore'
+import { useToast } from '@/composables/useToast'
 import type { PromoCode } from '@/types/promoCode'
 
 const promoCodes = ref<PromoCode[]>([])
@@ -14,6 +15,7 @@ const error = ref<string | null>(null)
 const search = ref('')
 const pendingDeletion = ref<PromoCode | null>(null)
 const deleteError = ref<string | null>(null)
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const filteredPromoCodes = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -27,6 +29,7 @@ async function loadPromoCodes() {
     promoCodes.value = await listPromoCodes()
   } catch (err) {
     error.value = toApiError(err).message
+    notifyError(error.value)
   } finally {
     loading.value = false
   }
@@ -52,9 +55,11 @@ async function confirmDeletion() {
   try {
     await deletePromoCode(promoCode.id)
     pendingDeletion.value = null
+    notifySuccess('Promo code deleted.', { description: promoCode.code })
     await loadPromoCodes()
   } catch (err) {
     deleteError.value = toApiError(err).message
+    notifyError(deleteError.value, { description: promoCode.code })
   }
 }
 </script>

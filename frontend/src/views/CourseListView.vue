@@ -9,8 +9,10 @@ import CtaBanner from '@/components/landing/CtaBanner.vue'
 import CourseCard from '@/components/course/CourseCard.vue'
 import { getCheckoutCourses } from '@/api/payments'
 import { toStorefrontCourse } from '@/lib/catalogCourses'
+import { useToast } from '@/composables/useToast'
 import type { Course } from '@/types/course'
 
+const { error: notifyError } = useToast()
 const searchQuery = ref('')
 const courses = ref<Course[]>([])
 const loading = ref(true)
@@ -34,6 +36,7 @@ async function loadCourses() {
     courses.value = catalog.map(toStorefrontCourse)
   } catch (error) {
     loadError.value = error instanceof Error ? error.message : 'Unable to load courses.'
+    notifyError(loadError.value)
     courses.value = []
   } finally {
     loading.value = false

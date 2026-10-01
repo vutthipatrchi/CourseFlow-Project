@@ -6,8 +6,10 @@ import AppFooter from '@/components/landing/AppFooter.vue'
 import iconPerson from '@/assets/landing/icon-person.svg'
 import heroTriangle from '@/assets/landing/hero-triangle.svg'
 import { loadProfile, updateProfile, profileLoading, profileError } from '@/profile/profileStore'
+import { useToast } from '@/composables/useToast'
 
 const { user } = useUser()
+const { success: notifySuccess, error: notifyError } = useToast()
 
 const name = ref('')
 const dateOfBirth = ref('')
@@ -17,7 +19,6 @@ const email = computed(() => user.value?.primaryEmailAddress?.emailAddress ?? ''
 const fileInput = ref<HTMLInputElement | null>(null)
 const isSaving = ref(false)
 const isUploadingPhoto = ref(false)
-const feedback = ref('')
 const errorMessage = ref('')
 const profileReady = ref(false)
 
@@ -29,8 +30,8 @@ async function initializeProfile() {
     dateOfBirth.value = loaded.dateOfBirth ?? ''
     educationalBackground.value = loaded.educationalBackground ?? ''
     profileReady.value = true
-  } catch {
-    // The store exposes the error and the page offers a retry below.
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : 'Unable to load profile')
   }
 }
 onMounted(initializeProfile)
@@ -46,6 +47,11 @@ async function onPhotoSelected(event: Event) {
   isUploadingPhoto.value = true
   try {
     await user.value.setProfileImage({ file })
+    notifySuccess('Profile photo updated.')
+  } catch (error) {
+    // Previously silent: nothing caught a failed upload, so it only ever surfaced as an
+    // unhandled rejection in the browser console.
+    notifyError(error instanceof Error ? error.message : 'Unable to update profile photo.')
   } finally {
     isUploadingPhoto.value = false
     if (fileInput.value) fileInput.value.value = ''
@@ -57,6 +63,9 @@ async function removePhoto() {
   isUploadingPhoto.value = true
   try {
     await user.value.setProfileImage({ file: null })
+    notifySuccess('Profile photo removed.')
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : 'Unable to remove profile photo.')
   } finally {
     isUploadingPhoto.value = false
   }
@@ -64,7 +73,6 @@ async function removePhoto() {
 
 async function handleSubmit() {
   if (isSaving.value || !profileReady.value) return
-  feedback.value = ''
   errorMessage.value = ''
   isSaving.value = true
   try {
@@ -74,9 +82,10 @@ async function handleSubmit() {
       educationalBackground: educationalBackground.value.trim() || null,
       email: email.value,
     })
-    feedback.value = 'Profile updated.'
+    notifySuccess('Profile updated.')
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Unable to update profile.'
+    notifyError(errorMessage.value)
   } finally {
     isSaving.value = false
   }
@@ -210,7 +219,6 @@ async function handleSubmit() {
                 Try again
               </button>
             </div>
-            <p v-if="feedback" role="status" class="mt-6 text-sm text-green-600">{{ feedback }}</p>
             <p v-if="errorMessage" role="alert" class="mt-6 text-sm text-red-600">
               {{ errorMessage }}
             </p>

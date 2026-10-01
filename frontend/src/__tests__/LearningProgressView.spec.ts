@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import LearningProgressView from '../views/LearningProgressView.vue'
 import { getCheckoutCourse } from '@/api/payments'
 import { getCourseAccess } from '@/lib/courseAccess'
@@ -75,9 +76,11 @@ describe('learning progress access gate', () => {
   })
 
   it('blocks learning when the course is not purchased', async () => {
+    const errorSpy = vi.spyOn(toast, 'error')
     const { wrapper } = await mountView()
     expect(wrapper.get('[role="alert"]').text()).toContain('Purchase this course to start learning')
     expect(wrapper.text()).toContain('Subscribe this course')
+    expect(errorSpy).toHaveBeenCalledWith('Purchase this course to start learning.')
   })
 
   it('sends purchased learners to the course player', async () => {
@@ -89,5 +92,22 @@ describe('learning progress access gate', () => {
     const { router } = await mountView()
     expect(router.currentRoute.value.fullPath).toBe('/courses/course-1/learn/sub-1-1')
     expect(vi.mocked(getCheckoutCourse)).toHaveBeenCalled()
+  })
+
+  it('raises a matching toast when the course id in the link is invalid', async () => {
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountView('/learn/not-a-course')
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('Course not found.')
+    expect(errorSpy).toHaveBeenCalledWith('Course not found.')
+  })
+
+  it('raises a matching toast when checking access fails', async () => {
+    vi.mocked(getCheckoutCourse).mockRejectedValue(new Error('The server is unreachable.'))
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountView()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
   })
 })

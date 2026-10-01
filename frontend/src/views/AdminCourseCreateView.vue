@@ -2,16 +2,32 @@
 import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
-import { SignOutButton } from '@clerk/vue'
+import { useClerk } from '@clerk/vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import courseFlowLogo from '../assets/admin/courseflow-sidebar-logo.svg'
 import { useCourseStore } from '@/stores/course'
+import { useToast } from '@/composables/useToast'
 import type { AdminCourse, AdminCourseLesson, AdminCoursePayload } from '@/types/course'
 import FormFieldError from '../components/admin/FormFieldError.vue'
 
 const router = useRouter()
 const route = useRoute()
 const courseStore = useCourseStore()
+const { success: notifySuccess, error: notifyError } = useToast()
+const clerk = useClerk()
+
+// Matches AdminLayout.vue's logOut(): this page has its own inline sidebar instead of using
+// that shared layout, so it needs its own copy rather than Clerk's <SignOutButton>, which has
+// no hook to add a toast to (same limitation as SignUpView.vue's <SignUp> widget).
+async function logOut() {
+  try {
+    await clerk.value?.signOut()
+    notifySuccess('Signed out successfully!')
+    router.push({ name: 'home' })
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : 'Unable to sign out. Please try again.')
+  }
+}
 const { courses } = storeToRefs(courseStore)
 const { add: addCourse, find: getCourse, remove: removeCourse, update: updateCourse } = courseStore
 const courseId = Number(route.params.id)
@@ -88,6 +104,7 @@ onMounted(async () => {
     populateForm(await getCourse(courseId, true))
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to load course.'
+    notifyError(apiError.value)
   } finally {
     isLoadingCourse.value = false
   }
@@ -159,6 +176,7 @@ async function addLesson() {
     })
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to create course.'
+    notifyError(apiError.value)
   } finally {
     isSaving.value = false
   }
@@ -197,10 +215,13 @@ async function onDeleteCourse() {
   if (!isEditing || !courseToEdit.value) return
   if (!window.confirm(`Delete course "${courseToEdit.value.name}"?`)) return
   try {
+    const deletedName = courseToEdit.value.name
     await removeCourse(courseToEdit.value.id)
+    notifySuccess(`${deletedName} was deleted.`)
     await router.push({ name: 'admin-courses' })
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to delete course.'
+    notifyError(apiError.value)
   }
 }
 
@@ -333,13 +354,12 @@ async function saveCourse() {
     } else {
       await addCourse(details)
     }
+    notifySuccess(`${name.value.trim()} was ${isEditing ? 'updated' : 'created'}.`)
 
-    await router.push({
-      name: 'admin-courses',
-      query: { [isEditing ? 'updated' : 'created']: name.value.trim() },
-    })
+    await router.push({ name: 'admin-courses' })
   } catch (error) {
     apiError.value = error instanceof Error ? error.message : 'Unable to save course.'
+    notifyError(apiError.value)
   } finally {
     isSaving.value = false
   }
@@ -385,14 +405,12 @@ async function saveCourse() {
           </svg>
           Promo code
         </a>
-        <SignOutButton redirect-url="/">
-          <button class="nav-item logout" type="button">
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
-            </svg>
-            Log out
-          </button>
-        </SignOutButton>
+        <button class="nav-item logout" type="button" @click="logOut">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
+          </svg>
+          Log out
+        </button>
       </nav>
     </aside>
 

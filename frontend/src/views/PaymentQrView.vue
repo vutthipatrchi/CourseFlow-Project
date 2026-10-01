@@ -8,12 +8,14 @@ import PaymentSuccessCard from '@/components/payment/PaymentSuccessCard.vue'
 import { downloadQr } from '@/api/payments'
 import { usePaymentStatus } from '@/lib/usePaymentStatus'
 import { formatThb } from '@/lib/payment'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const paymentId = computed(() =>
   typeof route.query.paymentId === 'string' ? route.query.paymentId : '',
 )
 const { payment, errorMessage, loading } = usePaymentStatus(paymentId)
+const { error: notifyError } = useToast()
 const qrBlob = ref<Blob | null>(null)
 const qrSrc = ref('')
 const qrError = ref('')
@@ -33,8 +35,10 @@ async function loadQr() {
     qrSrc.value = URL.createObjectURL(blob)
     qrError.value = ''
   } catch (error) {
-    if (!disposed && paymentId.value === next.paymentId)
+    if (!disposed && paymentId.value === next.paymentId) {
       qrError.value = error instanceof Error ? error.message : 'Unable to load QR code'
+      notifyError(qrError.value)
+    }
   } finally {
     downloading.value = false
   }

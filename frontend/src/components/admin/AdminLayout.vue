@@ -6,6 +6,7 @@ import assignmentIcon from '@/assets/admin/assignment.svg'
 import promoCodeIcon from '@/assets/admin/promo-code.svg'
 import logoutIcon from '@/assets/admin/logout.svg'
 import logo from '@/assets/admin/courseflow-sidebar-logo.svg'
+import { useToast } from '@/composables/useToast'
 
 defineProps<{
   title: string
@@ -21,9 +22,16 @@ const isCourseActive = () =>
   String(route.name ?? '').startsWith('admin-course')
 
 const clerk = useClerk()
+const { success: notifySuccess, error: notifyError } = useToast()
 async function logOut() {
-  await clerk.value?.signOut()
-  router.push({ name: 'home' })
+  try {
+    await clerk.value?.signOut()
+    // The toast is mounted outside <RouterView> in App.vue, so it survives the navigation below.
+    notifySuccess('Signed out successfully!')
+    router.push({ name: 'home' })
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : 'Unable to sign out. Please try again.')
+  }
 }
 </script>
 
