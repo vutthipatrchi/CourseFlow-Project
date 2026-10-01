@@ -34,4 +34,24 @@ describe('Spinner', () => {
 
     expect(wrapper.get('span').classes()).toContain('flex-col')
   })
+
+  it('uses the button text color instead of blue when inverted', () => {
+    const wrapper = mount(Spinner, { props: { inverted: true } })
+
+    const svg = wrapper.get('svg')
+    expect(svg.classes()).toContain('text-current')
+    expect(svg.classes()).not.toContain('text-blue-600')
+  })
+
+  it('does not force a gray text color on the wrapper when inverted', () => {
+    const wrapper = mount(Spinner, { props: { inverted: true } })
+
+    expect(wrapper.get('span').classes()).not.toContain('text-[#646D89]')
+  })
+
+  it('supports the xs size for inline button icons', () => {
+    const wrapper = mount(Spinner, { props: { size: 'xs' } })
+
+    expect(wrapper.get('svg').classes()).toContain('h-5')
+  })
 })

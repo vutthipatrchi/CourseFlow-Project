@@ -463,17 +463,18 @@ async function confirmPayment() {
               <button
                 type="submit"
                 :disabled="processing || !order || !paymentConfig?.enabled"
-                class="min-h-[60px] w-full rounded-xl bg-blue-600 px-4 py-4 text-base font-semibold text-white shadow-[4px_4px_16px_rgba(0,0,0,0.08)] hover:bg-blue-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400"
+                class="flex min-h-[60px] w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-4 text-base font-semibold text-white shadow-[4px_4px_16px_rgba(0,0,0,0.08)] hover:bg-blue-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400"
               >
-                {{
-                  processing
-                    ? 'Processing…'
-                    : recovering
+                <Spinner v-if="processing" size="xs" inverted />
+                <template v-else>
+                  {{
+                    recovering
                       ? 'Check payment status'
                       : paymentMethod === 'qr'
                         ? 'Continue to QR code'
                         : 'Confirm payment'
-                }}
+                  }}
+                </template>
               </button>
             </div>
           </aside>

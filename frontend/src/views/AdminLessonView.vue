@@ -336,7 +336,7 @@ async function onDeleteLesson() {
                   class="relative flex h-40 w-40 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl bg-[#EFF0F6] text-[#9AA1B9]"
                 >
                   <template v-if="uploadingKey === item.localKey">
-                    <span class="text-sm text-[#2F5FAC]">Uploading…</span>
+                    <Spinner label="Uploading…" />
                   </template>
                   <template v-else-if="item.videoUrl">
                     <AuthorizedVideo

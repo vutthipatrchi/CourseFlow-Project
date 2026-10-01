@@ -2,25 +2,31 @@
 withDefaults(
   defineProps<{
     label?: string
-    size?: 'sm' | 'md' | 'lg'
+    size?: 'xs' | 'sm' | 'md' | 'lg'
     vertical?: boolean
+    inverted?: boolean
   }>(),
-  { label: '', size: 'sm', vertical: false },
+  { label: '', size: 'sm', vertical: false, inverted: false },
 )
 
-const iconSizeClasses = { sm: 'h-7 w-7', md: 'h-10 w-10', lg: 'h-16 w-16' } as const
-const textSizeClasses = { sm: 'text-base', md: 'text-lg', lg: 'text-xl' } as const
+const iconSizeClasses = { xs: 'h-5 w-5', sm: 'h-7 w-7', md: 'h-10 w-10', lg: 'h-16 w-16' } as const
+const textSizeClasses = { xs: 'text-sm', sm: 'text-base', md: 'text-lg', lg: 'text-xl' } as const
 </script>
 
 <template>
   <span
     :class="[
-      'inline-flex items-center text-[#646D89]',
+      'inline-flex items-center',
+      inverted ? '' : 'text-[#646D89]',
       vertical ? 'flex-col justify-center gap-3' : 'gap-2',
     ]"
   >
     <svg
-      :class="[iconSizeClasses[size], 'shrink-0 animate-spin text-blue-600']"
+      :class="[
+        iconSizeClasses[size],
+        'shrink-0 animate-spin',
+        inverted ? 'text-current' : 'text-blue-600',
+      ]"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"

@@ -96,7 +96,8 @@ function handleCancel() {
         :disabled="!canSubmit"
         class="flex h-[60px] items-center justify-center rounded-xl bg-[#2F5FAC] px-8 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {{ submitting ? 'Saving...' : isEditing ? 'Save' : 'Create' }}
+        <Spinner v-if="submitting" size="xs" inverted />
+        <template v-else>{{ isEditing ? 'Save' : 'Create' }}</template>
       </button>
     </template>
 

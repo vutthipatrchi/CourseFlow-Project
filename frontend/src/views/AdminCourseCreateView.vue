@@ -433,7 +433,8 @@ async function saveCourse() {
           <div class="topbar-actions">
             <RouterLink class="cancel-button" to="/admin/courses">Cancel</RouterLink>
             <button class="save-button" type="submit" :disabled="isSaving || isLoadingCourse">
-              {{ isSaving ? 'Saving...' : isEditing ? 'Edit' : 'Create' }}
+              <Spinner v-if="isSaving" size="xs" inverted />
+              <template v-else>{{ isEditing ? 'Edit' : 'Create' }}</template>
             </button>
           </div>
         </header>

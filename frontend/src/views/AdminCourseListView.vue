@@ -207,7 +207,8 @@ async function deleteCourse() {
               :disabled="deleting"
               @click="deleteCourse"
             >
-              {{ deleting ? 'Deleting...' : 'Delete' }}
+              <Spinner v-if="deleting" size="xs" inverted />
+              <template v-else>Delete</template>
             </button>
           </div>
         </div>
