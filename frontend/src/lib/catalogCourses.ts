@@ -1,5 +1,6 @@
 import type { CheckoutCourse } from '@/api/payments'
 import type { Course } from '@/types/course'
+import { courseDetails } from '@/data/courseDetails'
 import serviceDesignImage from '@/assets/admin/courses/service-design.jpg'
 import softwareDeveloperImage from '@/assets/admin/courses/software-developer.jpg'
 import uxUiDesignImage from '@/assets/admin/courses/ux-ui-design.jpg'
@@ -36,9 +37,15 @@ export function resolveCatalogImage(course: Pick<CheckoutCourse, 'name' | 'image
 }
 
 export function toStorefrontCourse(course: CheckoutCourse): Course {
-  const summary = course.summary?.trim() || course.description?.trim() || 'Course details coming soon.'
+  const details = courseDetails[course.name]
+  const summary =
+    course.summary?.trim() ||
+    course.description?.trim() ||
+    details?.summary ||
+    'Course details coming soon.'
   const longDescription =
     course.description?.trim() ||
+    details?.description ||
     course.summary?.trim() ||
     'Browse the sample lessons below, then subscribe to unlock the full course.'
   return {

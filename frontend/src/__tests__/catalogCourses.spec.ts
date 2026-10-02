@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  catalogCourseId,
-  catalogRouteId,
-  toStorefrontCourse,
-} from '@/lib/catalogCourses'
+import { catalogCourseId, catalogRouteId, toStorefrontCourse } from '@/lib/catalogCourses'
 import type { CheckoutCourse } from '@/api/payments'
 
 const sample: CheckoutCourse = {
@@ -36,5 +32,47 @@ describe('catalogCourses', () => {
     expect(course.lessonCount).toBe(6)
     expect(course.hourCount).toBe(10)
     expect(course.modules).toEqual([])
+  })
+
+  it.each([
+    'Service Design Essentials',
+    'Software Developer',
+    'UX/UI Design Beginner',
+    'Design Thinking Fundamentals',
+    'UX Research Methods',
+    'Product Strategy',
+    'Digital Marketing Basics',
+    'Data Analytics Foundations',
+    'Leadership Essentials',
+    'Agile Project Management',
+  ])('supplies a full detail and summary for %s when catalog copy is missing', (name) => {
+    for (const missing of [null, '', '   ']) {
+      const course = toStorefrontCourse({
+        ...sample,
+        name,
+        summary: missing,
+        description: missing,
+      })
+      expect(course.description).not.toContain('coming soon')
+      expect(course.longDescription.split('\n\n')).toHaveLength(2)
+      expect(course.longDescription).not.toBe(course.description)
+    }
+  })
+
+  it('keeps a catalog summary while supplying missing long-form detail', () => {
+    const course = toStorefrontCourse({ ...sample, description: null })
+    expect(course.description).toBe(sample.summary)
+    expect(course.longDescription).toContain('Start with the tools and habits')
+  })
+
+  it('preserves fallback behavior for a newly created course without default copy', () => {
+    const course = toStorefrontCourse({
+      ...sample,
+      name: 'New Course',
+      summary: null,
+      description: null,
+    })
+    expect(course.description).toBe('Course details coming soon.')
+    expect(course.longDescription).toContain('Browse the sample lessons below')
   })
 })
