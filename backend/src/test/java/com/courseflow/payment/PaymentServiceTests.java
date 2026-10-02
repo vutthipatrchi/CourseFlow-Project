@@ -64,6 +64,19 @@ class PaymentServiceTests {
     }
 
     @Test
+    void enrollmentLookupDoesNotLoadProgressAndRejectsMissingIdentity() {
+        var enrollments = List.of(new CourseEnrollmentView(9L, "Purchased course"));
+        when(repository.findEnrollments("user_buyer")).thenReturn(enrollments);
+        assertThat(service.enrollments("user_buyer")).isEqualTo(enrollments);
+        verify(repository).findEnrollments("user_buyer");
+        verify(repository, never()).findSubscriptions(anyString());
+        verifyNoInteractions(gateway);
+        assertThatThrownBy(() -> service.enrollments(" "))
+            .isInstanceOf(CheckoutAccessDeniedException.class);
+        verify(repository, never()).findEnrollments(" ");
+    }
+
+    @Test
     void springCanConstructTheService() {
         try (var context = new AnnotationConfigApplicationContext()) {
             context.registerBean(PaymentRepository.class, () -> repository);

@@ -9,11 +9,20 @@ const mocks = vi.hoisted(() => ({
   loadProfile: vi.fn<() => Promise<UserProfile>>(),
   updateProfile: vi.fn<(payload: UserProfilePayload) => Promise<UserProfile>>(),
   setProfileImage: vi.fn<(params: { file: File | null }) => Promise<unknown>>(),
+  profileLoading: undefined as unknown as { value: boolean },
+  profileError: undefined as unknown as { value: string },
 }))
-vi.mock('@/profile/profileStore', () => ({
-  loadProfile: mocks.loadProfile,
-  updateProfile: mocks.updateProfile,
-}))
+vi.mock('@/profile/profileStore', async () => {
+  const { ref } = await import('vue')
+  mocks.profileLoading = ref(false)
+  mocks.profileError = ref('')
+  return {
+    loadProfile: mocks.loadProfile,
+    updateProfile: mocks.updateProfile,
+    profileLoading: mocks.profileLoading,
+    profileError: mocks.profileError,
+  }
+})
 vi.mock('@clerk/vue', () => ({
   useUser: () => ({
     user: ref({
@@ -40,6 +49,8 @@ async function mountView() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.profileLoading.value = false
+  mocks.profileError.value = ''
   mocks.loadProfile.mockResolvedValue({
     name: 'Test Student',
     dateOfBirth: '2000-01-01',
@@ -58,13 +69,41 @@ describe('ProfileView', () => {
   })
 
   it('shows an inline error and a matching toast when the profile fails to load', async () => {
-    mocks.loadProfile.mockRejectedValue(new Error('The server is unreachable.'))
+    mocks.loadProfile.mockImplementation(async () => {
+      mocks.profileError.value = 'The server is unreachable.'
+      throw new Error(mocks.profileError.value)
+    })
     const errorSpy = vi.spyOn(toast, 'error')
 
     const wrapper = await mountView()
 
-    expect(wrapper.get('[role="alert"]').text()).toBe('The server is unreachable.')
+    expect(wrapper.get('[role="alert"] p').text()).toBe('The server is unreachable.')
     expect(errorSpy).toHaveBeenCalledWith('The server is unreachable.')
+  })
+
+  it('blocks saving after a timeout and restores editing after retry', async () => {
+    mocks.loadProfile
+      .mockImplementationOnce(async () => {
+        mocks.profileError.value = 'Loading took too long. Please try again.'
+        throw new Error(mocks.profileError.value)
+      })
+      .mockImplementationOnce(async () => {
+        mocks.profileError.value = ''
+        return {
+          name: 'Existing name',
+          dateOfBirth: null,
+          educationalBackground: null,
+          email: 'student@example.com',
+        }
+      })
+    const wrapper = await mountView()
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('form').trigger('submit')
+    expect(mocks.updateProfile).not.toHaveBeenCalled()
+    await wrapper.get('[role="alert"] button').trigger('click')
+    await flushPromises()
+    expect((wrapper.get('#name').element as HTMLInputElement).value).toBe('Existing name')
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })
 
   it('raises a success toast when the profile is updated', async () => {

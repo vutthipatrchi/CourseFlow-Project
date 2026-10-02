@@ -72,6 +72,7 @@ record PaymentView(
     String status, long amountSatang, String currency, String qrUrl, String authorizeUrl,
     String failureMessage, Instant expiresAt
 ) {}
+record CourseEnrollmentView(Long courseId, String courseTitle) {}
 record SubscriptionView(
     UUID id, Long courseId, String courseTitle, String reference, Instant activatedAt,
     int completedLessons, int totalLessons, int progressPercent, String status

@@ -1,11 +1,11 @@
 # CourseFlow
 
-Vue 3 + TypeScript frontend and Java 21 + Spring Boot backend in one repository.
+Vue 3 + TypeScript frontend and Java 25 + Spring Boot backend in one repository.
 
 ## Requirements
 
 - Node.js 22.18+ on the 22.x line (use `.nvmrc`) and npm.
-- JDK 21 with `JAVA_HOME` set and Java on `PATH`.
+- JDK 25 with `JAVA_HOME` set and Java on `PATH`.
 - Docker Compose, only when using the local PostgreSQL profile.
 - Maven is downloaded by the committed Maven Wrapper.
 
@@ -35,6 +35,24 @@ database and exposes only the health endpoint. Start the `local` profile to
 enable the PostgreSQL-backed admin course and payment APIs. Clerk handles
 sign-up and sign-in in the frontend, while Spring Security validates Clerk JWTs
 for protected admin endpoints.
+
+To measure a slow `GET /api/catalog/courses` request, start the local backend
+with timing logs enabled:
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local" "-Dspring-boot.run.arguments=--logging.level.com.courseflow.payment.CatalogCourseTiming=DEBUG"
+```
+
+Each request gets a `requestId` shared by the `controller`,
+`service`, `repository`, and `jdbc.query` log lines. Times are in milliseconds
+and the nested stages overlap, so do not add them together. `jdbc.query`
+measures the entire JDBC call, including connection acquisition, SQL execution,
+result transfer, and row mapping; it does not isolate PostgreSQL server time.
+The controller timer does not include HTTP response serialization or network time.
+
+See [request timeout policy and audit](docs/request-timeouts.md) for browser
+deadlines, affected pages, payment retry behavior, and backend timeout boundaries.
 
 Create `frontend/.env.local` and add the Clerk publishable key:
 
@@ -136,7 +154,7 @@ With PostgreSQL running, verify database startup and migrations using
 `.\mvnw.cmd test "-Dspring.profiles.active=local"`.
 
 CI runs these checks on pull requests to `main` and pushes to `main` using
-Node 22 and Java 21; its database check uses a PostgreSQL service.
+Node 22 and Java 25; its database check uses a PostgreSQL service.
 
 ## Layout and collaboration
 

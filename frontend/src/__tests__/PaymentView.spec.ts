@@ -106,6 +106,102 @@ afterEach(() => {
 })
 
 describe('checkout', () => {
+  it('reloads checkout after a timeout before enabling payment details', async () => {
+    mocks.getPaymentConfig.mockRejectedValueOnce(new Error('Loading took too long.'))
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined()
+    expect(mocks.createOrder).not.toHaveBeenCalled()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Reload checkout')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeUndefined()
+    expect(mocks.createOrder).toHaveBeenCalledTimes(1)
+    expect(mocks.createCardPayment).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('does not create an order if configuration arrives after leaving checkout', async () => {
+    let finish!: (value: PaymentConfig) => void
+    mocks.getPaymentConfig.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    wrapper.unmount()
+    finish({ enabled: true, publicKey: 'pkey_test_123' })
+    await flushPromises()
+    expect(mocks.createOrder).not.toHaveBeenCalled()
+  })
+
+  it('does not charge a card if tokenization finishes after leaving checkout', async () => {
+    let finish!: (value: string) => void
+    mocks.tokenizeCard.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('input[autocomplete="cc-number"]').setValue('4242424242424242')
+    await wrapper.get('input[autocomplete="cc-name"]').setValue('Test Buyer')
+    await wrapper.get('input[autocomplete="cc-exp"]').setValue('12/30')
+    await wrapper.get('input[autocomplete="cc-csc"]').setValue('123')
+    await wrapper.get('form').trigger('submit')
+    expect(mocks.tokenizeCard).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+    finish('tokn_test_late')
+    await flushPromises()
+    expect(mocks.createCardPayment).not.toHaveBeenCalled()
+    expect(mocks.continueCardAuthentication).not.toHaveBeenCalled()
+  })
+
+  it('does not navigate back to payment when a charge response arrives after leaving', async () => {
+    let finish!: (value: PaymentResponse) => void
+    mocks.createPromptPayPayment.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('input[value="qr"]').setValue()
+    await wrapper.get('form').trigger('submit')
+    wrapper.unmount()
+    await router.push('/')
+    finish(pending)
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/')
+    expect(mocks.createPromptPayPayment).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps recovery mode if checking a lost payment response also times out', async () => {
+    mocks.createPromptPayPayment.mockRejectedValue(new Error('timeout'))
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('input[value="qr"]').setValue()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    mocks.createOrder.mockRejectedValueOnce(new Error('timeout'))
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('button[type="submit"]').text()).toBe('Check payment status')
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined()
+    expect(mocks.createPromptPayPayment).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
   it('loads the selected course and authoritative total before payment', async () => {
     const router = await createTestRouter()
     const wrapper = mount(PaymentView, { global: { plugins: [router] } })
@@ -285,35 +381,41 @@ describe('checkout', () => {
     wrapper.unmount()
   })
 
-  it('tokenizes card data and continues 3-D Secure without sending PAN or CVV to the backend', async () => {
-    const authorizeUrl = 'https://api.omise.co/payments/paym_test_123/authorize'
-    mocks.createCardPayment.mockResolvedValue({
-      ...pending,
-      method: 'card',
-      authorizeUrl,
-      qrUrl: null,
-    })
-    const router = await createTestRouter()
-    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
-    await flushPromises()
-    await wrapper.get('form').trigger('submit')
-    expect(wrapper.get('[role="alert"]').text()).toContain('complete all card details')
-    await wrapper.get('input[autocomplete="cc-number"]').setValue('4242424242424242')
-    await wrapper.get('input[autocomplete="cc-name"]').setValue('Test Buyer')
-    await wrapper.get('input[autocomplete="cc-exp"]').setValue('12/30')
-    await wrapper.get('input[autocomplete="cc-csc"]').setValue('123')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-    expect(mocks.createCardPayment).toHaveBeenCalledWith(
-      order.orderId,
-      'tokn_test_123',
-      expect.any(String),
-    )
-    expect(mocks.createCardPayment.mock.calls.flat().join(' ')).not.toContain('4242424242424242')
-    expect(mocks.continueCardAuthentication).toHaveBeenCalledWith(authorizeUrl)
-    expect(router.currentRoute.value.name).toBe('payment-status')
-    wrapper.unmount()
-  })
+  it.each([true, false])(
+    'tokenizes safely and only opens 3-D Secure after navigation succeeds (%s)',
+    async (navigationSucceeds) => {
+      const authorizeUrl = 'https://api.omise.co/payments/paym_test_123/authorize'
+      mocks.createCardPayment.mockResolvedValue({
+        ...pending,
+        method: 'card',
+        authorizeUrl,
+        qrUrl: null,
+      })
+      const router = await createTestRouter()
+      const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+      await flushPromises()
+      await wrapper.get('form').trigger('submit')
+      expect(wrapper.get('[role="alert"]').text()).toContain('complete all card details')
+      await wrapper.get('input[autocomplete="cc-number"]').setValue('4242424242424242')
+      await wrapper.get('input[autocomplete="cc-name"]').setValue('Test Buyer')
+      await wrapper.get('input[autocomplete="cc-exp"]').setValue('12/30')
+      await wrapper.get('input[autocomplete="cc-csc"]').setValue('123')
+      if (!navigationSucceeds) vi.spyOn(router, 'push').mockResolvedValue(undefined)
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(mocks.createCardPayment).toHaveBeenCalledWith(
+        order.orderId,
+        'tokn_test_123',
+        expect.any(String),
+      )
+      expect(mocks.createCardPayment.mock.calls.flat().join(' ')).not.toContain('4242424242424242')
+      expect(mocks.continueCardAuthentication.mock.calls).toEqual(
+        navigationSucceeds ? [[authorizeUrl]] : [],
+      )
+      expect(router.currentRoute.value.name).toBe(navigationSucceeds ? 'payment-status' : 'payment')
+      wrapper.unmount()
+    },
+  )
 
   it('formats and limits the card number to exactly 16 digits', async () => {
     const router = await createTestRouter()
@@ -330,6 +432,44 @@ describe('checkout', () => {
 })
 
 describe('payment status', () => {
+  it('retries only the QR download after a timeout', async () => {
+    mocks.downloadQr.mockRejectedValueOnce(new Error('Loading took too long.'))
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:retry-qr')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    const router = await createTestRouter(`/payment/qr?paymentId=${paymentId}`)
+    const wrapper = mount(PaymentQrView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Loading took too long.')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Reload QR code')!
+      .trigger('click')
+    await flushPromises()
+    expect(mocks.downloadQr).toHaveBeenCalledTimes(2)
+    expect(mocks.downloadQr).toHaveBeenLastCalledWith(paymentId)
+    expect(mocks.createPromptPayPayment).not.toHaveBeenCalled()
+    expect(wrapper.get('img[alt^="QR code"]').attributes('src')).toBe('blob:retry-qr')
+    wrapper.unmount()
+  })
+
+  it('keeps polling after a status timeout without recreating the payment', async () => {
+    vi.useFakeTimers()
+    mocks.getPayment
+      .mockRejectedValueOnce(new Error('Loading took too long.'))
+      .mockResolvedValue({ ...pending, status: 'successful' })
+    const router = await createTestRouter(`/payment/status?paymentId=${paymentId}`)
+    const wrapper = mount(PaymentStatusView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Loading took too long.')
+    await vi.advanceTimersByTimeAsync(5000)
+    await flushPromises()
+    expect(wrapper.get('h1').text()).toBe('Thank you for subscribing.')
+    expect(mocks.getPayment).toHaveBeenCalledTimes(2)
+    expect(mocks.createCardPayment).not.toHaveBeenCalled()
+    expect(mocks.createPromptPayPayment).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('loads QR using the signed-in API session and saves the correct image extension', async () => {
     mocks.downloadQr.mockResolvedValue(new Blob(['<svg/>'], { type: 'image/svg+xml' }))
     const router = await createTestRouter(`/payment/qr?paymentId=${paymentId}`)

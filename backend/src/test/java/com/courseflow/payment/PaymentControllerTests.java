@@ -59,6 +59,23 @@ class PaymentControllerTests {
     }
 
     @Test
+    void enrollmentLookupIsPrivateAndScopedToTheJwtSubject() throws Exception {
+        mvc.perform(get("/api/me/enrollments")).andExpect(status().isUnauthorized());
+        verify(payments, never()).enrollments(any());
+        when(payments.enrollments("user_buyer"))
+            .thenReturn(List.of(new CourseEnrollmentView(9L, "Purchased course")));
+        mvc.perform(get("/api/me/enrollments?subject=user_other")
+                .with(jwt().jwt(j -> j.subject("user_buyer"))))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Cache-Control", "no-store"))
+            .andExpect(jsonPath("$[0].courseId").value(9))
+            .andExpect(jsonPath("$[0].courseTitle").value("Purchased course"))
+            .andExpect(jsonPath("$[0].progressPercent").doesNotExist());
+        verify(payments).enrollments("user_buyer");
+        verify(payments, never()).enrollments("user_other");
+    }
+
+    @Test
     void subscriptionsAreScopedToSignedInBuyer() throws Exception {
         mvc.perform(get("/api/me/subscriptions").with(jwt().jwt(j -> j.subject("user_buyer"))))
             .andExpect(status().isOk());

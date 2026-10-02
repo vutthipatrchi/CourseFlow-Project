@@ -1,17 +1,11 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { toast } from 'vue-sonner'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
-import { getCourseAccess } from '@/lib/courseAccess'
 import { checkoutCourseFixture } from './checkoutCourseFixture'
 
-vi.mock('@/lib/courseAccess', () => ({
-  getCourseAccess: vi.fn(),
-  learningPathForSubscription: (courseId: number) => `/courses/course-${courseId}/learn/sub-1-1`,
-}))
-
-async function mountCard() {
+async function mountCard(overrides: Partial<InstanceType<typeof SubscribeCard>['$props']> = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -32,6 +26,12 @@ async function mountCard() {
       category: 'Course',
       title: 'Software Developer',
       description: 'Learn to code',
+      checkoutCourse: checkoutCourseFixture({ id: 9, name: 'Software Developer' }),
+      enrolled: false,
+      subscriptionCourseId: null,
+      loadingCourse: false,
+      checkoutError: '',
+      ...overrides,
     },
     global: { plugins: [router] },
   })
@@ -40,19 +40,26 @@ async function mountCard() {
 }
 
 describe('SubscribeCard', () => {
-  // Block body, not an implicit return: mockReset() returns the mock itself, and returning that
-  // from a Vitest hook makes the hook's own async handling misfire, surfacing an unrelated
-  // in-test promise rejection as an unhandled one (only visible once a test actually rejects).
-  beforeEach(() => {
-    vi.mocked(getCourseAccess).mockReset()
+  it('disables checkout and asks the parent to retry an access failure', async () => {
+    const { wrapper } = await mountCard({ checkoutError: 'Unable to check course access.' })
+    const button = wrapper
+      .findAll('button')
+      .find((item) => item.text() === 'Subscribe This Course')!
+    expect(button.attributes('disabled')).toBeDefined()
+    await wrapper.get('[role="alert"] button').trigger('click')
+    expect(wrapper.emitted('retry')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('raises a success toast when adding the course to the wishlist', async () => {
+    const successSpy = vi.spyOn(toast, 'success')
+    const { wrapper } = await mountCard()
+    await wrapper.get('button:first-of-type').trigger('click')
+    expect(successSpy).toHaveBeenCalledWith('Added to wishlist successfully!')
+    wrapper.unmount()
   })
 
   it('uses the backend course ID and price for checkout', async () => {
-    vi.mocked(getCourseAccess).mockResolvedValue({
-      enrolled: false,
-      checkoutCourse: checkoutCourseFixture({ id: 9, name: 'Software Developer' }),
-      subscriptionCourseId: null,
-    })
     const { wrapper, router } = await mountCard()
 
     expect(wrapper.text()).toContain('THB 3,559.00')
@@ -63,12 +70,7 @@ describe('SubscribeCard', () => {
   })
 
   it('shows Start learning instead of Subscribe when already purchased', async () => {
-    vi.mocked(getCourseAccess).mockResolvedValue({
-      enrolled: true,
-      checkoutCourse: checkoutCourseFixture({ id: 9, name: 'Software Developer' }),
-      subscriptionCourseId: 9,
-    })
-    const { wrapper, router } = await mountCard()
+    const { wrapper, router } = await mountCard({ enrolled: true, subscriptionCourseId: 9 })
 
     expect(wrapper.text()).toContain('Already purchased')
     expect(wrapper.text()).not.toContain('Subscribe This Course')
@@ -82,12 +84,10 @@ describe('SubscribeCard', () => {
   })
 
   it('blocks checkout when the course is absent from the catalog', async () => {
-    vi.mocked(getCourseAccess).mockResolvedValue({
-      enrolled: false,
+    const { wrapper } = await mountCard({
       checkoutCourse: null,
-      subscriptionCourseId: null,
+      checkoutError: 'This course is not available for checkout yet.',
     })
-    const { wrapper } = await mountCard()
 
     expect(wrapper.get('[role="alert"]').text()).toContain('not available for checkout')
     expect(
@@ -96,31 +96,6 @@ describe('SubscribeCard', () => {
         .find((button) => button.text() === 'Subscribe This Course')
         ?.attributes('disabled'),
     ).toBeDefined()
-    wrapper.unmount()
-  })
-
-  it('raises a matching toast when the course price fails to load', async () => {
-    vi.mocked(getCourseAccess).mockRejectedValue(new Error('network down'))
-    const errorSpy = vi.spyOn(toast, 'error')
-    const { wrapper } = await mountCard()
-
-    expect(wrapper.get('[role="alert"]').text()).toContain('Unable to load the course price')
-    expect(errorSpy).toHaveBeenCalledWith('Unable to load the course price. Please try again.')
-    wrapper.unmount()
-  })
-
-  it('raises a success toast when adding the course to the wishlist', async () => {
-    vi.mocked(getCourseAccess).mockResolvedValue({
-      enrolled: false,
-      checkoutCourse: checkoutCourseFixture({ id: 1, name: 'Software Developer' }),
-      subscriptionCourseId: null,
-    })
-    const successSpy = vi.spyOn(toast, 'success')
-    const { wrapper } = await mountCard()
-
-    await wrapper.get('button:first-of-type').trigger('click')
-
-    expect(successSpy).toHaveBeenCalledWith('Added to wishlist successfully!')
     wrapper.unmount()
   })
 })

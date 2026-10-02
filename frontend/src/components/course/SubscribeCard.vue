@@ -1,10 +1,9 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 // ── SubscribeCard ─────────────────────────────────────────────────────────
 // Sticky price card with wishlist and checkout actions.
 
-import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCourseAccess, learningPathForSubscription } from '@/lib/courseAccess'
+import { learningPathForSubscription } from '@/lib/courseAccess'
 import type { CheckoutCourse } from '@/api/payments'
 import { useToast } from '@/composables/useToast'
 
@@ -12,53 +11,26 @@ type Props = {
   category: string
   title: string
   description: string
+  checkoutCourse: CheckoutCourse | null
+  enrolled: boolean
+  subscriptionCourseId: number | null
+  loadingCourse: boolean
+  checkoutError: string
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{ retry: [] }>()
 
 const router = useRouter()
-const { success, error: notifyError } = useToast()
-const checkoutCourse = ref<CheckoutCourse | null>(null)
-const enrolled = ref(false)
-const subscriptionCourseId = ref<number | null>(null)
-const loadingCourse = ref(true)
-const checkoutError = ref('')
-
-async function loadCheckoutCourse() {
-  const title = props.title
-  loadingCourse.value = true
-  checkoutCourse.value = null
-  enrolled.value = false
-  subscriptionCourseId.value = null
-  checkoutError.value = ''
-  try {
-    const access = await getCourseAccess(title)
-    if (title !== props.title) return
-    checkoutCourse.value = access.checkoutCourse
-    enrolled.value = access.enrolled
-    subscriptionCourseId.value = access.subscriptionCourseId
-    if (!access.checkoutCourse && !access.enrolled)
-      checkoutError.value = 'This course is not available for checkout yet.'
-  } catch {
-    if (title === props.title) {
-      checkoutError.value = 'Unable to load the course price. Please try again.'
-      notifyError(checkoutError.value)
-    }
-  } finally {
-    if (title === props.title) loadingCourse.value = false
-  }
-}
-
-watch(() => props.title, loadCheckoutCourse, { immediate: true })
-
+const { success } = useToast()
 function goToPayment() {
-  if (!checkoutCourse.value) return
-  router.push({ name: 'payment', query: { courseId: checkoutCourse.value.id } })
+  if (!props.checkoutCourse || props.loadingCourse || props.checkoutError) return
+  router.push({ name: 'payment', query: { courseId: props.checkoutCourse.id } })
 }
 
 function goToLearning() {
-  if (!subscriptionCourseId.value) return
-  router.push(learningPathForSubscription(subscriptionCourseId.value))
+  if (!props.subscriptionCourseId || props.loadingCourse || props.checkoutError) return
+  router.push(learningPathForSubscription(props.subscriptionCourseId))
 }
 
 // Unrelated to the toast migration: this click isn't persisted anywhere yet (out of scope
@@ -86,13 +58,13 @@ const addToWishlist = () => {
     </p>
     <p v-if="checkoutError" role="alert" class="text-sm text-red-700">
       {{ checkoutError }}
-      <button type="button" class="ml-1 underline" @click="loadCheckoutCourse">Try again</button>
+      <button type="button" class="ml-1 underline" @click="emit('retry')">Try again</button>
     </p>
     <div class="flex flex-col gap-4 border-t border-[#D6D9E4] pt-16">
       <template v-if="enrolled">
         <button
           type="button"
-          :disabled="!subscriptionCourseId || loadingCourse"
+          :disabled="!subscriptionCourseId || loadingCourse || !!checkoutError"
           class="cursor-pointer rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           @click="goToLearning"
         >
@@ -115,7 +87,7 @@ const addToWishlist = () => {
         </button>
         <button
           type="button"
-          :disabled="!checkoutCourse || loadingCourse"
+          :disabled="!checkoutCourse || loadingCourse || !!checkoutError"
           class="cursor-pointer rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           @click="goToPayment"
         >

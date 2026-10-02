@@ -2,7 +2,7 @@
 // ── CourseDetailView ──────────────────────────────────────────────────────
 // Guest-facing page showing one course's detail, modules, and subscribe card
 
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
@@ -11,7 +11,7 @@ import ModuleAccordion from '@/components/course/ModuleAccordion.vue'
 import LessonReading from '@/components/course/LessonReading.vue'
 import LessonSample from '@/components/course/LessonSample.vue'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
-import { getCheckoutCourse } from '@/api/payments'
+import { getCheckoutCourse, type CheckoutCourse } from '@/api/payments'
 import { getPublicDemoContent } from '@/api/demoContent'
 import { createDemoModules } from '@/data/demoLessons'
 import { catalogCourseId, toStorefrontCourse } from '@/lib/catalogCourses'
@@ -25,6 +25,7 @@ const router = useRouter()
 const { error: notifyError } = useToast()
 
 const course = ref<Course | undefined>()
+const checkoutCourse = ref<CheckoutCourse | null>(null)
 const courseLoading = ref(true)
 const courseError = ref('')
 const previewModules = ref<Module[]>([])
@@ -40,6 +41,11 @@ const startLearningBusy = ref(false)
 let previewRequest = 0
 let accessRequest = 0
 let courseRequest = 0
+onUnmounted(() => {
+  courseRequest++
+  accessRequest++
+  previewRequest++
+})
 
 async function loadCourse() {
   const request = ++courseRequest
@@ -47,6 +53,9 @@ async function loadCourse() {
   courseLoading.value = true
   courseError.value = ''
   course.value = undefined
+  checkoutCourse.value = null
+  accessRequest++
+  accessLoading.value = false
   if (!id) {
     courseError.value = 'Course not found.'
     notifyError(courseError.value)
@@ -56,6 +65,7 @@ async function loadCourse() {
   try {
     const catalogCourse = await getCheckoutCourse(id)
     if (request !== courseRequest) return
+    checkoutCourse.value = catalogCourse
     course.value = toStorefrontCourse(catalogCourse)
   } catch (error) {
     if (request !== courseRequest) return
@@ -69,18 +79,23 @@ async function loadCourse() {
 async function loadAccess() {
   const request = ++accessRequest
   const title = course.value?.title
+  const selectedCourse = checkoutCourse.value
   enrolled.value = false
   subscriptionCourseId.value = null
   accessError.value = ''
-  if (!title) return
+  if (!title || !selectedCourse) return
   accessLoading.value = true
   try {
-    const access = await getCourseAccess(title)
+    const access = await getCourseAccess(title, selectedCourse)
     if (request !== accessRequest) return
     enrolled.value = access.enrolled
     subscriptionCourseId.value = access.subscriptionCourseId
   } catch {
-    if (request === accessRequest) enrolled.value = false
+    if (request === accessRequest) {
+      enrolled.value = false
+      accessError.value = 'Unable to check course access. Please try again.'
+      notifyError(accessError.value)
+    }
   } finally {
     if (request === accessRequest) accessLoading.value = false
   }
@@ -97,7 +112,7 @@ async function startLearning() {
   startLearningBusy.value = true
   accessError.value = ''
   try {
-    const access = await getCourseAccess(course.value.title)
+    const access = await getCourseAccess(course.value.title, checkoutCourse.value ?? undefined)
     if (!access.enrolled || !access.subscriptionCourseId) {
       enrolled.value = false
       subscriptionCourseId.value = null
@@ -263,6 +278,12 @@ watch(course, () => {
         :category="course.category"
         :title="course.title"
         :description="course.description"
+        :checkout-course="checkoutCourse"
+        :enrolled="enrolled"
+        :subscription-course-id="subscriptionCourseId"
+        :loading-course="accessLoading"
+        :checkout-error="accessError"
+        @retry="loadAccess"
       />
     </main>
     <CtaBanner />

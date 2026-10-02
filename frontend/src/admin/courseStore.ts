@@ -1,4 +1,4 @@
-import { getToken } from '@clerk/vue'
+import client from '@/api/client'
 import { ref } from 'vue'
 
 export type CourseLesson = { id: number; name: string; subLessons: number }
@@ -33,38 +33,12 @@ export type CoursePayload = Omit<
   lessonItems: Array<{ id?: number; name: string; subLessons: number }>
 }
 
-const API_URL = '/api/admin/courses'
+const API_URL = '/admin/courses'
 
 export const courses = ref<Course[]>([])
 export const coursesLoading = ref(false)
 export const coursesError = ref('')
 let coursesLoaded = false
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const token = await getToken()
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
-  })
-
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`
-    try {
-      const body = (await response.json()) as { detail?: string; message?: string }
-      message = body.detail || body.message || message
-    } catch {
-      // Keep the HTTP fallback when the backend did not return JSON.
-    }
-    throw new Error(message)
-  }
-
-  if (response.status === 204) return undefined as T
-  return (await response.json()) as T
-}
 
 export async function loadCourses(force = false) {
   if (coursesLoaded && !force) return courses.value
@@ -72,7 +46,7 @@ export async function loadCourses(force = false) {
   coursesLoading.value = true
   coursesError.value = ''
   try {
-    courses.value = await request<Course[]>(API_URL)
+    courses.value = (await client.get<Course[]>(API_URL)).data
     coursesLoaded = true
     return courses.value
   } catch (error) {
@@ -87,7 +61,7 @@ export async function getCourse(id: number, force = false) {
   const cached = courses.value.find((course) => course.id === id)
   if (!force && cached?.lessonItems) return cached
 
-  const course = await request<Course>(`${API_URL}/${id}`)
+  const { data: course } = await client.get<Course>(`${API_URL}/${id}`)
   const index = courses.value.findIndex((item) => item.id === id)
   if (index >= 0) courses.value[index] = course
   else courses.value.push(course)
@@ -95,20 +69,14 @@ export async function getCourse(id: number, force = false) {
 }
 
 export async function addCourse(course: CoursePayload) {
-  const created = await request<Course>(API_URL, {
-    method: 'POST',
-    body: JSON.stringify(course),
-  })
+  const { data: created } = await client.post<Course>(API_URL, course)
   courses.value.unshift(created)
   coursesLoaded = true
   return created
 }
 
 export async function updateCourse(id: number, updates: CoursePayload) {
-  const updated = await request<Course>(`${API_URL}/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(updates),
-  })
+  const { data: updated } = await client.put<Course>(`${API_URL}/${id}`, updates)
   const index = courses.value.findIndex((course) => course.id === id)
   if (index >= 0) courses.value[index] = updated
   else courses.value.push(updated)
@@ -116,7 +84,7 @@ export async function updateCourse(id: number, updates: CoursePayload) {
 }
 
 export async function removeCourse(id: number) {
-  await request<void>(`${API_URL}/${id}`, { method: 'DELETE' })
+  await client.delete(`${API_URL}/${id}`)
   courses.value = courses.value.filter((course) => course.id !== id)
 }
 

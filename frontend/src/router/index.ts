@@ -1,4 +1,4 @@
-import { getToken } from '@clerk/vue'
+import { getSessionToken } from '@/api/sessionToken'
 import { getRoleFromToken } from '@/lib/jwt'
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -150,7 +150,12 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth) return
 
-  const token = await getToken()
+  let token: string | null
+  try {
+    token = await getSessionToken(new AbortController().signal)
+  } catch {
+    return { name: 'sign-in', query: { redirect: to.fullPath } }
+  }
   if (!token) {
     return { name: 'sign-in', query: { redirect: to.fullPath } }
   }
