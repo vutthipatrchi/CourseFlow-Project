@@ -7,6 +7,7 @@ import iconPerson from '@/assets/landing/icon-person.svg'
 import heroTriangle from '@/assets/landing/hero-triangle.svg'
 import { loadProfile, updateProfile, profileLoading, profileError } from '@/profile/profileStore'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const { user } = useUser()
 const { success: notifySuccess, error: notifyError } = useToast()
@@ -210,8 +211,8 @@ async function handleSubmit() {
               />
             </div>
 
-            <p v-if="profileLoading" role="status" class="mt-6 text-sm text-gray-600">
-              Loading profile…
+            <p v-if="profileLoading" role="status" class="mt-6">
+              <Spinner label="Loading profile…" />
             </p>
             <div v-else-if="profileError" role="alert" class="mt-6 text-sm text-red-600">
               <p>{{ profileError }}</p>
