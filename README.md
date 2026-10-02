@@ -102,6 +102,8 @@ Supabase → Project Settings → Database → Connection string. Spring Boot lo
 this file automatically via `spring.config.import` if it exists, so no shell
 env vars are needed.
 
+See [course details and PostgreSQL integration testing](docs/course-details.md) for the database-backed catalog descriptions and V18 to V19 upgrade checks.
+
 ## Payment setup (Opn Payments / Omise)
 
 The checkout supports card tokenization and PromptPay QR payments. Add the
