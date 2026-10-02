@@ -11,7 +11,6 @@ import {
   getPaymentConfig,
   tokenizeCard,
   continueCardAuthentication,
-  type PaymentConfig,
   type OrderCreated,
   type PaymentView,
 } from '@/api/payments'
@@ -23,7 +22,10 @@ const paymentMethod = ref<'card' | 'qr'>('card')
 const promoCode = ref('')
 const promoMessage = ref('')
 const order = ref<OrderCreated | null>(null)
-const courseTitle = computed(() => order.value?.courseTitle ?? 'Loading your course…')
+const courseTitle = computed(
+  () =>
+    order.value?.courseTitle ?? (processing.value ? 'Loading your course…' : 'Course unavailable'),
+)
 const subtotal = computed(() => (order.value?.subtotalSatang ?? 0) / 100)
 const discount = computed(() => (order.value?.discountSatang ?? 0) / 100)
 const total = computed(() => (order.value?.totalSatang ?? 0) / 100)
@@ -31,7 +33,6 @@ const submitted = ref(false)
 const processing = ref(false)
 const recovering = ref(false)
 const errorMessage = ref('')
-const paymentConfig = ref<PaymentConfig | null>(null)
 const card = reactive({ number: '', owner: '', expiry: '', cvv: '' })
 let attemptKey = crypto.randomUUID()
 let disposed = false
@@ -108,10 +109,6 @@ async function initialize() {
   processing.value = true
   errorMessage.value = ''
   try {
-    paymentConfig.value = await getPaymentConfig()
-    if (disposed) return
-    if (!paymentConfig.value.enabled)
-      throw new Error('Payment is not configured yet. Please contact support.')
     await prepareOrder()
   } catch (error) {
     fail(messageFrom(error))
@@ -151,9 +148,9 @@ async function applyPromo() {
 }
 
 async function confirmPayment() {
-  if (processing.value) return
+  if (processing.value || disposed) return
   errorMessage.value = ''
-  if (!order.value || !paymentConfig.value?.enabled) return
+  if (!order.value || order.value.payment) return
   // A lost HTTP response never authorizes a second charge. Recover the persisted order first.
   if (recovering.value) {
     processing.value = true
@@ -189,6 +186,10 @@ async function confirmPayment() {
   processing.value = true
   let chargeRequested = false
   try {
+    const paymentConfig = await getPaymentConfig()
+    if (disposed) return
+    if (!paymentConfig.enabled)
+      throw new Error('Payment is not configured yet. Please contact support.')
     let payment: PaymentView
     if (paymentMethod.value === 'qr') {
       chargeRequested = true
@@ -197,7 +198,7 @@ async function confirmPayment() {
       const expiry = expiryParts.value!
       let token: string
       try {
-        token = await tokenizeCard(paymentConfig.value.publicKey, {
+        token = await tokenizeCard(paymentConfig.publicKey, {
           name: card.owner.trim(),
           number: digits.value,
           expirationMonth: Number(expiry[1]),
@@ -260,7 +261,7 @@ async function confirmPayment() {
           novalidate
           @submit.prevent="confirmPayment"
         >
-          <fieldset :disabled="processing || recovering || !order || !paymentConfig?.enabled">
+          <fieldset :disabled="processing || recovering || !order">
             <legend class="mb-4 text-base leading-6 text-gray-700">Select payment method</legend>
 
             <div class="space-y-2">
@@ -392,19 +393,13 @@ async function confirmPayment() {
                 <input
                   id="promo-code"
                   v-model="promoCode"
-                  :disabled="processing || recovering || !order || !paymentConfig?.enabled"
+                  :disabled="processing || recovering || !order"
                   placeholder="Promotion code"
                   class="h-12 min-w-0 flex-1 rounded-lg border border-gray-400 bg-white px-4 uppercase placeholder:normal-case placeholder:text-gray-600 focus:border-blue-600 focus:outline-none"
                 />
                 <button
                   type="button"
-                  :disabled="
-                    !promoCode.trim() ||
-                    processing ||
-                    recovering ||
-                    !order ||
-                    !paymentConfig?.enabled
-                  "
+                  :disabled="!promoCode.trim() || processing || recovering || !order"
                   class="h-12 rounded-xl bg-blue-600 px-5 font-semibold text-white hover:bg-blue-900 disabled:bg-gray-400 disabled:text-gray-600"
                   @click="applyPromo"
                 >
@@ -419,7 +414,7 @@ async function confirmPayment() {
             <dl class="space-y-6 text-base leading-6">
               <div class="flex justify-between gap-4">
                 <dt>Subtotal</dt>
-                <dd class="text-gray-700">{{ formatThb(subtotal) }}</dd>
+                <dd class="text-gray-700">{{ order ? formatThb(subtotal) : '—' }}</dd>
               </div>
               <div v-if="discount" class="flex justify-between gap-4">
                 <dt>Discount</dt>
@@ -432,7 +427,7 @@ async function confirmPayment() {
               <div class="flex items-center justify-between gap-4">
                 <dt>Total</dt>
                 <dd class="text-2xl leading-[30px] font-medium text-gray-700">
-                  {{ formatThb(total) }}
+                  {{ order ? formatThb(total) : '—' }}
                 </dd>
               </div>
             </dl>
@@ -458,7 +453,7 @@ async function confirmPayment() {
               </button>
               <button
                 type="submit"
-                :disabled="processing || !order || !paymentConfig?.enabled"
+                :disabled="processing || !order || !!order.payment"
                 class="min-h-[60px] w-full rounded-xl bg-blue-600 px-4 py-4 text-base font-semibold text-white shadow-[4px_4px_16px_rgba(0,0,0,0.08)] hover:bg-blue-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 {{
