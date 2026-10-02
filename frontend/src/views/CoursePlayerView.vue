@@ -88,6 +88,7 @@ let progressRequest = 0
 // The caller's assignments for this course, keyed by sub-lesson id (the id the progress API returns).
 const myAssignments = ref<Record<number, MyAssignment>>({})
 const assignmentError = ref('')
+const submittingAssignment = ref(false)
 const demoContent = ref<DemoContentRow[]>([])
 const demoContentError = ref('')
 let lastProgress: CourseProgressView | null = null
@@ -346,23 +347,28 @@ watch(
 const handleAssignmentSubmit = async (answer: string) => {
   const assignment = currentEntry.value?.subLesson.assignment
   if (!assignment) return
-  const apiId = Number(assignment.id)
-  if (backendCourseId.value && Number.isInteger(apiId)) {
-    // Real course: the answer is saved through the API and the card shows what the server returns.
-    try {
-      const saved = await submitAssignment(apiId, answer)
-      myAssignments.value = { ...myAssignments.value, [saved.subLessonId]: saved }
-      if (lastProgress) applyProgress(lastProgress)
-      assignmentError.value = ''
-    } catch (error) {
-      failAssignment(toApiError(error).message)
-      return
+  submittingAssignment.value = true
+  try {
+    const apiId = Number(assignment.id)
+    if (backendCourseId.value && Number.isInteger(apiId)) {
+      // Real course: the answer is saved through the API and the card shows what the server returns.
+      try {
+        const saved = await submitAssignment(apiId, answer)
+        myAssignments.value = { ...myAssignments.value, [saved.subLessonId]: saved }
+        if (lastProgress) applyProgress(lastProgress)
+        assignmentError.value = ''
+      } catch (error) {
+        failAssignment(toApiError(error).message)
+        return
+      }
+    } else {
+      assignment.status = 'submitted'
+      assignment.answer = answer
     }
-  } else {
-    assignment.status = 'submitted'
-    assignment.answer = answer
+    notifySuccess('Assignment submitted successfully!')
+  } finally {
+    submittingAssignment.value = false
   }
-  notifySuccess('Assignment submitted successfully!')
 }
 </script>
 
@@ -464,6 +470,7 @@ const handleAssignmentSubmit = async (answer: string) => {
             <AssignmentCard
               v-if="currentEntry.subLesson.assignment"
               :assignment="currentEntry.subLesson.assignment"
+              :submitting="submittingAssignment"
               @submit="handleAssignmentSubmit"
             />
             <!-- Marks the lesson complete once this end-of-reading marker enters view. -->

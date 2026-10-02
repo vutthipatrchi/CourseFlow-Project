@@ -28,6 +28,7 @@ const assignments = ref<MyAssignment[]>([])
 const loading = ref(true)
 const loadError = ref('')
 const submitError = ref('')
+const submittingId = ref<number | null>(null)
 const { success: notifySuccess, error: notifyError } = useToast()
 
 async function load() {
@@ -70,6 +71,7 @@ function openInCourseHref(assignment: MyAssignment): string {
 
 async function handleSubmit(assignment: MyAssignment, answer: string) {
   submitError.value = ''
+  submittingId.value = assignment.id
   // The page lists assignments across every course; say which one was submitted.
   const which = `${assignment.courseName} · ${assignment.lessonName}: ${assignment.subLessonName}`
   try {
@@ -80,6 +82,8 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
   } catch (failure) {
     submitError.value = toApiError(failure).message
     notifyError(submitError.value, { description: which })
+  } finally {
+    submittingId.value = null
   }
 }
 </script>
@@ -176,6 +180,7 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
           :course-title="assignment.courseName"
           :lesson-title="`${assignment.lessonName}: ${assignment.subLessonName}`"
           :open-in-course-href="openInCourseHref(assignment)"
+          :submitting="submittingId === assignment.id"
           @submit="(answer) => handleSubmit(assignment, answer)"
         />
       </section>

@@ -660,8 +660,14 @@ async function saveCourse() {
           <section class="lessons-section">
             <div class="section-heading">
               <h2>Lesson</h2>
-              <button class="add-lesson-button" type="button" @click="addLesson">
-                + Add Lesson
+              <button
+                class="add-lesson-button"
+                type="button"
+                :disabled="isSaving"
+                @click="addLesson"
+              >
+                <Spinner v-if="isSaving" size="xs" inverted />
+                <template v-else>+ Add Lesson</template>
               </button>
             </div>
             <div class="lessons-card">
@@ -937,7 +943,8 @@ h1 span {
   background: #2f5fac;
   color: #fff;
 }
-.save-button:disabled {
+.save-button:disabled,
+.add-lesson-button:disabled {
   cursor: wait;
   opacity: 0.65;
 }

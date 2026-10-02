@@ -226,10 +226,11 @@ watch(course, () => {
             v-if="enrolled"
             type="button"
             :disabled="startLearningBusy || accessLoading"
-            class="inline-flex w-fit cursor-pointer rounded-lg bg-[#2F5FAC] px-5 py-3 text-sm font-bold text-white hover:bg-[#254F93] disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex w-fit cursor-pointer items-center justify-center rounded-lg bg-[#2F5FAC] px-5 py-3 text-sm font-bold text-white hover:bg-[#254F93] disabled:cursor-not-allowed disabled:opacity-60"
             @click="startLearning"
           >
-            {{ startLearningBusy ? 'Opening…' : 'Start learning' }}
+            <Spinner v-if="startLearningBusy" size="xs" inverted />
+            <template v-else>Start learning</template>
           </button>
           <p v-else-if="!accessLoading" class="text-sm text-[#646D89]">
             Subscribe to this course to unlock Start learning.

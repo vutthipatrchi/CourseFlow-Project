@@ -5,15 +5,17 @@
 
 import { computed, ref } from 'vue'
 import type { Assignment } from '@/types/course'
+import Spinner from '@/components/common/Spinner.vue'
 
 type Props = {
   assignment: Assignment
   courseTitle?: string
   lessonTitle?: string
   openInCourseHref?: string
+  submitting?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { submitting: false })
 
 const emit = defineEmits<{ submit: [answer: string] }>()
 
@@ -22,7 +24,7 @@ const draftAnswer = ref(props.assignment.answer ?? '')
 const isEditable = computed(() => props.assignment.status !== 'submitted')
 
 const handleSubmit = () => {
-  if (!draftAnswer.value.trim()) return
+  if (!draftAnswer.value.trim() || props.submitting) return
   emit('submit', draftAnswer.value.trim())
 }
 
@@ -90,10 +92,12 @@ const badgeLabel: Record<Assignment['status'], string> = {
           <div class="flex w-34.25 shrink-0 flex-col items-stretch gap-4">
             <button
               type="button"
-              class="w-full cursor-pointer rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95"
+              :disabled="submitting"
+              class="flex w-full cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               @click="handleSubmit"
             >
-              Submit
+              <Spinner v-if="submitting" size="xs" inverted />
+              <template v-else>Submit</template>
             </button>
             <RouterLink
               :to="openInCourseHref"
@@ -137,10 +141,12 @@ const badgeLabel: Record<Assignment['status'], string> = {
       <div class="flex items-center justify-between gap-6">
         <button
           type="button"
-          class="cursor-pointer rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95"
+          :disabled="submitting"
+          class="flex cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           @click="handleSubmit"
         >
-          Send Assignment
+          <Spinner v-if="submitting" size="xs" inverted />
+          <template v-else>Send Assignment</template>
         </button>
         <span class="text-base text-[#646D89]">{{ assignment.deadlineLabel }}</span>
       </div>
