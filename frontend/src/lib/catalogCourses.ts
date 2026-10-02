@@ -36,7 +36,8 @@ export function resolveCatalogImage(course: Pick<CheckoutCourse, 'name' | 'image
 }
 
 export function toStorefrontCourse(course: CheckoutCourse): Course {
-  const summary = course.summary?.trim() || course.description?.trim() || 'Course details coming soon.'
+  const summary =
+    course.summary?.trim() || course.description?.trim() || 'Course details coming soon.'
   const longDescription =
     course.description?.trim() ||
     course.summary?.trim() ||

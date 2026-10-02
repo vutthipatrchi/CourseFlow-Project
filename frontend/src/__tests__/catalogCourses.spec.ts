@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  catalogCourseId,
-  catalogRouteId,
-  toStorefrontCourse,
-} from '@/lib/catalogCourses'
+import { catalogCourseId, catalogRouteId, toStorefrontCourse } from '@/lib/catalogCourses'
 import type { CheckoutCourse } from '@/api/payments'
 
 const sample: CheckoutCourse = {
@@ -36,5 +32,16 @@ describe('catalogCourses', () => {
     expect(course.lessonCount).toBe(6)
     expect(course.hourCount).toBe(10)
     expect(course.modules).toEqual([])
+  })
+
+  it('preserves fallback behavior for a newly created course without default copy', () => {
+    const course = toStorefrontCourse({
+      ...sample,
+      name: 'New Course',
+      summary: null,
+      description: null,
+    })
+    expect(course.description).toBe('Course details coming soon.')
+    expect(course.longDescription).toContain('Browse the sample lessons below')
   })
 })

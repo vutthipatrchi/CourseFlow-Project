@@ -218,7 +218,9 @@ watch(course, () => {
           <h1 class="text-4xl leading-tight font-medium tracking-[-0.02em] text-black">
             Course Detail
           </h1>
-          <p class="text-base text-[#646D89]">{{ course.longDescription }}</p>
+          <p class="text-base leading-relaxed whitespace-pre-line text-[#646D89]">
+            {{ course.longDescription }}
+          </p>
           <button
             v-if="enrolled"
             type="button"
