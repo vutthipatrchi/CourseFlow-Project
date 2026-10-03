@@ -2,6 +2,7 @@
 import deleteIcon from '@/assets/admin/delete.svg'
 import editIcon from '@/assets/admin/edit.svg'
 import type { PromoCode } from '@/types/promoCode'
+import Spinner from '@/components/common/Spinner.vue'
 
 const props = defineProps<{
   promoCodes: PromoCode[]
@@ -61,7 +62,9 @@ function formatDate(value: string): string {
       </thead>
       <tbody>
         <tr v-if="loading">
-          <td class="px-4 py-8 text-center text-[#646D89]" colspan="6">Loading promo codes…</td>
+          <td class="px-4 py-8 text-center" colspan="6">
+            <Spinner label="Loading promo codes…" />
+          </td>
         </tr>
         <tr v-else-if="error">
           <td class="px-4 py-8 text-center text-red-600" colspan="6">{{ error }}</td>

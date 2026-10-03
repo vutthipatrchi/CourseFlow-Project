@@ -10,6 +10,7 @@ import uxUiDesignThumbnail from '../assets/admin/courses/ux-ui-design.jpg'
 import { useCourseStore } from '@/stores/course'
 import { useToast } from '@/composables/useToast'
 import type { AdminCourse } from '@/types/course'
+import Spinner from '@/components/common/Spinner.vue'
 
 const courseStore = useCourseStore()
 const { courses, error: coursesError, loading: coursesLoading } = storeToRefs(courseStore)
@@ -149,7 +150,7 @@ async function deleteCourse() {
             </td>
           </tr>
           <tr v-if="coursesLoading && courses.length === 0">
-            <td class="empty-state" colspan="8">Loading courses...</td>
+            <td class="empty-state" colspan="8"><Spinner label="Loading courses..." /></td>
           </tr>
           <tr v-else-if="coursesError && courses.length === 0">
             <td class="empty-state error-state" colspan="8">
@@ -206,7 +207,8 @@ async function deleteCourse() {
               :disabled="deleting"
               @click="deleteCourse"
             >
-              {{ deleting ? 'Deleting...' : 'Delete' }}
+              <Spinner v-if="deleting" size="xs" inverted />
+              <template v-else>Delete</template>
             </button>
           </div>
         </div>

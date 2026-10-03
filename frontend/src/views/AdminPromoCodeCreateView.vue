@@ -8,6 +8,7 @@ import { toApiError } from '@/api/client'
 import { courses, loadCourses } from '@/admin/courseStore'
 import { useToast } from '@/composables/useToast'
 import type { PromoCode, PromoCodePayload } from '@/types/promoCode'
+import Spinner from '@/components/common/Spinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -95,7 +96,8 @@ function handleCancel() {
         :disabled="!canSubmit"
         class="flex h-[60px] items-center justify-center rounded-xl bg-[#2F5FAC] px-8 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {{ submitting ? 'Saving...' : isEditing ? 'Save' : 'Create' }}
+        <Spinner v-if="submitting" size="xs" inverted />
+        <template v-else>{{ isEditing ? 'Save' : 'Create' }}</template>
       </button>
     </template>
 
@@ -103,7 +105,7 @@ function handleCancel() {
       <p v-if="serverError" class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
         {{ serverError }}
       </p>
-      <p v-if="loading" class="text-base text-[#646D89]">Loading promo code…</p>
+      <p v-if="loading" role="status" class="text-base"><Spinner label="Loading promo code…" /></p>
       <PromoCodeForm
         v-else
         ref="formRef"

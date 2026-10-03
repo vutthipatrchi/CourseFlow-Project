@@ -9,6 +9,7 @@ import { continueCardAuthentication } from '@/api/payments'
 import { usePaymentStatus } from '@/lib/usePaymentStatus'
 import { formatThb } from '@/lib/payment'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const route = useRoute()
 const paymentId = computed(() =>
@@ -54,8 +55,8 @@ function verifyCard() {
         <p v-if="payment" class="mt-3 text-lg text-gray-700">
           {{ formatThb(payment.amountSatang / 100) }}
         </p>
-        <p v-if="loading" role="status" class="mt-6 text-gray-700">
-          Checking with the payment provider…
+        <p v-if="loading" role="status" class="mt-6">
+          <Spinner label="Checking with the payment provider…" />
         </p>
         <p v-if="errorMessage || redirectError" role="alert" class="mt-6 text-red-700">
           {{ errorMessage || redirectError }}

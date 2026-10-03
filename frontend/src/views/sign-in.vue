@@ -8,6 +8,7 @@ import dotSmall from '@/assets/landing/dot-small.svg'
 import heroCross from '@/assets/landing/hero-cross.svg'
 import { getRoleFromToken } from '@/lib/jwt'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -171,9 +172,10 @@ async function handleVerify() {
             <button
               type="submit"
               :disabled="isSubmitting"
-              class="w-full rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              class="flex w-full items-center justify-center rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {{ isSubmitting ? 'Logging in…' : 'Log in' }}
+              <Spinner v-if="isSubmitting" size="xs" inverted />
+              <template v-else>Log in</template>
             </button>
           </form>
 
@@ -212,9 +214,10 @@ async function handleVerify() {
             <button
               type="submit"
               :disabled="isSubmitting"
-              class="w-full rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              class="flex w-full items-center justify-center rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {{ isSubmitting ? 'Verifying…' : 'Verify' }}
+              <Spinner v-if="isSubmitting" size="xs" inverted />
+              <template v-else>Verify</template>
             </button>
           </form>
         </template>

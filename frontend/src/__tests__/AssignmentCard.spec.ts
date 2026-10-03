@@ -39,6 +39,24 @@ describe('AssignmentCard in the course player', () => {
     expect(wrapper.emitted('submit')).toBeUndefined()
   })
 
+  it('disables the button and shows a spinner instead of the label while submitting', () => {
+    const wrapper = mount(AssignmentCard, { props: { assignment: pending, submitting: true } })
+
+    const button = wrapper.get('button')
+    expect(button.attributes('disabled')).toBeDefined()
+    expect(button.text()).not.toContain('Send Assignment')
+    expect(button.find('svg').exists()).toBe(true)
+  })
+
+  it('does not emit submit while already submitting', async () => {
+    const wrapper = mount(AssignmentCard, { props: { assignment: pending, submitting: true } })
+
+    await wrapper.get('textarea').setValue('People, process')
+    await wrapper.get('button').trigger('click')
+
+    expect(wrapper.emitted('submit')).toBeUndefined()
+  })
+
   it('shows a submitted answer as plain text that keeps its line breaks', () => {
     const wrapper = mount(AssignmentCard, {
       props: { assignment: { ...pending, status: 'submitted', answer } },

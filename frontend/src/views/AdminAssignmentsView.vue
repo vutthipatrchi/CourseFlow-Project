@@ -7,6 +7,7 @@ import { deleteAssignment, listAssignments } from '@/api/assignments'
 import { toApiError } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import type { Assignment } from '@/types/assignment'
+import Spinner from '@/components/common/Spinner.vue'
 
 const assignments = ref<Assignment[]>([])
 const loading = ref(true)
@@ -15,6 +16,7 @@ const search = ref('')
 const pendingDeletion = ref<Assignment | null>(null)
 const deleteError = ref<string | null>(null)
 const { success: notifySuccess, error: notifyError } = useToast()
+const deleting = ref(false)
 
 const filteredAssignments = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -51,8 +53,9 @@ function cancelDeletion() {
 
 async function confirmDeletion() {
   const assignment = pendingDeletion.value
-  if (!assignment) return
+  if (!assignment || deleting.value) return
 
+  deleting.value = true
   try {
     await deleteAssignment(assignment.id)
     pendingDeletion.value = null
@@ -62,6 +65,8 @@ async function confirmDeletion() {
   } catch (err) {
     deleteError.value = toApiError(err).message
     notifyError(deleteError.value, { description: assignment.description })
+  } finally {
+    deleting.value = false
   }
 }
 </script>
@@ -135,17 +140,20 @@ async function confirmDeletion() {
         <div class="mt-6 flex justify-end gap-3">
           <button
             type="button"
-            class="flex h-12 items-center justify-center rounded-xl border border-[#D6D9E4] px-6 text-base font-bold text-[#424C6B] hover:bg-[#F1F2F6]"
+            :disabled="deleting"
+            class="flex h-12 items-center justify-center rounded-xl border border-[#D6D9E4] px-6 text-base font-bold text-[#424C6B] hover:bg-[#F1F2F6] disabled:cursor-not-allowed disabled:opacity-60"
             @click="cancelDeletion"
           >
             Cancel
           </button>
           <button
             type="button"
-            class="flex h-12 items-center justify-center rounded-xl bg-red-600 px-6 text-base font-bold text-white hover:bg-red-700"
+            :disabled="deleting"
+            class="flex h-12 items-center justify-center rounded-xl bg-red-600 px-6 text-base font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
             @click="confirmDeletion"
           >
-            Delete
+            <Spinner v-if="deleting" size="xs" inverted />
+            <template v-else>Delete</template>
           </button>
         </div>
       </section>

@@ -11,6 +11,7 @@ import { listMyAssignments, submitAssignment } from '@/api/submissions'
 import { toApiError } from '@/api/client'
 import { toCardAssignment } from '@/lib/assignmentCard'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 import type { AssignmentStatus } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
 
@@ -27,6 +28,7 @@ const assignments = ref<MyAssignment[]>([])
 const loading = ref(true)
 const loadError = ref('')
 const submitError = ref('')
+const submittingId = ref<number | null>(null)
 const { success: notifySuccess, error: notifyError } = useToast()
 
 async function load() {
@@ -69,6 +71,7 @@ function openInCourseHref(assignment: MyAssignment): string {
 
 async function handleSubmit(assignment: MyAssignment, answer: string) {
   submitError.value = ''
+  submittingId.value = assignment.id
   // The page lists assignments across every course; say which one was submitted.
   const which = `${assignment.courseName} · ${assignment.lessonName}: ${assignment.subLessonName}`
   try {
@@ -79,6 +82,8 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
   } catch (failure) {
     submitError.value = toApiError(failure).message
     notifyError(submitError.value, { description: which })
+  } finally {
+    submittingId.value = null
   }
 }
 </script>
@@ -150,7 +155,9 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
       </section>
 
       <p v-if="submitError" role="alert" class="pb-6 text-base text-red-600">{{ submitError }}</p>
-      <p v-if="loading" role="status" class="text-base text-[#646D89]">Loading your assignments…</p>
+      <p v-if="loading" role="status" class="text-base">
+        <Spinner label="Loading your assignments…" />
+      </p>
       <div v-else-if="loadError" class="flex flex-col items-center gap-3">
         <p role="alert" class="text-base text-red-600">{{ loadError }}</p>
         <button
@@ -173,6 +180,7 @@ async function handleSubmit(assignment: MyAssignment, answer: string) {
           :course-title="assignment.courseName"
           :lesson-title="`${assignment.lessonName}: ${assignment.subLessonName}`"
           :open-in-course-href="openInCourseHref(assignment)"
+          :submitting="submittingId === assignment.id"
           @submit="(answer) => handleSubmit(assignment, answer)"
         />
       </section>

@@ -11,6 +11,7 @@ import { getCheckoutCourses } from '@/api/payments'
 import { toStorefrontCourse } from '@/lib/catalogCourses'
 import { useToast } from '@/composables/useToast'
 import type { Course } from '@/types/course'
+import Spinner from '@/components/common/Spinner.vue'
 
 const { error: notifyError } = useToast()
 const searchQuery = ref('')
@@ -105,7 +106,9 @@ onMounted(() => {
           />
         </div>
       </section>
-      <p v-if="loading" role="status" class="pb-20 text-base text-[#646D89]">Loading courses…</p>
+      <p v-if="loading" role="status" class="pb-20 text-base">
+        <Spinner label="Loading courses…" />
+      </p>
       <div v-else-if="loadError" role="alert" class="pb-20 text-center text-base text-red-700">
         <p>{{ loadError }}</p>
         <button type="button" class="mt-2 text-blue-600 underline" @click="loadCourses">
