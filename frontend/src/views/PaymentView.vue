@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
 import { formatThb } from '@/lib/payment'
+import Spinner from '@/components/common/Spinner.vue'
 import {
   createCardPayment,
   createOrder,
@@ -22,10 +23,6 @@ const paymentMethod = ref<'card' | 'qr'>('card')
 const promoCode = ref('')
 const promoMessage = ref('')
 const order = ref<OrderCreated | null>(null)
-const courseTitle = computed(
-  () =>
-    order.value?.courseTitle ?? (processing.value ? 'Loading your course…' : 'Course unavailable'),
-)
 const subtotal = computed(() => (order.value?.subtotalSatang ?? 0) / 100)
 const discount = computed(() => (order.value?.discountSatang ?? 0) / 100)
 const total = computed(() => (order.value?.totalSatang ?? 0) / 100)
@@ -36,8 +33,10 @@ const errorMessage = ref('')
 const card = reactive({ number: '', owner: '', expiry: '', cvv: '' })
 let attemptKey = crypto.randomUUID()
 let disposed = false
+const tokenizationController = new AbortController()
 onUnmounted(() => {
   disposed = true
+  tokenizationController.abort()
 })
 const { success: notifySuccess, error: notifyError } = useToast()
 
@@ -198,13 +197,17 @@ async function confirmPayment() {
       const expiry = expiryParts.value!
       let token: string
       try {
-        token = await tokenizeCard(paymentConfig.publicKey, {
-          name: card.owner.trim(),
-          number: digits.value,
-          expirationMonth: Number(expiry[1]),
-          expirationYear: 2000 + Number(expiry[2]),
-          securityCode: card.cvv,
-        })
+        token = await tokenizeCard(
+          paymentConfig.publicKey,
+          {
+            name: card.owner.trim(),
+            number: digits.value,
+            expirationMonth: Number(expiry[1]),
+            expirationYear: 2000 + Number(expiry[2]),
+            securityCode: card.cvv,
+          },
+          tokenizationController.signal,
+        )
       } finally {
         card.number = ''
         card.expiry = ''
@@ -218,6 +221,7 @@ async function confirmPayment() {
     }
     await openPayment(payment, true)
   } catch (error) {
+    if (disposed) return
     if (!chargeRequested) {
       fail(messageFrom(error))
       return
@@ -382,8 +386,12 @@ async function confirmPayment() {
             <p class="text-sm leading-[21px] text-orange-500">Summary</p>
             <div class="space-y-2">
               <p class="text-base text-gray-700">Subscription</p>
-              <h2 class="text-2xl leading-[30px] font-medium tracking-[-0.02em] text-black">
-                {{ courseTitle }}
+              <h2
+                class="text-2xl leading-[30px] font-medium tracking-[-0.02em] text-black"
+                role="status"
+              >
+                <Spinner v-if="!order && processing" label="Loading your course…" />
+                <template v-else>{{ order?.courseTitle ?? 'Course unavailable' }}</template>
               </h2>
             </div>
 
@@ -454,17 +462,18 @@ async function confirmPayment() {
               <button
                 type="submit"
                 :disabled="processing || !order || !!order.payment"
-                class="min-h-[60px] w-full rounded-xl bg-blue-600 px-4 py-4 text-base font-semibold text-white shadow-[4px_4px_16px_rgba(0,0,0,0.08)] hover:bg-blue-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400"
+                class="flex min-h-[60px] w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-4 text-base font-semibold text-white shadow-[4px_4px_16px_rgba(0,0,0,0.08)] hover:bg-blue-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400"
               >
-                {{
-                  processing
-                    ? 'Processing…'
-                    : recovering
+                <Spinner v-if="processing" size="xs" inverted />
+                <template v-else>
+                  {{
+                    recovering
                       ? 'Check payment status'
                       : paymentMethod === 'qr'
                         ? 'Continue to QR code'
                         : 'Confirm payment'
-                }}
+                  }}
+                </template>
               </button>
             </div>
           </aside>

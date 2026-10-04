@@ -48,7 +48,8 @@ const mocks = vi.hoisted(() => ({
   createPromptPayPayment: vi.fn<(orderId: string, key: string) => Promise<PaymentResponse>>(),
   createCardPayment:
     vi.fn<(orderId: string, token: string, key: string) => Promise<PaymentResponse>>(),
-  tokenizeCard: vi.fn<(publicKey: string, card: CardDetails) => Promise<string>>(),
+  tokenizeCard:
+    vi.fn<(publicKey: string, card: CardDetails, signal?: AbortSignal) => Promise<string>>(),
   getPayment: vi.fn<(paymentId: string) => Promise<PaymentResponse>>(),
   downloadQr: vi.fn<(paymentId: string) => Promise<Blob>>(),
   continueCardAuthentication: vi.fn<(authorizeUrl: string) => void>(),
@@ -106,6 +107,29 @@ afterEach(() => {
 })
 
 describe('checkout', () => {
+  it('shows spinners while loading the order and replaces them with the prepared checkout', async () => {
+    let finish!: (value: OrderCreated) => void
+    mocks.createOrder.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.get('h2').find('svg').exists()).toBe(true)
+    expect(wrapper.get('button[type="submit"]').find('svg').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Course unavailable')
+    finish(order)
+    await flushPromises()
+    expect(wrapper.get('h2').text()).toBe(order.courseTitle)
+    expect(wrapper.get('h2').find('svg').exists()).toBe(false)
+    expect(wrapper.get('button[type="submit"]').text()).toBe('Confirm payment')
+    expect(mocks.getPaymentConfig).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('keeps the course, price and promotions available when payments are disabled', async () => {
     mocks.getPaymentConfig.mockResolvedValue({ enabled: false, publicKey: '' })
     const router = await createTestRouter()
@@ -157,6 +181,7 @@ describe('checkout', () => {
     expect(mocks.createOrder).toHaveBeenCalledTimes(1)
     expect(mocks.getPaymentConfig).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Course unavailable')
+    expect(wrapper.get('h2').find('svg').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('THB 0.00')
     await wrapper
       .findAll('button')
@@ -186,6 +211,7 @@ describe('checkout', () => {
     await wrapper.get('input[autocomplete="cc-csc"]').setValue('123')
     await wrapper.get('form').trigger('submit')
     expect(mocks.getPaymentConfig).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('button[type="submit"]').find('svg').exists()).toBe(true)
     wrapper.unmount()
     finish({ enabled: true, publicKey: 'pkey_test_123' })
     await flushPromises()
@@ -213,7 +239,10 @@ describe('checkout', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(mocks.tokenizeCard).toHaveBeenCalledTimes(1)
+    const signal = mocks.tokenizeCard.mock.calls[0]![2]!
+    expect(signal.aborted).toBe(false)
     wrapper.unmount()
+    expect(signal.aborted).toBe(true)
     finish('tokn_test_late')
     await flushPromises()
     expect(mocks.createCardPayment).not.toHaveBeenCalled()

@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AxiosInstance } from 'axios'
 
 vi.mock('@/api/client', () => ({
-  default: { request: vi.fn() },
+  default: { request: vi.fn<AxiosInstance['request']>() },
   toApiError: (error: Error) => ({ message: error.message }),
 }))
 
 function sdk(): OmiseClient {
-  return { setPublicKey: vi.fn(), createToken: vi.fn() }
+  return {
+    setPublicKey: vi.fn<OmiseClient['setPublicKey']>(),
+    createToken: vi.fn<OmiseClient['createToken']>(),
+  }
 }
 function scripts() {
   return document.querySelectorAll<HTMLScriptElement>('script[src="https://cdn.omise.co/omise.js"]')
@@ -69,6 +73,34 @@ describe('on-demand Omise SDK', () => {
     scripts()[0]!.dispatchEvent(new Event('load'))
     await expect(retry).resolves.toBe(window.Omise)
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('skips a canceled checkout after loading the shared SDK without canceling another caller', async () => {
+    const { tokenizeCard } = await import('@/api/payments')
+    const controller = new AbortController()
+    const card = {
+      name: 'Test Buyer',
+      number: '4242424242424242',
+      expirationMonth: 12,
+      expirationYear: 2030,
+      securityCode: '123',
+    }
+    const canceled = tokenizeCard('pkey_test_canceled', card, controller.signal).catch(
+      (error: unknown) => error,
+    )
+    const active = tokenizeCard('pkey_test_active', card)
+    expect(scripts()).toHaveLength(1)
+    controller.abort()
+    const client = sdk()
+    vi.mocked(client.createToken).mockImplementation((_type, _card, callback) => {
+      callback(200, { id: 'tokn_test_active' })
+    })
+    window.Omise = client
+    scripts()[0]!.dispatchEvent(new Event('load'))
+    expect(await canceled).toMatchObject({ name: 'AbortError' })
+    await expect(active).resolves.toBe('tokn_test_active')
+    expect(client.setPublicKey).toHaveBeenCalledExactlyOnceWith('pkey_test_active')
+    expect(client.createToken).toHaveBeenCalledTimes(1)
   })
 
   it('loads the SDK before setting the public key and tokenizing a card', async () => {

@@ -7,6 +7,7 @@ import iconPerson from '@/assets/landing/icon-person.svg'
 import heroTriangle from '@/assets/landing/hero-triangle.svg'
 import { loadProfile, updateProfile, profileLoading, profileError } from '@/profile/profileStore'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const { user } = useUser()
 const { success: notifySuccess, error: notifyError } = useToast()
@@ -145,20 +146,22 @@ async function handleSubmit() {
             <button
               type="button"
               :disabled="isUploadingPhoto"
-              class="mt-4 w-full rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              class="mt-4 flex w-full items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               @click="pickPhoto"
             >
-              {{ user?.hasImage ? 'Change photo' : 'Upload photo' }}
+              <Spinner v-if="isUploadingPhoto" size="xs" inverted />
+              <template v-else>{{ user?.hasImage ? 'Change photo' : 'Upload photo' }}</template>
             </button>
 
             <button
               v-if="user?.hasImage"
               type="button"
               :disabled="isUploadingPhoto"
-              class="mt-3 w-full text-center text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              class="mt-3 flex w-full items-center justify-center text-center text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               @click="removePhoto"
             >
-              Remove photo
+              <Spinner v-if="isUploadingPhoto" size="xs" />
+              <template v-else>Remove photo</template>
             </button>
           </div>
 
@@ -210,8 +213,8 @@ async function handleSubmit() {
               />
             </div>
 
-            <p v-if="profileLoading" role="status" class="mt-6 text-sm text-gray-600">
-              Loading profile…
+            <p v-if="profileLoading" role="status" class="mt-6">
+              <Spinner label="Loading profile…" />
             </p>
             <div v-else-if="profileError" role="alert" class="mt-6 text-sm text-red-600">
               <p>{{ profileError }}</p>
@@ -226,9 +229,10 @@ async function handleSubmit() {
             <button
               type="submit"
               :disabled="isSaving || !profileReady"
-              class="mt-6 w-full rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              class="mt-6 flex w-full items-center justify-center rounded-lg bg-blue-600 px-7 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {{ isSaving ? 'Saving…' : 'Update Profile' }}
+              <Spinner v-if="isSaving" size="xs" inverted />
+              <template v-else>Update Profile</template>
             </button>
           </div>
         </form>

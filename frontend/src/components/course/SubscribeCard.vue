@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import { learningPathForSubscription } from '@/lib/courseAccess'
 import type { CheckoutCourse } from '@/api/payments'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 type Props = {
   category: string
@@ -54,7 +55,8 @@ const addToWishlist = () => {
       <template v-else-if="checkoutCourse">
         THB {{ checkoutCourse.price.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
       </template>
-      <template v-else>{{ loadingCourse ? 'Loading price…' : 'Price unavailable' }}</template>
+      <template v-else-if="loadingCourse"><Spinner label="Loading price…" /></template>
+      <template v-else>Price unavailable</template>
     </p>
     <p v-if="checkoutError" role="alert" class="text-sm text-red-700">
       {{ checkoutError }}

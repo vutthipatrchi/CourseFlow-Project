@@ -6,6 +6,7 @@ import CheckoutNavbar from '@/components/payment/CheckoutNavbar.vue'
 import CheckoutFooter from '@/components/payment/CheckoutFooter.vue'
 import { getSubscriptions, type SubscriptionView } from '@/api/payments'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
 
 const { error: notifyError } = useToast()
 const courses = ref<SubscriptionView[]>([])
@@ -64,7 +65,7 @@ onMounted(load)
         />
 
         <section aria-label="Purchased courses">
-          <p v-if="loading" role="status">Loading your courses…</p>
+          <p v-if="loading" role="status"><Spinner label="Loading your courses…" /></p>
           <div v-else-if="error">
             <p role="alert" class="text-red-700">{{ error }}</p>
             <button class="mt-4 text-blue-600 underline" @click="load">Try again</button>

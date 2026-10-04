@@ -7,6 +7,8 @@ import promoCodeIcon from '@/assets/admin/promo-code.svg'
 import logoutIcon from '@/assets/admin/logout.svg'
 import logo from '@/assets/admin/courseflow-sidebar-logo.svg'
 import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
+import { ref } from 'vue'
 
 defineProps<{
   title: string
@@ -23,7 +25,10 @@ const isCourseActive = () =>
 
 const clerk = useClerk()
 const { success: notifySuccess, error: notifyError } = useToast()
+const loggingOut = ref(false)
 async function logOut() {
+  if (loggingOut.value) return
+  loggingOut.value = true
   try {
     await clerk.value?.signOut()
     // The toast is mounted outside <RouterView> in App.vue, so it survives the navigation below.
@@ -31,6 +36,8 @@ async function logOut() {
     router.push({ name: 'home' })
   } catch (error) {
     notifyError(error instanceof Error ? error.message : 'Unable to sign out. Please try again.')
+  } finally {
+    loggingOut.value = false
   }
 }
 </script>
@@ -90,11 +97,15 @@ async function logOut() {
 
       <button
         type="button"
-        class="mb-6 flex h-14 items-center gap-4 px-6 text-left text-base font-bold text-[#424C6B] hover:bg-[#F1F2F6]"
+        :disabled="loggingOut"
+        class="mb-6 flex h-14 items-center gap-4 px-6 text-left text-base font-bold text-[#424C6B] hover:bg-[#F1F2F6] disabled:cursor-not-allowed disabled:opacity-60"
         @click="logOut"
       >
-        <img :src="logoutIcon" alt="" class="h-6 w-6 flex-none" />
-        <span>Log out</span>
+        <Spinner v-if="loggingOut" size="xs" />
+        <template v-else>
+          <img :src="logoutIcon" alt="" class="h-6 w-6 flex-none" />
+          <span>Log out</span>
+        </template>
       </button>
     </aside>
 

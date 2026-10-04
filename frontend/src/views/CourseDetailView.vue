@@ -11,6 +11,7 @@ import ModuleAccordion from '@/components/course/ModuleAccordion.vue'
 import LessonReading from '@/components/course/LessonReading.vue'
 import LessonSample from '@/components/course/LessonSample.vue'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
+import Spinner from '@/components/common/Spinner.vue'
 import { getCheckoutCourse, type CheckoutCourse } from '@/api/payments'
 import { getPublicDemoContent } from '@/api/demoContent'
 import { createDemoModules } from '@/data/demoLessons'
@@ -168,7 +169,7 @@ watch(course, () => {
     class="grid min-h-screen place-items-center text-[#646D89]"
     role="status"
   >
-    Loading course…
+    <Spinner label="Loading course…" size="md" vertical />
   </div>
   <div v-else-if="courseError || !course" class="flex min-h-screen flex-col">
     <AppNavbar />
@@ -225,10 +226,11 @@ watch(course, () => {
             v-if="enrolled"
             type="button"
             :disabled="startLearningBusy || accessLoading"
-            class="inline-flex w-fit cursor-pointer rounded-lg bg-[#2F5FAC] px-5 py-3 text-sm font-bold text-white hover:bg-[#254F93] disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex w-fit cursor-pointer items-center justify-center rounded-lg bg-[#2F5FAC] px-5 py-3 text-sm font-bold text-white hover:bg-[#254F93] disabled:cursor-not-allowed disabled:opacity-60"
             @click="startLearning"
           >
-            {{ startLearningBusy ? 'Opening…' : 'Start learning' }}
+            <Spinner v-if="startLearningBusy" size="xs" inverted />
+            <template v-else>Start learning</template>
           </button>
           <p v-else-if="!accessLoading" class="text-sm text-[#646D89]">
             Subscribe to this course to unlock Start learning.
@@ -252,7 +254,7 @@ watch(course, () => {
           <p class="text-base text-[#646D89]">
             Browse every topic and open the free sample reading in the first one.
           </p>
-          <p v-if="previewLoading" role="status">Loading sample lessons…</p>
+          <p v-if="previewLoading" role="status"><Spinner label="Loading sample lessons…" /></p>
           <div v-else-if="previewError" role="alert">
             <p>{{ previewError }}</p>
             <button type="button" class="text-blue-600 underline" @click="loadPreview">

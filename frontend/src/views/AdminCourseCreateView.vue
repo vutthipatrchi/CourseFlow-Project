@@ -9,6 +9,7 @@ import { useCourseStore } from '@/stores/course'
 import { useToast } from '@/composables/useToast'
 import type { AdminCourse, AdminCourseLesson, AdminCoursePayload } from '@/types/course'
 import FormFieldError from '../components/admin/FormFieldError.vue'
+import Spinner from '@/components/common/Spinner.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -432,14 +433,17 @@ async function saveCourse() {
           <div class="topbar-actions">
             <RouterLink class="cancel-button" to="/admin/courses">Cancel</RouterLink>
             <button class="save-button" type="submit" :disabled="isSaving || isLoadingCourse">
-              {{ isSaving ? 'Saving...' : isEditing ? 'Edit' : 'Create' }}
+              <Spinner v-if="isSaving" size="xs" inverted />
+              <template v-else>{{ isEditing ? 'Edit' : 'Create' }}</template>
             </button>
           </div>
         </header>
 
         <main class="content">
           <p v-if="apiError" class="api-error" role="alert">{{ apiError }}</p>
-          <p v-if="isLoadingCourse" class="loading-state" role="status">Loading course...</p>
+          <p v-if="isLoadingCourse" class="loading-state" role="status">
+            <Spinner label="Loading course..." />
+          </p>
           <section class="package-card" aria-label="Course details">
             <label class="field full-width" :class="{ 'has-error': fieldErrors.name }">
               <span>Course name <b aria-hidden="true">*</b></span>
@@ -656,8 +660,14 @@ async function saveCourse() {
           <section class="lessons-section">
             <div class="section-heading">
               <h2>Lesson</h2>
-              <button class="add-lesson-button" type="button" @click="addLesson">
-                + Add Lesson
+              <button
+                class="add-lesson-button"
+                type="button"
+                :disabled="isSaving"
+                @click="addLesson"
+              >
+                <Spinner v-if="isSaving" size="xs" inverted />
+                <template v-else>+ Add Lesson</template>
               </button>
             </div>
             <div class="lessons-card">
@@ -933,7 +943,8 @@ h1 span {
   background: #2f5fac;
   color: #fff;
 }
-.save-button:disabled {
+.save-button:disabled,
+.add-lesson-button:disabled {
   cursor: wait;
   opacity: 0.65;
 }

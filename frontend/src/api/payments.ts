@@ -212,8 +212,15 @@ export function continueCardAuthentication(authorizeUrl: string) {
   window.location.assign(url.href)
 }
 
-export async function tokenizeCard(publicKey: string, card: CardDetails): Promise<string> {
+export async function tokenizeCard(
+  publicKey: string,
+  card: CardDetails,
+  signal?: AbortSignal,
+): Promise<string> {
+  signal?.throwIfAborted()
   const omise = await loadOmise()
+  // The shared SDK can finish loading after the checkout that requested it has unmounted.
+  signal?.throwIfAborted()
   omise.setPublicKey(publicKey)
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(
