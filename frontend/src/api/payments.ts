@@ -1,6 +1,7 @@
 import type { AxiosRequestConfig } from 'axios'
 import client, { toApiError } from './client'
 import { cachedPublicRead } from './publicReadCache'
+import { loadOmise } from '@/lib/omise'
 
 export type PaymentStatus = 'creating' | 'pending' | 'successful' | 'failed' | 'expired' | 'review'
 export interface PaymentConfig {
@@ -211,18 +212,22 @@ export function continueCardAuthentication(authorizeUrl: string) {
   window.location.assign(url.href)
 }
 
-export function tokenizeCard(publicKey: string, card: CardDetails): Promise<string> {
-  if (!window.Omise)
-    return Promise.reject(
-      new Error('Secure card form could not be loaded. Please reload the page.'),
-    )
-  window.Omise.setPublicKey(publicKey)
+export async function tokenizeCard(
+  publicKey: string,
+  card: CardDetails,
+  signal?: AbortSignal,
+): Promise<string> {
+  signal?.throwIfAborted()
+  const omise = await loadOmise()
+  // The shared SDK can finish loading after the checkout that requested it has unmounted.
+  signal?.throwIfAborted()
+  omise.setPublicKey(publicKey)
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(
       () => reject(new Error('Card verification timed out. Please try again.')),
       30000,
     )
-    window.Omise!.createToken(
+    omise.createToken(
       'card',
       {
         name: card.name,
