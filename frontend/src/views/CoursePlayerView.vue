@@ -226,6 +226,9 @@ const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(
   () => currentIndex.value >= 0 && currentIndex.value < flatSubLessons.value.length - 1,
 )
+const isLastSubLesson = computed(
+  () => flatSubLessons.value.length > 0 && currentIndex.value === flatSubLessons.value.length - 1,
+)
 
 const isLoading = ref(false)
 let loadingTimer: ReturnType<typeof setTimeout> | undefined
@@ -274,6 +277,10 @@ const goPrev = () => {
 
 const goNext = () => {
   if (hasNext.value) goToSubLesson(flatSubLessons.value[currentIndex.value + 1]!.subLesson.id)
+}
+
+const goHome = () => {
+  router.push({ name: 'home' })
 }
 
 const handleComplete = async () => {
@@ -488,10 +495,10 @@ const handleAssignmentSubmit = async (answer: string) => {
         <button
           type="button"
           class="cursor-pointer rounded-xl bg-blue-600 px-8 py-4.5 text-base font-bold text-white shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-          :disabled="!hasNext"
-          @click="goNext"
+          :disabled="!hasNext && !isLastSubLesson"
+          @click="isLastSubLesson ? goHome() : goNext()"
         >
-          Next Lesson
+          {{ isLastSubLesson ? 'Back to home' : 'Next Lesson' }}
         </button>
       </div>
     </div>
