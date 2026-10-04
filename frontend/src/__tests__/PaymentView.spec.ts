@@ -16,6 +16,7 @@ import type {
 
 const paymentId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const order: OrderCreated = {
+  status: 'pending_payment',
   orderId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   courseId: 7,
   reference: 'CFTEST0001',
@@ -45,6 +46,7 @@ const pending: PaymentResponse = {
 const mocks = vi.hoisted(() => ({
   getPaymentConfig: vi.fn<() => Promise<PaymentConfig>>(),
   createOrder: vi.fn<(courseId: number, promotionCode: string) => Promise<OrderCreated>>(),
+  completeFreeOrder: vi.fn<(orderId: string) => Promise<OrderCreated>>(),
   createPromptPayPayment: vi.fn<(orderId: string, key: string) => Promise<PaymentResponse>>(),
   createCardPayment:
     vi.fn<(orderId: string, token: string, key: string) => Promise<PaymentResponse>>(),
@@ -107,6 +109,61 @@ afterEach(() => {
 })
 
 describe('checkout', () => {
+  it.each([0, 420000])(
+    'enrolls a zero-total order without card details or a provider (subtotal %s)',
+    async (subtotalSatang) => {
+      const free = { ...order, subtotalSatang, discountSatang: subtotalSatang, totalSatang: 0 }
+      mocks.createOrder.mockResolvedValue(free)
+      mocks.completeFreeOrder.mockResolvedValue({ ...free, status: 'paid' })
+      mocks.getPaymentConfig.mockResolvedValue({ enabled: false, publicKey: '' })
+      const router = await createTestRouter()
+      const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+      await flushPromises()
+      expect(wrapper.find('input[autocomplete="cc-number"]').exists()).toBe(false)
+      expect(wrapper.get('button[type="submit"]').text()).toBe('Enroll for free')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(mocks.completeFreeOrder).toHaveBeenCalledExactlyOnceWith(order.orderId)
+      expect(router.currentRoute.value.name).toBe('my-course-detail')
+      expect(router.currentRoute.value.params.courseId).toBe('7')
+      expect(mocks.tokenizeCard).not.toHaveBeenCalled()
+      expect(mocks.getPaymentConfig).not.toHaveBeenCalled()
+      expect(mocks.createCardPayment).not.toHaveBeenCalled()
+      expect(mocks.createPromptPayPayment).not.toHaveBeenCalled()
+      wrapper.unmount()
+    },
+  )
+
+  it('lets a failed free enrollment be retried against the same order', async () => {
+    const free = { ...order, totalSatang: 0, discountSatang: order.subtotalSatang }
+    mocks.createOrder.mockResolvedValue(free)
+    mocks.completeFreeOrder
+      .mockRejectedValueOnce(new Error('Connection interrupted'))
+      .mockResolvedValueOnce({ ...free, status: 'paid' })
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Connection interrupted')
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(mocks.completeFreeOrder).toHaveBeenCalledTimes(2)
+    expect(router.currentRoute.value.name).toBe('my-course-detail')
+    wrapper.unmount()
+  })
+
+  it('recovers a completed free enrollment when checkout is reopened', async () => {
+    mocks.createOrder.mockResolvedValue({ ...order, totalSatang: 0, status: 'paid' })
+    const router = await createTestRouter()
+    const wrapper = mount(PaymentView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('my-course-detail')
+    expect(mocks.completeFreeOrder).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('shows spinners while loading the order and replaces them with the prepared checkout', async () => {
     let finish!: (value: OrderCreated) => void
     mocks.createOrder.mockImplementation(

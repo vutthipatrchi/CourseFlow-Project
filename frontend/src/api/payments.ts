@@ -18,6 +18,8 @@ export interface CheckoutCourse {
   learningTime: number | null
   lessons: number
   imageName: string | null
+  videoName?: string | null
+  resourceName?: string | null
   accent: string | null
 }
 export interface OrderCreated {
@@ -31,6 +33,7 @@ export interface OrderCreated {
   totalSatang: number
   currency: string
   expiresAt: string
+  status: 'pending_payment' | 'paid' | 'expired' | 'cancelled' | 'payment_review'
   payment: PaymentView | null
 }
 export interface PaymentView {
@@ -124,6 +127,9 @@ export function createOrder(courseId: number, promotionCode: string) {
     url: '/orders',
     data: { courseId, promotionCode: promotionCode.trim() },
   })
+}
+export function completeFreeOrder(orderId: string) {
+  return request<OrderCreated>({ method: 'POST', url: '/orders/' + orderId + '/complete-free' })
 }
 export function createCardPayment(orderId: string, cardToken: string, idempotencyKey: string) {
   return request<PaymentView>({

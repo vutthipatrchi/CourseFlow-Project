@@ -138,6 +138,17 @@ request 3-D Secure authentication. PromptPay QR images are proxied by the
 backend so the Save QR image action can download the provider-generated PNG
 without exposing provider credentials.
 
+## Course uploads and free enrollment
+
+Course covers, preview videos, and attachments are uploaded to the backend before
+course creation or editing is saved. Covers and previews are public; attachments
+require an administrator or an active enrollment. Free courses and discounts that
+reduce the total to zero use a separate enrollment confirmation and never create
+a provider charge. Flyway migration V20 enables zero-total orders.
+
+See [course uploads and free enrollment](docs/course-assets-and-free-enrollment.md)
+for file limits, storage, and API details.
+
 ## Checks
 
 ```powershell

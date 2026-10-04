@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import CoursePlayerView from '../views/CoursePlayerView.vue'
-import type { CourseProgressView, SubscriptionView } from '@/api/payments'
+import type { CheckoutCourse, CourseProgressView, SubscriptionView } from '@/api/payments'
 import type { MyAssignment } from '@/types/submission'
 import { DEMO_VIDEO_URL, DEMO_VIDEO_LABEL } from '@/data/demoVideo'
 import { demoContentFixtures } from './demoContentFixtures'
@@ -13,7 +13,7 @@ import { getEnrolledDemoContent } from '@/api/demoContent'
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
   getCourseProgress: vi.fn<(courseId: number) => Promise<CourseProgressView>>(),
-  getCheckoutCourse: vi.fn(async (courseId: number) => ({
+  getCheckoutCourse: vi.fn<(courseId: number) => Promise<CheckoutCourse>>(async (courseId) => ({
     id: courseId,
     name: courseId === 9 ? 'Software Developer' : 'Service Design Essentials',
     price: 3559,
@@ -551,6 +551,39 @@ describe('CoursePlayerView assignments on a real course', () => {
     ])
     mocks.getCourseProgress.mockResolvedValue(assignmentProgress)
     submissionMocks.listMyAssignments.mockResolvedValue([assignment])
+  })
+
+  it('renders and submits every question in one sub-lesson without losing another draft', async () => {
+    const second = { ...assignment, id: 6, description: 'Explain the customer journey.' }
+    submissionMocks.listMyAssignments.mockResolvedValue([assignment, second])
+    submissionMocks.submitAssignment.mockImplementation(async (id, answer) => ({
+      ...(id === 5 ? assignment : second),
+      status: 'submitted',
+      answer,
+      submittedAt: '2026-10-04T00:00:00Z',
+    }))
+    const wrapper = await mountAssignmentPlayer()
+    expect(wrapper.findAll('textarea')).toHaveLength(2)
+    await wrapper.findAll('textarea')[0]!.setValue('First answer')
+    await wrapper.findAll('textarea')[1]!.setValue('Second answer draft')
+    await wrapper
+      .findAll('button')
+      .filter((button) => button.text() === 'Send Assignment')[0]!
+      .trigger('click')
+    await flushPromises()
+    expect(submissionMocks.submitAssignment).toHaveBeenLastCalledWith(5, 'First answer')
+    expect(wrapper.text()).toContain('First answer')
+    expect(wrapper.get('textarea').element.value).toBe('Second answer draft')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Send Assignment')!
+      .trigger('click')
+    await flushPromises()
+    expect(submissionMocks.submitAssignment).toHaveBeenLastCalledWith(6, 'Second answer draft')
+    expect(wrapper.findAll('textarea')).toHaveLength(0)
+    expect(wrapper.text()).toContain('First answer')
+    expect(wrapper.text()).toContain('Second answer draft')
+    wrapper.unmount()
   })
 
   it('shows the assignment of the open sub-lesson with its status and deadline', async () => {

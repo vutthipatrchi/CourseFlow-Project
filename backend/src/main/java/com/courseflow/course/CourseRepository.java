@@ -117,6 +117,23 @@ public class CourseRepository {
             return;
         }
 
+        var requestedIds = new java.util.HashSet<Long>();
+        for (var lesson : lessons) {
+            if (lesson.id() != null && !requestedIds.add(lesson.id())) {
+                throw new IllegalArgumentException("Lesson IDs must not be repeated");
+            }
+        }
+
+        // The course row is locked by create/update. Move existing positions above both
+        // the old and new ranges before upserting, without replacing IDs or nested data.
+        int maximum = jdbc.queryForObject(
+            "SELECT COALESCE(MAX(position), 0) FROM courseflow.course_lessons WHERE course_id = :courseId",
+            Map.of("courseId", courseId), Integer.class);
+        jdbc.update("""
+            UPDATE courseflow.course_lessons SET position = position + :offset
+            WHERE course_id = :courseId
+            """, Map.of("courseId", courseId, "offset", Math.max(maximum, lessons.size())));
+
         var keptIds = new java.util.ArrayList<Long>();
         for (int index = 0; index < lessons.size(); index++) {
             var lesson = lessons.get(index);

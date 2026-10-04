@@ -26,7 +26,7 @@ vi.mock('@/api/payments', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/payments')>()
   return {
     ...actual,
-    getCheckoutCourse: vi.fn(async () => ({
+    getCheckoutCourse: vi.fn<typeof getCheckoutCourse>(async () => ({
       id: 9,
       name: 'Software Developer',
       price: 3559,
@@ -42,7 +42,7 @@ vi.mock('@/api/payments', async (importOriginal) => {
 })
 
 vi.mock('@/lib/courseAccess', () => ({
-  getCourseAccess: vi.fn(async () => ({
+  getCourseAccess: vi.fn<typeof getCourseAccess>(async () => ({
     enrolled: false,
     checkoutCourse: {
       id: 9,
@@ -93,6 +93,36 @@ async function mountPage() {
 }
 
 describe('Module Samples previews', () => {
+  it('uses the uploaded course preview and cover for anonymous visitors', async () => {
+    vi.mocked(getCheckoutCourse).mockResolvedValueOnce({
+      id: 9,
+      name: 'New course',
+      price: 100,
+      category: 'Course',
+      summary: 'Summary',
+      description: 'Description',
+      learningTime: 1,
+      lessons: 1,
+      accent: null,
+      imageName: '/api/uploads/course-images/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png',
+      videoName: '/api/uploads/course-previews/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.mp4',
+    })
+    vi.mocked(getCourseAccess).mockResolvedValueOnce({
+      enrolled: false,
+      checkoutCourse: null,
+      subscriptionCourseId: null,
+    })
+    const { wrapper } = await mountPage()
+    expect(wrapper.get('video').attributes('src')).toBe(
+      '/api/uploads/course-previews/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.mp4',
+    )
+    expect(wrapper.get('video').attributes('poster')).toBe(
+      '/api/uploads/course-images/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png',
+    )
+    expect(wrapper.text()).toContain('Course introduction')
+    wrapper.unmount()
+  })
+
   it('hides Start learning until the course is purchased', async () => {
     vi.mocked(getCourseAccess).mockResolvedValue({
       enrolled: false,

@@ -31,6 +31,15 @@ class EnrolledDemoContentControllerTests {
     @MockitoBean private JwtDecoder decoder;
 
     @Test
+    void retiredTitleBasedEndpointCannotBypassEnrollment() throws Exception {
+        mvc.perform(get("/api/learn/demo-content")
+                .param("courseTitle", "Service Design Essentials")
+                .with(jwt().jwt(j -> j.subject("non_buyer"))))
+            .andExpect(status().isForbidden());
+        verifyNoInteractions(payments, content);
+    }
+
+    @Test
     void anonymousCallerCannotReadFullContent() throws Exception {
         mvc.perform(get("/api/me/courses/1/demo-content"))
             .andExpect(status().isUnauthorized());

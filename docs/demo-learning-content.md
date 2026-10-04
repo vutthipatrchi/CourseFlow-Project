@@ -11,6 +11,8 @@ content, not a full instructor-reviewed curriculum or a video library.
   the first reading as a free sample and only titles for the remaining outline.
   The authenticated `GET /api/me/courses/{courseId}/demo-content` endpoint
   returns full readings only after the backend confirms an active subscription.
+  The legacy title-based /api/learn/demo-content endpoint is retired and denied;
+  clients must use the course-ID endpoint above.
   A failed request shows an error, not hardcoded content.
 - Reading and answer disclosure: `frontend/src/components/course/LessonReading.vue`.
 - Public course detail pages expose the first reading as a free sample.

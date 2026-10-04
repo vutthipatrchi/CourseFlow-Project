@@ -27,6 +27,16 @@ class PaymentControllerTests {
     @MockitoBean private JwtDecoder decoder;
 
     @Test
+    void freeEnrollmentUsesTheAuthenticatedOwner() throws Exception {
+        var orderId = java.util.UUID.randomUUID();
+        mvc.perform(post("/api/orders/" + orderId + "/complete-free")).andExpect(status().isUnauthorized());
+        verifyNoInteractions(payments);
+        mvc.perform(post("/api/orders/" + orderId + "/complete-free?subject=intruder")
+            .with(jwt().jwt(j -> j.subject("buyer")))).andExpect(status().isOk());
+        verify(payments).completeFreeOrder(orderId, "buyer");
+    }
+
+    @Test
     void anonymousCustomersCannotCreateOrders() throws Exception {
         mvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content("{\"courseId\":1}"))
             .andExpect(status().isUnauthorized());

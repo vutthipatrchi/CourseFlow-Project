@@ -25,6 +25,13 @@ public class LessonRepository {
         return Boolean.TRUE.equals(exists);
     }
 
+    public boolean lockCourse(Long courseId) {
+        return jdbcClient.sql("SELECT id FROM courseflow.courses WHERE id = :id FOR UPDATE")
+                .param("id", courseId)
+                .query(Long.class)
+                .optional().isPresent();
+    }
+
     public Optional<Long> findCourseId(Long lessonId) {
         return jdbcClient
                 .sql("SELECT course_id FROM courseflow.course_lessons WHERE id = :id")
@@ -154,6 +161,23 @@ public class LessonRepository {
                 .param("position", position)
                 .query(Long.class)
                 .single();
+    }
+
+    public void reserveSubLessonPositions(Long lessonId, int incomingCount) {
+        int maximum = jdbcClient.sql("""
+                    SELECT COALESCE(MAX(position), 0)
+                    FROM courseflow.sub_lessons WHERE lesson_id = :lessonId
+                    """)
+                .param("lessonId", lessonId)
+                .query(Integer.class).single();
+        // The owning course is locked until the final order and deletions are committed.
+        jdbcClient.sql("""
+                    UPDATE courseflow.sub_lessons SET position = position + :offset
+                    WHERE lesson_id = :lessonId
+                    """)
+                .param("lessonId", lessonId)
+                .param("offset", Math.max(maximum, incomingCount))
+                .update();
     }
 
     public void updateSubLesson(Long id, String name, String videoUrl, int position) {

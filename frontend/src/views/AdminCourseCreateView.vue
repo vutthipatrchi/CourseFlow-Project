@@ -6,6 +6,7 @@ import { useClerk } from '@clerk/vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import courseFlowLogo from '../assets/admin/courseflow-sidebar-logo.svg'
 import { useCourseStore } from '@/stores/course'
+import { uploadCourseAsset } from '@/api/uploads'
 import { useToast } from '@/composables/useToast'
 import type { AdminCourse, AdminCourseLesson, AdminCoursePayload } from '@/types/course'
 import FormFieldError from '../components/admin/FormFieldError.vue'
@@ -55,6 +56,7 @@ const description = ref(cachedCourse?.description ?? '')
 const imageName = ref(cachedCourse?.imageName ?? '')
 const videoName = ref(cachedCourse?.videoName ?? '')
 const resourceName = ref(cachedCourse?.resourceName ?? '')
+const selectedFiles = ref<Partial<Record<'image' | 'video' | 'resource', File>>>({})
 type CourseFormField =
   | 'name'
   | 'price'
@@ -113,15 +115,26 @@ onMounted(async () => {
 
 function rememberFile(event: Event, target: 'image' | 'video' | 'resource') {
   const file = (event.target as HTMLInputElement).files?.[0]
-  const value = file?.name ?? ''
-  if (target === 'image') imageName.value = value
-  if (target === 'video') videoName.value = value
-  if (target === 'resource') resourceName.value = value
+  if (file) selectedFiles.value[target] = file
 }
 
 function rememberCoverImage(event: Event) {
   rememberFile(event, 'image')
   clearError('image')
+}
+
+async function uploadPendingFiles() {
+  const targets = [
+    ['image', 'images', imageName],
+    ['video', 'previews', videoName],
+    ['resource', 'resources', resourceName],
+  ] as const
+  for (const [target, kind, storedUrl] of targets) {
+    const file = selectedFiles.value[target]
+    if (!file) continue
+    storedUrl.value = (await uploadCourseAsset(file, kind)).url
+    delete selectedFiles.value[target]
+  }
 }
 
 function buildCoursePayload(): AdminCoursePayload {
@@ -151,6 +164,7 @@ function buildCoursePayload(): AdminCoursePayload {
 }
 
 async function addLesson() {
+  if (isSaving.value) return
   if (isEditing && Number.isInteger(courseId) && courseId > 0) {
     router.push({
       name: 'admin-lesson-create',
@@ -168,6 +182,7 @@ async function addLesson() {
   apiError.value = ''
   isSaving.value = true
   try {
+    await uploadPendingFiles()
     const created = await addCourse(buildCoursePayload())
     courseToEdit.value = created
     lessons.value = created.lessonItems?.map((lesson) => ({ ...lesson })) ?? []
@@ -236,7 +251,7 @@ function clearError(field: CourseFormField) {
     discount: discount.value,
     summary: summary.value,
     description: description.value,
-    image: imageName.value,
+    image: selectedFiles.value.image ?? imageName.value,
     lessons: lessons.value.length,
   }
 
@@ -330,7 +345,8 @@ function validateCourse() {
   }
   if (!isEditing && isEmpty(summary.value)) errors.summary = 'Please fill out this field'
   if (!isEditing && isEmpty(description.value)) errors.description = 'Please fill out this field'
-  if (!isEditing && isEmpty(imageName.value)) errors.image = 'Please fill out this field'
+  if (!isEditing && !selectedFiles.value.image && isEmpty(imageName.value))
+    errors.image = 'Please fill out this field'
   if (lessons.value.length < 1) errors.lessons = 'Course must have at least 1 lesson'
 
   fieldErrors.value = errors
@@ -342,13 +358,13 @@ function onLessonEditClick(_event: MouseEvent, lesson: AdminCourseLesson) {
 }
 
 async function saveCourse() {
-  if (!validateCourse()) return
+  if (isSaving.value || !validateCourse()) return
 
   apiError.value = ''
   isSaving.value = true
-  const details = buildCoursePayload()
-
   try {
+    await uploadPendingFiles()
+    const details = buildCoursePayload()
     if (isEditing) {
       if (!courseToEdit.value) throw new Error('Course is not available for editing.')
       await updateCourse(courseToEdit.value.id, details)
@@ -623,11 +639,15 @@ async function saveCourse() {
                   <svg aria-hidden="true" viewBox="0 0 24 24">
                     <path d="M12 16V4M7 9l5-5 5 5M5 15v5h14v-5" />
                   </svg>
-                  {{ imageName || 'Upload Image' }}
+                  {{
+                    selectedFiles.image?.name ||
+                    (imageName ? 'Current cover image' : 'Upload Image')
+                  }}
                   <input
                     name="coverImage"
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png"
+                    :disabled="isSaving"
                     @change="rememberCoverImage"
                   />
                 </span>
@@ -635,23 +655,42 @@ async function saveCourse() {
               </label>
               <label class="upload-field">
                 <span>Preview video</span>
-                <small>Upload an introduction video</small>
+                <small>MP4, WebM, MOV or M4V. Max file size: 200 MB</small>
                 <span class="upload-box">
                   <svg aria-hidden="true" viewBox="0 0 24 24">
                     <path d="M12 16V4M7 9l5-5 5 5M5 15v5h14v-5" />
                   </svg>
-                  {{ videoName || 'Upload Video' }}
-                  <input type="file" accept="video/*" @change="rememberFile($event, 'video')" />
+                  {{
+                    selectedFiles.video?.name ||
+                    (videoName ? 'Current preview video' : 'Upload Video')
+                  }}
+                  <input
+                    name="previewVideo"
+                    type="file"
+                    accept=".mp4,.webm,.mov,.m4v"
+                    :disabled="isSaving"
+                    @change="rememberFile($event, 'video')"
+                  />
                 </span>
               </label>
               <label class="upload-field compact-upload attach-file-field">
                 <span>Attach File (Optional)</span>
+                <small>PDF, Office documents, TXT, CSV or ZIP. Max file size: 25 MB</small>
                 <span class="upload-box attach-file-box">
                   <svg aria-hidden="true" viewBox="0 0 24 24">
                     <path d="M12 6v12M6 12h12" />
                   </svg>
-                  {{ resourceName || 'Upload file' }}
-                  <input name="attachment" type="file" @change="rememberFile($event, 'resource')" />
+                  {{
+                    selectedFiles.resource?.name ||
+                    (resourceName ? 'Current attachment' : 'Upload file')
+                  }}
+                  <input
+                    name="attachment"
+                    type="file"
+                    accept=".pdf,.txt,.csv,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                    :disabled="isSaving"
+                    @change="rememberFile($event, 'resource')"
+                  />
                 </span>
               </label>
             </div>

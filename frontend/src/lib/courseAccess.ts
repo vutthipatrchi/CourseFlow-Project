@@ -1,3 +1,4 @@
+import { getSessionToken } from '@/api/sessionToken'
 import {
   getCheckoutCourses,
   getCourseEnrollments,
@@ -41,8 +42,11 @@ export async function getCourseAccess(
   courseTitle: string,
   knownCourse?: CheckoutCourse,
 ): Promise<CourseAccess> {
+  // Guests can start checkout; the payment route handles sign-in and its return URL.
+  // Session failures still propagate so an unavailable session is not treated as a guest.
+  const token = await getSessionToken(new AbortController().signal)
   const [enrollments, checkoutCourse] = await Promise.all([
-    getCourseEnrollments(),
+    token ? getCourseEnrollments() : Promise.resolve<CourseEnrollment[]>([]),
     knownCourse ??
       getCheckoutCourses().then((catalog) => findCheckoutCourseByTitle(catalog, courseTitle)),
   ])

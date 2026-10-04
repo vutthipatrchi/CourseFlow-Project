@@ -64,6 +64,7 @@ class PaymentService {
                 OrderRecord order = previous.get();
                 var active = repository.findActivePayment(order.id());
                 if (active.isPresent()) return toOrderView(order, active.get());
+                if (order.status() == OrderStatus.PAID && order.totalSatang() == 0) return toOrderView(order, null);
                 if (order.status() != OrderStatus.PENDING_PAYMENT) {
                     throw new CheckoutConflictException("This course already has an order awaiting resolution");
                 }
@@ -76,15 +77,30 @@ class PaymentService {
             CoursePrice course = repository.findCourse(courseId).orElseThrow(CheckoutNotFoundException::new);
             long promoDiscount = repository.findPromotionDiscount(courseId, code);
             if (!code.isBlank() && promoDiscount == 0) throw new CheckoutConflictException("Promotion code is invalid or expired");
-            long discount = Math.max(course.defaultDiscountSatang(), promoDiscount);
+            if (course.subtotalSatang() < 0 || course.defaultDiscountSatang() < 0 || promoDiscount < 0) {
+                throw new CheckoutConflictException("Invalid course price or discount");
+            }
+            long discount = Math.min(course.subtotalSatang(), Math.max(course.defaultDiscountSatang(), promoDiscount));
             long total = course.subtotalSatang() - discount;
-            if (discount < 0 || total <= 0) throw new CheckoutConflictException("Order total must be greater than zero");
             UUID id = UUID.randomUUID();
             OrderRecord order = new OrderRecord(id, "CF" + id.toString().replace("-", "").substring(0, 20).toUpperCase(Locale.ROOT),
                 courseId, course.title(), subject, code, course.subtotalSatang(), discount, total, "thb",
                 OrderStatus.PENDING_PAYMENT, clock.instant().plus(CHECKOUT_TTL));
             repository.insertOrder(order);
             return toOrderView(order, null);
+        });
+    }
+
+    OrderCreated completeFreeOrder(UUID orderId, String subject) {
+        return transactions.execute(tx -> {
+            OrderRecord order = requireOrder(orderId, subject, true);
+            if (order.totalSatang() != 0) throw new CheckoutConflictException("This order requires payment");
+            if (order.status() == OrderStatus.PAID) return toOrderView(order, null);
+            if (order.status() != OrderStatus.PENDING_PAYMENT || !order.expiresAt().isAfter(clock.instant())) {
+                throw new CheckoutConflictException("Checkout expired or unavailable. Reload to review the current price.");
+            }
+            repository.activateSubscription(order);
+            return toOrderView(repository.findOrder(orderId, false).orElseThrow(CheckoutNotFoundException::new), null);
         });
     }
 
@@ -106,6 +122,7 @@ class PaymentService {
             if (active.isPresent()) return new Reservation(order, active.get(), false);
             if (order.status() != OrderStatus.PENDING_PAYMENT) throw new CheckoutConflictException("Order cannot accept another payment");
             if (!order.expiresAt().isAfter(clock.instant())) throw new CheckoutConflictException("Checkout expired. Reload to review the current price.");
+            if (order.totalSatang() <= 0) throw new CheckoutConflictException("Use free enrollment for this order");
             if (!gateway.enabled()) throw new PaymentProviderUnavailableException();
             PaymentRecord payment = new PaymentRecord(UUID.randomUUID(), orderId, null, key, method,
                 order.totalSatang(), order.currency(), PaymentStatus.CREATING, null, null, null,
@@ -269,7 +286,7 @@ class PaymentService {
 
     private OrderCreated toOrderView(OrderRecord order, PaymentRecord payment) {
         return new OrderCreated(order.id(), order.courseId(), order.reference(), order.courseTitle(), order.promotionCode(),
-            order.subtotalSatang(), order.discountSatang(), order.totalSatang(), order.currency(), order.expiresAt(),
+            order.subtotalSatang(), order.discountSatang(), order.totalSatang(), order.currency(), order.expiresAt(), order.status().value(),
             payment == null ? null : toView(order, payment));
     }
 

@@ -231,8 +231,21 @@ describe('Subscribe / catalog / payment config performance', () => {
     expect(requests).toEqual(['/me/enrollments', '/me/enrollments'])
   })
 
-  it('keeps a guest enrollment authorization failure separate from purchase permission', async () => {
+  it('lets guests start checkout without calling the protected enrollment API', async () => {
     vi.mocked(getToken).mockResolvedValue(null)
+    installTransport({ '/me/enrollments': { delay: 100, status: 401, data: {} } })
+    await mountSubject()
+    await vi.advanceTimersByTimeAsync(101)
+    await flushPromises()
+    expect(subscribeButton().attributes('disabled')).toBeUndefined()
+    expect(requests).not.toContain('/me/enrollments')
+    expect(wrapper!.find('aside [role="alert"]').exists()).toBe(false)
+    await subscribeButton().trigger('click')
+    await flushPromises()
+    expect(wrapper!.vm.$route.fullPath).toBe('/payment?courseId=9')
+  })
+
+  it('keeps checkout disabled when a signed-in enrollment request is rejected', async () => {
     installTransport({ '/me/enrollments': { delay: 100, status: 401, data: {} } })
     await mountSubject()
     await vi.advanceTimersByTimeAsync(101)

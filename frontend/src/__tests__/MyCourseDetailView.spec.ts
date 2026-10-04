@@ -3,14 +3,15 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import MyCourseDetailView from '../views/MyCourseDetailView.vue'
-import type { CourseProgressView, SubscriptionView } from '@/api/payments'
+import { downloadCourseResource } from '@/api/uploads'
+import type { CheckoutCourse, CourseProgressView, SubscriptionView } from '@/api/payments'
 import { demoContentFixtures } from './demoContentFixtures'
 import type { DemoContentRow } from '@/api/demoContent'
 
 const mocks = vi.hoisted(() => ({
   getSubscriptions: vi.fn<() => Promise<SubscriptionView[]>>(),
   getCourseProgress: vi.fn<(courseId: number) => Promise<CourseProgressView>>(),
-  getCheckoutCourse: vi.fn(async (courseId: number) => ({
+  getCheckoutCourse: vi.fn<(courseId: number) => Promise<CheckoutCourse>>(async (courseId) => ({
     id: courseId,
     name: courseId === 1 ? 'Service Design Essentials' : 'Software Developer',
     price: 3559,
@@ -24,6 +25,9 @@ const mocks = vi.hoisted(() => ({
   })),
 }))
 vi.mock('@/api/payments', () => mocks)
+vi.mock('@/api/uploads', () => ({
+  downloadCourseResource: vi.fn<(source: string) => Promise<void>>(),
+}))
 vi.mock('@/api/demoContent', () => ({
   getEnrolledDemoContent: vi.fn<(courseId: number) => Promise<DemoContentRow[]>>(async (courseId) =>
     demoContentFixtures(courseId === 1 ? 'Service Design Essentials' : 'Software Developer'),
@@ -101,6 +105,39 @@ beforeEach(() => {
 })
 
 describe('MyCourseDetailView', () => {
+  it('downloads course materials for an enrolled student and shows download errors', async () => {
+    const resourceName = '/api/uploads/course-resources/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.pdf'
+    mocks.getCheckoutCourse.mockResolvedValueOnce({
+      id: 1,
+      name: 'Service Design Essentials',
+      price: 100,
+      category: 'Course',
+      summary: 'Summary',
+      description: 'Description',
+      learningTime: 1,
+      lessons: 1,
+      imageName: null,
+      accent: null,
+      resourceName,
+    })
+    vi.mocked(downloadCourseResource)
+      .mockRejectedValueOnce(new Error('Download interrupted'))
+      .mockResolvedValueOnce()
+    const { wrapper } = await mountPage()
+    const button = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Download course materials')!
+    await button.trigger('click')
+    await flushPromises()
+    expect(downloadCourseResource).toHaveBeenLastCalledWith(resourceName)
+    expect(wrapper.text()).toContain('Download interrupted')
+    await button.trigger('click')
+    await flushPromises()
+    expect(downloadCourseResource).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).not.toContain('Download interrupted')
+    wrapper.unmount()
+  })
+
   it('shows the purchased course and opens the first unfinished lesson', async () => {
     const { router, wrapper } = await mountPage()
     expect(wrapper.text()).toContain('Service Design Essentials')
