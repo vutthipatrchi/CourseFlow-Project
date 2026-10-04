@@ -124,6 +124,7 @@ async function mountPlayer(path = '/courses/course-9/learn/sub-1-1') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
+      { path: '/', name: 'home', component: { template: '<div>Home</div>' } },
       { path: '/my-courses', component: { template: '<div>My Courses</div>' } },
       {
         path: '/courses/:id/learn/:subLessonId',
@@ -166,6 +167,39 @@ function sidebarProgress(wrapper: Awaited<ReturnType<typeof mountPlayer>>) {
 }
 
 describe('purchased course player', () => {
+  it('shows Back to home on the last sub-lesson and opens the home page', async () => {
+    const wrapper = await mountPlayer()
+    await flushPromises()
+    const action = wrapper.get('button.bg-blue-600')
+    expect(action.text()).toBe('Back to home')
+    expect(action.attributes('disabled')).toBeUndefined()
+    const push = vi.spyOn(wrapper.vm.$router, 'push')
+    await action.trigger('click')
+    await flushPromises()
+    expect(push).toHaveBeenCalledWith({ name: 'home' })
+    wrapper.unmount()
+  })
+
+  it('keeps Next Lesson while another sub-lesson follows', async () => {
+    const first = progress.subLessons[0]!
+    mocks.getCourseProgress.mockResolvedValue({
+      ...structuredClone(progress),
+      subLessons: [first, { ...first, id: 100, subLessonPosition: 2, title: 'Second lesson' }],
+    })
+    const wrapper = await mountPlayer()
+    await flushPromises()
+    const action = wrapper.get('button.bg-blue-600')
+    expect(action.text()).toBe('Next Lesson')
+    const push = vi.spyOn(wrapper.vm.$router, 'push')
+    await action.trigger('click')
+    await flushPromises()
+    expect(push).toHaveBeenCalledWith({
+      name: 'course-player',
+      params: { id: 'course-9', subLessonId: 'sub-1-2' },
+    })
+    wrapper.unmount()
+  })
+
   it('does not substitute local readings when the content API fails', async () => {
     vi.mocked(getEnrolledDemoContent).mockRejectedValueOnce(
       new Error('Content service unavailable'),
