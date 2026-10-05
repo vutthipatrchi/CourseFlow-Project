@@ -7,7 +7,28 @@
 import AppNavbar from '@/components/landing/AppNavbar.vue'
 import AppFooter from '@/components/landing/AppFooter.vue'
 import CourseCard from '@/components/course/CourseCard.vue'
-import { wishlistCourses } from '@/data/wishlist'
+import { computed } from 'vue'
+import { useWishlist } from '@/composables/useWishlist'
+import { toStorefrontCourse, catalogCourseId } from '@/lib/catalogCourses'
+import { toApiError } from '@/api/client'
+import { useToast } from '@/composables/useToast'
+import Spinner from '@/components/common/Spinner.vue'
+
+const { courses, loading, error, pending, load, setSaved } = useWishlist()
+// แปลงข้อมูลคอร์สจาก API เป็นรูปแบบของ CourseCard โดยใช้ mapper เดียวกับหน้ารายการคอร์ส
+const wishlistCourses = computed(() => courses.value.map(toStorefrontCourse))
+const { success, error: notifyError } = useToast()
+
+async function remove(courseId: string) {
+  // หน้าเว็บใช้ route ID เช่น course-9 แต่ API ใช้เลข ID 9 จึงแปลงก่อนหาคอร์สที่จะลบ
+  const course = courses.value.find((item) => item.id === catalogCourseId(courseId))
+  if (!course) return
+  try {
+    if (await setSaved(course, false)) success('Removed from wishlist successfully!')
+  } catch (cause) {
+    notifyError(toApiError(cause).message)
+  }
+}
 </script>
 
 <template>
@@ -49,21 +70,36 @@ import { wishlistCourses } from '@/data/wishlist'
           My Wishlist
         </h1>
       </section>
+      <p v-if="loading" role="status" class="pb-20"><Spinner label="Loading wishlist…" /></p>
+      <p v-else-if="error" role="alert" class="pb-20 text-red-700">
+        {{ error }} <button type="button" class="underline" @click="load">Try again</button>
+      </p>
       <section
-        v-if="wishlistCourses.length > 0"
-        class="mx-auto grid max-w-289.5 grid-cols-3 gap-x-6 gap-y-15 pb-20"
+        v-else-if="wishlistCourses.length > 0"
+        class="mx-auto grid max-w-289.5 w-full grid-cols-1 px-6 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-15 pb-20"
       >
-        <CourseCard
-          v-for="course in wishlistCourses"
-          :key="course.id"
-          :id="course.id"
-          :category="course.category"
-          :title="course.title"
-          :description="course.description"
-          :image-url="course.imageUrl"
-          :lesson-count="course.lessonCount"
-          :hour-count="course.hourCount"
-        />
+        <div v-for="course in wishlistCourses" :key="course.id">
+          <CourseCard
+            :id="course.id"
+            :category="course.category"
+            :title="course.title"
+            :description="course.description"
+            :image-url="course.imageUrl"
+            :lesson-count="course.lessonCount"
+            :hour-count="course.hourCount"
+          />
+          <button
+            type="button"
+            :disabled="pending.has(catalogCourseId(course.id) ?? 0)"
+            :aria-label="`Remove ${course.title} from wishlist`"
+            class="mt-4 text-orange-600 underline disabled:opacity-50"
+            @click="remove(course.id)"
+          >
+            {{
+              pending.has(catalogCourseId(course.id) ?? 0) ? 'Removing…' : 'Remove from Wishlist'
+            }}
+          </button>
+        </div>
       </section>
       <p v-else class="pb-20 text-base text-[#646D89]">No courses in your wishlist yet.</p>
     </main>

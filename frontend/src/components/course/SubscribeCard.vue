@@ -1,8 +1,11 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 // ── SubscribeCard ─────────────────────────────────────────────────────────
 // Sticky price card with wishlist and checkout actions.
 
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useWishlist } from '@/composables/useWishlist'
+import { toApiError } from '@/api/client'
 import { learningPathForSubscription } from '@/lib/courseAccess'
 import type { CheckoutCourse } from '@/api/payments'
 import { useToast } from '@/composables/useToast'
@@ -23,7 +26,14 @@ const props = defineProps<Props>()
 const emit = defineEmits<{ retry: [] }>()
 
 const router = useRouter()
-const { success } = useToast()
+const route = useRoute()
+const { success, error: notifyError } = useToast()
+const wishlist = useWishlist()
+// ใช้ ID ของคอร์สจริงเทียบกับรายการจาก API เพื่อแสดงปุ่มเพิ่มหรือลบให้ตรงกับข้อมูลที่บันทึก
+const saved = computed(() =>
+  wishlist.courses.value.some((course) => course.id === props.checkoutCourse?.id),
+)
+const wishlistBusy = computed(() => wishlist.pending.value.has(props.checkoutCourse?.id ?? 0))
 function goToPayment() {
   if (!props.checkoutCourse || props.loadingCourse || props.checkoutError) return
   router.push({ name: 'payment', query: { courseId: props.checkoutCourse.id } })
@@ -34,10 +44,24 @@ function goToLearning() {
   router.push(learningPathForSubscription(props.subscriptionCourseId))
 }
 
-// Unrelated to the toast migration: this click isn't persisted anywhere yet (out of scope
-// here), so the toast is only confirming the click itself, same as before.
-const addToWishlist = () => {
-  success('Added to wishlist successfully!')
+async function toggleWishlist() {
+  // ผู้ที่ยังไม่ล็อกอินกลับมาหน้าคอร์สเดิมได้หลัง sign-in แล้วจึงกดบันทึกอีกครั้ง
+  if (!wishlist.user.value?.id) {
+    await router.push({ name: 'sign-in', query: { redirect: route.fullPath } })
+    return
+  }
+  if (!props.checkoutCourse) return
+  const shouldSave = !saved.value
+  try {
+    // ไม่แจ้งสำเร็จเพียงเพราะกดปุ่ม ต้องรอการบันทึกจริงและยังอยู่ในบัญชีเดิม
+    if (await wishlist.setSaved(props.checkoutCourse, shouldSave)) {
+      success(
+        shouldSave ? 'Added to wishlist successfully!' : 'Removed from wishlist successfully!',
+      )
+    }
+  } catch (cause) {
+    notifyError(toApiError(cause).message)
+  }
 }
 </script>
 
@@ -62,6 +86,10 @@ const addToWishlist = () => {
       {{ checkoutError }}
       <button type="button" class="ml-1 underline" @click="emit('retry')">Try again</button>
     </p>
+    <p v-if="wishlist.error.value" role="alert" class="text-sm text-red-700">
+      {{ wishlist.error.value }}
+      <button type="button" class="ml-1 underline" @click="wishlist.load">Try again</button>
+    </p>
     <div class="flex flex-col gap-4 border-t border-[#D6D9E4] pt-16">
       <template v-if="enrolled">
         <button
@@ -82,10 +110,17 @@ const addToWishlist = () => {
       <template v-else>
         <button
           type="button"
-          class="cursor-pointer rounded-xl border border-orange-500 bg-white px-8 py-4.5 text-base font-bold text-orange-500 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-orange-500 hover:text-white active:scale-95"
-          @click="addToWishlist"
+          class="cursor-pointer rounded-xl border border-orange-500 bg-white px-8 py-4.5 text-base font-bold text-orange-500 shadow-[4px_4px_24px_rgba(0,0,0,0.08)] transition-all duration-200 hover:bg-orange-500 hover:text-white active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="
+            !checkoutCourse ||
+            loadingCourse ||
+            wishlistBusy ||
+            (Boolean(wishlist.user.value) && !wishlist.loaded.value)
+          "
+          :aria-pressed="saved"
+          @click="toggleWishlist"
         >
-          Add to Wishlist
+          {{ wishlistBusy ? 'Saving…' : saved ? 'Remove from Wishlist' : 'Add to Wishlist' }}
         </button>
         <button
           type="button"
