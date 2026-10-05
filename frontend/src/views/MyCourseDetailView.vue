@@ -15,6 +15,7 @@ import { getDemoLesson, getDemoLessonLabels } from '@/data/demoLessons'
 import { getEnrolledDemoContent, type DemoContentRow } from '@/api/demoContent'
 import { resolveCatalogImage } from '@/lib/catalogCourses'
 import { useToast } from '@/composables/useToast'
+import { downloadCourseResource } from '@/api/uploads'
 import Spinner from '@/components/common/Spinner.vue'
 
 const { error: notifyError } = useToast()
@@ -25,6 +26,27 @@ const progress = ref<CourseProgressView | null>(null)
 const catalogCourse = ref<CheckoutCourse | null>(null)
 const demoContent = ref<DemoContentRow[]>([])
 const contentError = ref('')
+const resourceDownloading = ref(false)
+const resourceError = ref('')
+const resourceUrl = computed(() => {
+  const source = catalogCourse.value?.resourceName
+  return source?.startsWith('/api/uploads/course-resources/') ? source : null
+})
+async function downloadResource() {
+  if (!resourceUrl.value || resourceDownloading.value) return
+  resourceDownloading.value = true
+  resourceError.value = ''
+  try {
+    await downloadCourseResource(resourceUrl.value)
+  } catch (failure) {
+    resourceError.value =
+      failure instanceof Error ? failure.message : 'Unable to download course materials.'
+    notifyError(resourceError.value)
+  } finally {
+    resourceDownloading.value = false
+  }
+}
+
 const loading = ref(true)
 const error = ref('')
 
@@ -123,6 +145,17 @@ watch(courseId, load, { immediate: true })
         <span aria-hidden="true">←</span> Back to My Courses
       </RouterLink>
 
+      <div v-if="!loading && !error && subscription && resourceUrl" class="mt-6">
+        <button
+          type="button"
+          :disabled="resourceDownloading"
+          class="font-semibold text-blue-600 underline disabled:opacity-50"
+          @click="downloadResource"
+        >
+          {{ resourceDownloading ? 'Downloading...' : 'Download course materials' }}
+        </button>
+        <p v-if="resourceError" role="alert" class="mt-2 text-red-700">{{ resourceError }}</p>
+      </div>
       <p v-if="loading" class="mt-8" role="status"><Spinner label="Loading course details…" /></p>
       <div v-else-if="error" class="mt-8">
         <p role="alert" class="text-red-700">{{ error }}</p>

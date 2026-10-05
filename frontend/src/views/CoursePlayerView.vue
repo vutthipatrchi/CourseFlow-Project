@@ -28,7 +28,7 @@ import { toCardAssignment } from '@/lib/assignmentCard'
 import { catalogRouteId, toStorefrontCourse } from '@/lib/catalogCourses'
 import { hasScrolledToPageBottom } from '@/lib/scrollComplete'
 import { useToast } from '@/composables/useToast'
-import type { Course } from '@/types/course'
+import type { Assignment, Course } from '@/types/course'
 import type { MyAssignment } from '@/types/submission'
 
 const route = useRoute()
@@ -85,10 +85,10 @@ const backendCourseId = computed(() => {
 const progressLoading = ref(true)
 let progressRequest = 0
 
-// The caller's assignments for this course, keyed by sub-lesson id (the id the progress API returns).
+// Preserve every assignment, including multiple questions in the same sub-lesson.
 const myAssignments = ref<Record<number, MyAssignment>>({})
 const assignmentError = ref('')
-const submittingAssignment = ref(false)
+const submittingAssignments = ref<Set<number>>(new Set())
 const demoContent = ref<DemoContentRow[]>([])
 const demoContentError = ref('')
 let lastProgress: CourseProgressView | null = null
@@ -115,7 +115,9 @@ function applyProgress(progress: CourseProgressView) {
         ? getDemoLessonLabels(items[0], getDemoLesson(demoContent.value, items[0])).lessonTitle
         : `Lesson ${lessonPosition}`,
       subLessons: items.map((item) => {
-        const assignment = myAssignments.value[item.id]
+        const assignments = Object.values(myAssignments.value).filter(
+          (assignment) => assignment.subLessonId === item.id,
+        )
         const demoLesson = getDemoLesson(demoContent.value, item)
         return {
           id: `sub-${item.lessonPosition}-${item.subLessonPosition}`,
@@ -124,7 +126,7 @@ function applyProgress(progress: CourseProgressView) {
           videoUrl: item.videoUrl ?? '',
           demoLesson,
           progress: item.completed ? ('completed' as const) : ('not-started' as const),
-          assignment: assignment ? toCardAssignment(assignment) : undefined,
+          assignments: assignments.map(toCardAssignment),
         }
       }),
     }
@@ -179,7 +181,7 @@ async function loadProgress() {
     myAssignments.value = Object.fromEntries(
       assignments
         .filter((assignment) => assignment.courseId === requestedCourseId)
-        .map((assignment) => [assignment.subLessonId, assignment]),
+        .map((assignment) => [assignment.id, assignment]),
     )
     const subscription = subscriptions.find((item) => item.courseId === requestedCourseId)
     if (!subscription) throw new Error('This course is not in your courses.')
@@ -351,21 +353,22 @@ watch(
   },
 )
 
-const handleAssignmentSubmit = async (answer: string) => {
-  const assignment = currentEntry.value?.subLesson.assignment
-  if (!assignment) return
-  submittingAssignment.value = true
+const handleAssignmentSubmit = async (assignment: Assignment, answer: string) => {
+  const apiId = Number(assignment.id)
+  if (submittingAssignments.value.has(apiId)) return
+  const request = progressRequest
+  submittingAssignments.value.add(apiId)
   try {
-    const apiId = Number(assignment.id)
     if (backendCourseId.value && Number.isInteger(apiId)) {
       // Real course: the answer is saved through the API and the card shows what the server returns.
       try {
         const saved = await submitAssignment(apiId, answer)
-        myAssignments.value = { ...myAssignments.value, [saved.subLessonId]: saved }
+        if (request !== progressRequest) return
+        myAssignments.value = { ...myAssignments.value, [saved.id]: saved }
         if (lastProgress) applyProgress(lastProgress)
         assignmentError.value = ''
       } catch (error) {
-        failAssignment(toApiError(error).message)
+        if (request === progressRequest) failAssignment(toApiError(error).message)
         return
       }
     } else {
@@ -374,7 +377,7 @@ const handleAssignmentSubmit = async (answer: string) => {
     }
     notifySuccess('Assignment submitted successfully!')
   } finally {
-    submittingAssignment.value = false
+    submittingAssignments.value.delete(apiId)
   }
 }
 </script>
@@ -475,10 +478,11 @@ const handleAssignmentSubmit = async (answer: string) => {
             <p class="text-base text-[#646D89]">{{ currentEntry.subLesson.description }}</p>
 
             <AssignmentCard
-              v-if="currentEntry.subLesson.assignment"
-              :assignment="currentEntry.subLesson.assignment"
-              :submitting="submittingAssignment"
-              @submit="handleAssignmentSubmit"
+              v-for="assignment in currentEntry.subLesson.assignments"
+              :key="assignment.id"
+              :assignment="assignment"
+              :submitting="submittingAssignments.has(Number(assignment.id))"
+              @submit="handleAssignmentSubmit(assignment, $event)"
             />
             <!-- Marks the lesson complete once this end-of-reading marker enters view. -->
             <div ref="lessonEndSentinel" class="h-px w-full" aria-hidden="true"></div>

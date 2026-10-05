@@ -7,6 +7,7 @@ import { formatThb } from '@/lib/payment'
 import Spinner from '@/components/common/Spinner.vue'
 import {
   createCardPayment,
+  completeFreeOrder,
   createOrder,
   createPromptPayPayment,
   getPaymentConfig,
@@ -26,6 +27,7 @@ const order = ref<OrderCreated | null>(null)
 const subtotal = computed(() => (order.value?.subtotalSatang ?? 0) / 100)
 const discount = computed(() => (order.value?.discountSatang ?? 0) / 100)
 const total = computed(() => (order.value?.totalSatang ?? 0) / 100)
+const isFree = computed(() => order.value?.totalSatang === 0)
 const submitted = ref(false)
 const processing = ref(false)
 const recovering = ref(false)
@@ -41,7 +43,11 @@ onUnmounted(() => {
 const { success: notifySuccess, error: notifyError } = useToast()
 
 const methodLabel = computed(() =>
-  paymentMethod.value === 'card' ? 'Credit card / Debit card' : 'QR code',
+  isFree.value
+    ? 'No payment required'
+    : paymentMethod.value === 'card'
+      ? 'Credit card / Debit card'
+      : 'QR code',
 )
 const digits = computed(() => card.number.replace(/\D/g, ''))
 const expiryParts = computed(() => /^(0[1-9]|1[0-2])\s*\/\s*([0-9]{2})$/.exec(card.expiry))
@@ -92,6 +98,11 @@ async function openPayment(payment: PaymentView, authorize = false) {
     continueCardAuthentication(payment.authorizeUrl)
 }
 
+async function openEnrollment(next: OrderCreated) {
+  if (disposed) return
+  await router.push({ name: 'my-course-detail', params: { courseId: String(next.courseId) } })
+}
+
 async function prepareOrder() {
   if (!courseId.value) throw new Error('Please select a valid course.')
   const next = await createOrder(courseId.value, promoCode.value)
@@ -99,7 +110,8 @@ async function prepareOrder() {
   if (order.value?.orderId !== next.orderId) attemptKey = crypto.randomUUID()
   order.value = next
   promoCode.value = next.promotionCode || ''
-  if (next.payment) await openPayment(next.payment)
+  if (next.status === 'paid' && next.totalSatang === 0) await openEnrollment(next)
+  else if (next.payment) await openPayment(next.payment)
   return next
 }
 
@@ -175,6 +187,23 @@ async function confirmPayment() {
         'Your checkout has been updated. Please review the total and confirm again.'
     } catch (error) {
       fail(messageFrom(error))
+    } finally {
+      processing.value = false
+    }
+    return
+  }
+  if (isFree.value) {
+    processing.value = true
+    try {
+      const completed = await completeFreeOrder(order.value.orderId)
+      if (disposed) return
+      if (completed.status !== 'paid')
+        throw new Error('Enrollment could not be confirmed. Please try again.')
+      order.value = completed
+      notifySuccess('You are enrolled. Enjoy your course!')
+      await openEnrollment(completed)
+    } catch (error) {
+      if (!disposed) fail(messageFrom(error))
     } finally {
       processing.value = false
     }
@@ -257,7 +286,11 @@ async function confirmPayment() {
         <h1
           class="mt-16 max-w-[739px] text-[32px] leading-[1.25] font-medium tracking-[-0.02em] text-black sm:text-4xl"
         >
-          Enter payment info to start your subscription
+          {{
+            isFree
+              ? 'Confirm your free enrollment'
+              : 'Enter payment info to start your subscription'
+          }}
         </h1>
 
         <form
@@ -265,7 +298,10 @@ async function confirmPayment() {
           novalidate
           @submit.prevent="confirmPayment"
         >
-          <fieldset :disabled="processing || recovering || !order">
+          <p v-if="isFree" class="rounded-lg bg-blue-50 p-6 text-blue-900">
+            This course is free with your current total. Confirm to start learning.
+          </p>
+          <fieldset v-else :disabled="processing || recovering || !order">
             <legend class="mb-4 text-base leading-6 text-gray-700">Select payment method</legend>
 
             <div class="space-y-2">
@@ -442,7 +478,7 @@ async function confirmPayment() {
 
             <div class="border-t border-gray-400 pt-6">
               <p
-                v-if="submitted && !recovering && paymentMethod === 'card' && !cardValid"
+                v-if="submitted && !isFree && !recovering && paymentMethod === 'card' && !cardValid"
                 role="alert"
                 class="mb-4 text-sm text-red-700"
               >
@@ -469,9 +505,11 @@ async function confirmPayment() {
                   {{
                     recovering
                       ? 'Check payment status'
-                      : paymentMethod === 'qr'
-                        ? 'Continue to QR code'
-                        : 'Confirm payment'
+                      : isFree
+                        ? 'Enroll for free'
+                        : paymentMethod === 'qr'
+                          ? 'Continue to QR code'
+                          : 'Confirm payment'
                   }}
                 </template>
               </button>

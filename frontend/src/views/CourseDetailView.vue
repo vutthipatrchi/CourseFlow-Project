@@ -34,6 +34,12 @@ const previewLoading = ref(false)
 const previewError = ref('')
 const sampleLesson = computed(() => previewModules.value[0]?.subLessons[0]?.demoLesson)
 const videoFailed = ref(false)
+const previewVideo = computed(() => {
+  const source = checkoutCourse.value?.videoName
+  return source && /^\/api\/uploads\/course-previews\/[a-f0-9-]+\.(mp4|webm|mov|m4v)$/.test(source)
+    ? source
+    : DEMO_VIDEO_URL
+})
 const enrolled = ref(false)
 const subscriptionCourseId = ref<number | null>(null)
 const accessLoading = ref(false)
@@ -199,7 +205,7 @@ watch(course, () => {
         <figure class="w-full space-y-3">
           <video
             :key="course.id"
-            :src="DEMO_VIDEO_URL"
+            :src="previewVideo"
             :poster="course.imageUrl"
             :aria-label="`Sample clip for ${course.title}`"
             controls
@@ -209,7 +215,7 @@ watch(course, () => {
             @error="videoFailed = true"
           />
           <figcaption class="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
-            {{ DEMO_VIDEO_LABEL }}
+            {{ previewVideo === DEMO_VIDEO_URL ? DEMO_VIDEO_LABEL : 'Course introduction' }}
           </figcaption>
           <p v-if="videoFailed" role="alert" class="text-sm text-amber-900">
             Unable to load the sample clip. Please try again later.

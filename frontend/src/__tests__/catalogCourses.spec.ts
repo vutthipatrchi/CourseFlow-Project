@@ -16,6 +16,11 @@ const sample: CheckoutCourse = {
 }
 
 describe('catalogCourses', () => {
+  it('uses uploaded cover URLs for the storefront image', () => {
+    const imageName = '/api/uploads/course-images/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png'
+    expect(toStorefrontCourse({ ...sample, imageName }).imageUrl).toBe(imageName)
+  })
+
   it('parses storefront and numeric course ids', () => {
     expect(catalogCourseId('course-9')).toBe(9)
     expect(catalogCourseId('9')).toBe(9)

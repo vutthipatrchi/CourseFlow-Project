@@ -56,6 +56,11 @@ class PaymentController {
         return payments.createOrder(jwt.getSubject(), request.courseId(), request.promotionCode());
     }
 
+    @PostMapping("/orders/{orderId}/complete-free")
+    OrderCreated completeFreeOrder(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
+        return payments.completeFreeOrder(orderId, jwt.getSubject());
+    }
+
     @PostMapping("/orders/{orderId}/payments/card")
     PaymentView card(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt,
         @RequestHeader("Idempotency-Key") UUID key, @Valid @RequestBody CardPaymentRequest request) {

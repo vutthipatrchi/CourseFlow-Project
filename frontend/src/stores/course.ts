@@ -45,7 +45,7 @@ export const useCourseStore = defineStore('courses', () => {
   async function add(payload: AdminCoursePayload) {
     const created = await createCourse(payload)
     courses.value.unshift(created)
-    loaded.value = true
+    // Only a successful list request can mark the complete collection as loaded.
     return created
   }
 

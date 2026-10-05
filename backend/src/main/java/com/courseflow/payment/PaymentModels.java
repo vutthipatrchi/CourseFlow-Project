@@ -53,7 +53,7 @@ record ProviderCharge(
 record OrderCreated(
     UUID orderId, Long courseId, String reference, String courseTitle, String promotionCode,
     long subtotalSatang, long discountSatang, long totalSatang,
-    String currency, Instant expiresAt, PaymentView payment
+    String currency, Instant expiresAt, String status, PaymentView payment
 ) {}
 record CheckoutCourse(
     Long id,
@@ -65,6 +65,8 @@ record CheckoutCourse(
     Integer learningTime,
     int lessons,
     String imageName,
+    String videoName,
+    String resourceName,
     String accent
 ) {}
 record PaymentView(

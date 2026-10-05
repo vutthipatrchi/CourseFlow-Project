@@ -31,7 +31,12 @@ export function catalogRouteId(courseId: number): string {
 }
 
 export function resolveCatalogImage(course: Pick<CheckoutCourse, 'name' | 'imageName'>): string {
-  if (course.imageName && /^https?:\/\//.test(course.imageName)) return course.imageName
+  if (
+    course.imageName &&
+    (/^https?:\/\//.test(course.imageName) ||
+      /^\/api\/uploads\/course-images\/[a-f0-9-]+\.(png|jpe?g)$/.test(course.imageName))
+  )
+    return course.imageName
   return imagesByTitle[course.name] ?? serviceDesignImage
 }
 

@@ -24,7 +24,9 @@ public class LessonService {
 
     @Transactional
     public LessonDetailResponse create(Long courseId, CreateLessonRequest request) {
-        ensureCourseExists(courseId);
+        if (!lessonRepository.lockCourse(courseId)) {
+            throw new ResourceNotFoundException("Course " + courseId + " not found");
+        }
         int position = lessonRepository.nextLessonPosition(courseId);
         Long lessonId = lessonRepository.insertLesson(courseId, request.name(), position);
         replaceSubLessons(lessonId, request.subLessons());
@@ -52,13 +54,21 @@ public class LessonService {
     }
 
     private void replaceSubLessons(Long lessonId, List<SubLessonWriteRequest> subLessons) {
+        var requestedIds = new java.util.HashSet<Long>();
+        for (SubLessonWriteRequest item : subLessons) {
+            if (item.id() == null) continue;
+            if (!requestedIds.add(item.id())) {
+                throw new IllegalArgumentException("Sub-lesson IDs must not be repeated");
+            }
+            if (!lessonRepository.subLessonBelongsToLesson(item.id(), lessonId)) {
+                throw new ResourceNotFoundException("Sub-lesson " + item.id() + " not found");
+            }
+        }
+        lessonRepository.reserveSubLessonPositions(lessonId, subLessons.size());
         List<Long> keepIds = new ArrayList<>();
         int position = 1;
         for (SubLessonWriteRequest item : subLessons) {
             if (item.id() != null) {
-                if (!lessonRepository.subLessonBelongsToLesson(item.id(), lessonId)) {
-                    throw new ResourceNotFoundException("Sub-lesson " + item.id() + " not found");
-                }
                 lessonRepository.updateSubLesson(item.id(), item.name(), item.videoUrl(), position);
                 keepIds.add(item.id());
             } else {
@@ -79,7 +89,10 @@ public class LessonService {
     }
 
     private void ensureLessonExists(Long lessonId) {
-        if (lessonRepository.findCourseId(lessonId).isEmpty()) {
+        Long courseId = lessonRepository.findCourseId(lessonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson " + lessonId + " not found"));
+        // Use the same parent lock as course edits and lesson creation, in that order.
+        if (!lessonRepository.lockCourse(courseId) || lessonRepository.findCourseId(lessonId).isEmpty()) {
             throw new ResourceNotFoundException("Lesson " + lessonId + " not found");
         }
     }

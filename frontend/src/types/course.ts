@@ -26,6 +26,7 @@ export type SubLesson = {
   videoUrl: string
   demoLesson?: DemoLesson
   progress: SubLessonProgress
+  assignments?: Assignment[]
   assignment?: Assignment
 }
 

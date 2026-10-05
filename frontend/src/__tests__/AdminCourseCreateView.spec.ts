@@ -6,11 +6,13 @@ import { VueDraggable } from 'vue-draggable-plus'
 import { toast } from 'vue-sonner'
 import { createCourse, deleteCourse, getCourse, updateCourse } from '@/api/courses'
 import { useCourseStore } from '@/stores/course'
+import { uploadCourseAsset } from '@/api/uploads'
 import type { AdminCourse, AdminCoursePayload } from '@/types/course'
 import { makeCourseFixtures } from './courseFixtures'
 import AdminCourseCreateView from '../views/AdminCourseCreateView.vue'
 
 vi.mock('@/api/courses')
+vi.mock('@/api/uploads')
 
 const mocks = vi.hoisted(() => ({
   signOut: vi.fn<() => Promise<void>>(),
@@ -39,6 +41,17 @@ function savedCourse(payload: AdminCoursePayload, id: number, existing?: AdminCo
 }
 
 beforeEach(() => {
+  vi.mocked(uploadCourseAsset)
+    .mockReset()
+    .mockImplementation(async (file, kind) => ({
+      url:
+        '/api/uploads/course-' +
+        kind +
+        '/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.' +
+        file.name.split('.').pop(),
+      contentType: file.type,
+      originalName: file.name,
+    }))
   setActivePinia(pinia)
   const courseStore = useCourseStore()
   courseStore.$patch({
@@ -99,6 +112,59 @@ describe('admin add course', () => {
 
     await wrapper.get('input[name="hasPromo"]').setValue(true)
     expect(wrapper.find('input[name="promoCode"]').exists()).toBe(true)
+  })
+
+  it('uploads all selected files before saving their server URLs', async () => {
+    const { wrapper } = await mountView('/admin/courses/1/edit')
+    await flushPromises()
+    const files = [
+      ['coverImage', 'cover.png', 'image/png'],
+      ['previewVideo', 'intro.mp4', 'video/mp4'],
+      ['attachment', 'notes.pdf', 'application/pdf'],
+    ] as const
+    for (const [name, filename, type] of files) {
+      const input = wrapper.get<HTMLInputElement>('input[name="' + name + '"]')
+      Object.defineProperty(input.element, 'files', {
+        configurable: true,
+        value: [new File(['data'], filename, { type })],
+      })
+      await input.trigger('change')
+    }
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(uploadCourseAsset).toHaveBeenCalledTimes(3)
+    expect(updateCourse).toHaveBeenLastCalledWith(
+      1,
+      expect.objectContaining({
+        imageName: '/api/uploads/course-images/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png',
+        videoName: '/api/uploads/course-previews/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.mp4',
+        resourceName: '/api/uploads/course-resources/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.pdf',
+      }),
+    )
+    wrapper.unmount()
+  })
+
+  it('does not save the course if uploading fails and permits retrying the file', async () => {
+    const { wrapper, router } = await mountView('/admin/courses/1/edit')
+    await flushPromises()
+    vi.mocked(updateCourse).mockClear()
+    vi.mocked(uploadCourseAsset).mockRejectedValueOnce(new Error('Upload failed'))
+    const input = wrapper.get<HTMLInputElement>('input[name="coverImage"]')
+    Object.defineProperty(input.element, 'files', {
+      configurable: true,
+      value: [new File(['data'], 'cover.png', { type: 'image/png' })],
+    })
+    await input.trigger('change')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(updateCourse).not.toHaveBeenCalled()
+    expect(wrapper.get('.api-error').text()).toBe('Upload failed')
+    expect(router.currentRoute.value.name).toBe('admin-course-edit')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(uploadCourseAsset).toHaveBeenCalledTimes(2)
+    expect(updateCourse).toHaveBeenCalledOnce()
+    wrapper.unmount()
   })
 
   it('adds a mock course and returns to the course list', async () => {

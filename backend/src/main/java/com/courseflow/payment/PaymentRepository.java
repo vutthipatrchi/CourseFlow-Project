@@ -28,7 +28,7 @@ class PaymentRepository {
             try {
                 var courses = jdbc.query("""
             SELECT c.id, c.name, c.price, c.category, c.summary, c.description,
-                   c.learning_time, c.image_name, c.accent,
+                   c.learning_time, c.image_name, c.video_name, c.resource_name, c.accent,
                    COALESCE((
                      SELECT COUNT(*)::INT FROM courseflow.course_lessons l WHERE l.course_id = c.id
                    ), 0) AS lessons
@@ -50,7 +50,7 @@ class PaymentRepository {
         try {
             return Optional.ofNullable(jdbc.queryForObject("""
                 SELECT c.id, c.name, c.price, c.category, c.summary, c.description,
-                       c.learning_time, c.image_name, c.accent,
+                       c.learning_time, c.image_name, c.video_name, c.resource_name, c.accent,
                        COALESCE((
                          SELECT COUNT(*)::INT FROM courseflow.course_lessons l WHERE l.course_id = c.id
                        ), 0) AS lessons
@@ -74,6 +74,8 @@ class PaymentRepository {
             learningTime,
             rs.getInt("lessons"),
             rs.getString("image_name"),
+            rs.getString("video_name"),
+            rs.getString("resource_name"),
             rs.getString("accent"));
     }
 

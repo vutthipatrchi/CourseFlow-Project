@@ -22,10 +22,14 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
+                // Retired title-based endpoint bypassed subscription checks.
+                .requestMatchers("/api/learn/demo-content").denyAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalog/courses", "/api/catalog/courses/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalog/demo-content").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalog/demo-video").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/catalog/demo-video").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/uploads/course-images/*", "/api/uploads/course-previews/*").permitAll()
+                .requestMatchers(HttpMethod.HEAD, "/api/uploads/course-images/*", "/api/uploads/course-previews/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/uploads/videos/*").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/uploads/videos/*").permitAll()
                 .requestMatchers(
