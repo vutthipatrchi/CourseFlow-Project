@@ -1,9 +1,26 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'vue-sonner'
 import SubscribeCard from '@/components/course/SubscribeCard.vue'
 import { checkoutCourseFixture } from './checkoutCourseFixture'
+
+const mocks = vi.hoisted(() => ({ list: vi.fn(), add: vi.fn(), remove: vi.fn() }))
+vi.mock('@clerk/vue', async () => {
+  const { ref } = await import('vue')
+  return { useUser: () => ({ user: ref({ id: 'user_1' }) }) }
+})
+vi.mock('@/api/wishlist', () => ({
+  listWishlist: mocks.list,
+  addWishlistCourse: mocks.add,
+  removeWishlistCourse: mocks.remove,
+}))
+beforeEach(() => {
+  vi.clearAllMocks()
+  mocks.list.mockResolvedValue([])
+  mocks.add.mockResolvedValue(undefined)
+  mocks.remove.mockResolvedValue(undefined)
+})
 
 async function mountCard(overrides: Partial<InstanceType<typeof SubscribeCard>['$props']> = {}) {
   const router = createRouter({
@@ -55,7 +72,34 @@ describe('SubscribeCard', () => {
     const successSpy = vi.spyOn(toast, 'success')
     const { wrapper } = await mountCard()
     await wrapper.get('button:first-of-type').trigger('click')
+    await flushPromises()
+    expect(mocks.add).toHaveBeenCalledWith(9)
     expect(successSpy).toHaveBeenCalledWith('Added to wishlist successfully!')
+    expect(wrapper.text()).toContain('Remove from Wishlist')
+    wrapper.unmount()
+  })
+
+  it('shows a failure and does not report success when saving fails', async () => {
+    mocks.add.mockRejectedValue(new Error('Save failed'))
+    const successSpy = vi.spyOn(toast, 'success')
+    const errorSpy = vi.spyOn(toast, 'error')
+    const { wrapper } = await mountCard()
+    await wrapper.get('button:first-of-type').trigger('click')
+    await flushPromises()
+    expect(successSpy).not.toHaveBeenCalled()
+    expect(errorSpy).toHaveBeenCalledWith('Save failed')
+    expect(wrapper.text()).toContain('Add to Wishlist')
+    wrapper.unmount()
+  })
+
+  it('loads saved status from the server and removes an existing item', async () => {
+    mocks.list.mockResolvedValue([checkoutCourseFixture({ id: 9, name: 'Software Developer' })])
+    const { wrapper } = await mountCard()
+    expect(wrapper.text()).toContain('Remove from Wishlist')
+    await wrapper.get('button:first-of-type').trigger('click')
+    await flushPromises()
+    expect(mocks.remove).toHaveBeenCalledWith(9)
+    expect(wrapper.text()).toContain('Add to Wishlist')
     wrapper.unmount()
   })
 
