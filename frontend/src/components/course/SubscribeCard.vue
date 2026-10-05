@@ -29,6 +29,7 @@ const router = useRouter()
 const route = useRoute()
 const { success, error: notifyError } = useToast()
 const wishlist = useWishlist()
+// ใช้ ID ของคอร์สจริงเทียบกับรายการจาก API เพื่อแสดงปุ่มเพิ่มหรือลบให้ตรงกับข้อมูลที่บันทึก
 const saved = computed(() =>
   wishlist.courses.value.some((course) => course.id === props.checkoutCourse?.id),
 )
@@ -44,6 +45,7 @@ function goToLearning() {
 }
 
 async function toggleWishlist() {
+  // ผู้ที่ยังไม่ล็อกอินกลับมาหน้าคอร์สเดิมได้หลัง sign-in แล้วจึงกดบันทึกอีกครั้ง
   if (!wishlist.user.value?.id) {
     await router.push({ name: 'sign-in', query: { redirect: route.fullPath } })
     return
@@ -51,6 +53,7 @@ async function toggleWishlist() {
   if (!props.checkoutCourse) return
   const shouldSave = !saved.value
   try {
+    // ไม่แจ้งสำเร็จเพียงเพราะกดปุ่ม ต้องรอการบันทึกจริงและยังอยู่ในบัญชีเดิม
     if (await wishlist.setSaved(props.checkoutCourse, shouldSave)) {
       success(
         shouldSave ? 'Added to wishlist successfully!' : 'Removed from wishlist successfully!',

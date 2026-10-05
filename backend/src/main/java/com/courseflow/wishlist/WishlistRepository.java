@@ -14,6 +14,7 @@ public class WishlistRepository {
 
     public WishlistRepository(NamedParameterJdbcTemplate jdbc) { this.jdbc = jdbc; }
 
+    // กรองด้วยเจ้าของทุกครั้ง และ JOIN คอร์สเพื่อแสดงชื่อ/ราคา/รายละเอียดล่าสุด
     public List<WishlistCourse> findAll(String subject) {
         return jdbc.query("""
             SELECT c.id, c.name, c.price, c.category, c.summary, c.description,
@@ -33,17 +34,21 @@ public class WishlistRepository {
     public void add(String subject, long courseId) {
         if (courseId <= 0) throw new IllegalArgumentException("Course ID must be positive");
         var params = Map.of("subject", (Object) subject, "courseId", courseId);
+        // INSERT เฉพาะคอร์สที่มีอยู่; primary key (customer_subject, course_id) กันรายการซ้ำ
+        // ON CONFLICT ทำให้การส่ง PUT ซ้ำปลอดภัยและไม่เปลี่ยนวันที่บันทึกเดิม
         int inserted = jdbc.update("""
             INSERT INTO courseflow.wishlist_items (customer_subject, course_id)
             SELECT :subject, id FROM courseflow.courses WHERE id = :courseId
             ON CONFLICT (customer_subject, course_id) DO NOTHING
             """, params);
+        // 0 แถวอาจหมายถึงบันทึกไว้แล้วหรือไม่มีคอร์ส ต้องแยกสองกรณีนี้ก่อนคืน 404
         if (inserted == 0 && !Boolean.TRUE.equals(jdbc.queryForObject(
             "SELECT EXISTS (SELECT 1 FROM courseflow.courses WHERE id = :courseId)", params, Boolean.class))) {
             throw new ResourceNotFoundException("Course not found");
         }
     }
 
+    // ลบได้เฉพาะรายการของผู้เรียก; ลบซ้ำหรือยังไม่เคยบันทึกถือว่าสำเร็จเหมือนกัน
     public void remove(String subject, long courseId) {
         jdbc.update("""
             DELETE FROM courseflow.wishlist_items

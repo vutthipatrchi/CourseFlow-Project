@@ -15,10 +15,12 @@ import { useToast } from '@/composables/useToast'
 import Spinner from '@/components/common/Spinner.vue'
 
 const { courses, loading, error, pending, load, setSaved } = useWishlist()
+// แปลงข้อมูลคอร์สจาก API เป็นรูปแบบของ CourseCard โดยใช้ mapper เดียวกับหน้ารายการคอร์ส
 const wishlistCourses = computed(() => courses.value.map(toStorefrontCourse))
 const { success, error: notifyError } = useToast()
 
 async function remove(courseId: string) {
+  // หน้าเว็บใช้ route ID เช่น course-9 แต่ API ใช้เลข ID 9 จึงแปลงก่อนหาคอร์สที่จะลบ
   const course = courses.value.find((item) => item.id === catalogCourseId(courseId))
   if (!course) return
   try {

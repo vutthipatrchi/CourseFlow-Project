@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Profile("!standalone")
+// SecurityConfig บังคับ authentication; เจ้าของข้อมูลมาจาก subject ของ JWT ที่ตรวจสอบแล้ว
+// ไม่รับ userId จาก request จึงไม่สามารถระบุบัญชีอื่นเพื่ออ่านหรือแก้ wishlist ของเขา
 @RequestMapping("/api/me/wishlist")
 public class WishlistController {
     private final WishlistRepository wishlist;
@@ -18,6 +20,7 @@ public class WishlistController {
 
     @GetMapping
     public ResponseEntity<List<WishlistCourse>> list(@AuthenticationPrincipal Jwt jwt) {
+        // รายการเป็นข้อมูลส่วนตัว จึงห้าม HTTP cache เก็บ response ไว้ใช้ซ้ำ
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(wishlist.findAll(jwt.getSubject()));
     }
 
